@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tareas</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .almanaque{width:100%;border-collapse:collapse;font-size:12px}
+    .almanaque th{background:#060f0a;color:#4a7a5a;padding:8px 4px;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1a3d2b}
+    .almanaque td{padding:4px 3px;border-bottom:1px solid #0a1a10;vertical-align:top}
+    .almanaque tr.hoy td{background:#0d2318}
+    .almanaque tr.hoy td:first-child{border-left:2px solid #f0b429}
+    .celda{background:#060f0a;border-radius:6px;padding:6px;min-height:54px;cursor:pointer;font-size:10px;color:#4a7a5a;border:1px dashed #1a3d2b;text-align:center;display:flex;align-items:center;justify-content:center}
+    .celda.tiene-tarea{background:#0a1a10;border:1px solid #1a5c32;text-align:left;display:block}
+    .celda.completada{border:1px solid #f0b429;background:#1a1200}
+    .dia-label{font-size:11px;font-weight:600;color:#e8f0eb;text-align:center}
+    .dia-fecha{font-size:9px;color:#2d5a3d;text-align:center}
+    .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end}
+    .modal-content{background:#0a1a10;border-radius:16px 16px 0 0;padding:20px 16px;width:100%;max-height:92vh;overflow-y:auto;border-top:1px solid #1a3d2b}
+    .tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+    .tab-on{background:#1a5c32;color:#fff}
+    .tab-off{background:#060f0a;color:#2d5a3d;border:1px solid #1a3d2b}
+    .tarea-item{background:#060f0a;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+    .tarea-item.hecha{opacity:.5}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">← Volver</button>
+    <button onclick="location.href='/'" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">🏠 Dashboard</button>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <h3 id="titulo-lote" style="margin:0">Tareas</h3>
+    <div style="display:flex;gap:6px">
+      <button onclick="cambiarVista('semanal')" id="btn-sem" style="width:auto;padding:5px 10px;font-size:11px;background:#1a5c32;color:#fff;border:none;border-radius:6px">Semanal</button>
+      <button onclick="cambiarVista('quincenal')" id="btn-quin" style="width:auto;padding:5px 10px;font-size:11px;background:#0a1a10;color:#4a7a5a;border:1px solid #1a3d2b;border-radius:6px">Quincenal</button>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <button onclick="navAnterior()" style="width:auto;padding:5px 14px;font-size:16px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px">‹</button>
+    <div style="font-size:12px;color:#4a7a5a;text-align:center" id="rango-fechas"></div>
+    <button onclick="navSiguiente()" style="width:auto;padding:5px 14px;font-size:16px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px">›</button>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table class="almanaque">
+      <thead>
+        <tr>
+          <th style="min-width:36px">Día</th>
+          <th>🌅 Mañana</th>
+          <th>☀️ Tarde</th>
+          <th>🌙 Noche</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#2d5a3d;text-align:center">+ para agregar tarea · ✓ para marcar como hecha</div>
+</div>
+
+<!-- Modal agregar/editar tarea -->
+<div id="modal" class="modal" style="display:none" onclick="if(event.target===this)cerrarModal()">
+<div class="modal-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h3 id="modal-titulo" style="margin:0;font-size:15px"></h3>
+    <button onclick="cerrarModal()" style="width:auto;padding:4px 12px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;font-size:13px">✕</button>
+  </div>
+
+  <!-- Lista de tareas del turno -->
+  <div id="lista-tareas-modal" style="margin-bottom:14px"></div>
+
+  <!-- Agregar nueva tarea -->
+  <div style="background:#060f0a;border-radius:10px;padding:12px">
+    <div style="font-size:11px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">+ Nueva tarea</div>
+    <label>Título</label>
+    <input type="text" id="t-titulo" placeholder="Ej: Revisar pH del tanque" style="margin-top:4px">
+    <label style="margin-top:8px;display:block">Descripción</label>
+    <textarea id="t-desc" placeholder="Detalle de la tarea..." style="margin-top:4px;min-height:60px"></textarea>
+    <button onclick="agregarTarea()" class="btn-gold" style="margin-top:10px">+ Agregar tarea</button>
+  </div>
+</div>
+</div>
+
+<script>
+const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+const urlP=new URLSearchParams(location.search)
+const loteId=urlP.get('lote_id')||''
+const loteNom=decodeURIComponent(urlP.get('lote')||'Lote')
+
+document.getElementById('titulo-lote').textContent=loteNom+' — Tareas'
+
+const DIAS=['Dom','Lun','Mar','Mie','Jue','Vie','Sab']
+const TURNOS=['manana','tarde','noche']
+
+let vista='semanal', offset=0, tareas=[]
+let celdaActual=null
+
+function getLunes(){
+  const hoy=new Date(), dia=hoy.getDay()
+  const diff=(dia===0?-6:1-dia)+offset*7
+  const lun=new Date(hoy); lun.setDate(hoy.getDate()+diff); lun.setHours(0,0,0,0); return lun
+}
+function getDias(){
+  const lun=getLunes(), cant=vista==='semanal'?7:14
+  return Array.from({length:cant},(_,i)=>{const d=new Date(lun);d.setDate(lun.getDate()+i);return d})
+}
+function fmt(d){return d.toISOString().slice(0,10)}
+function esHoy(d){return fmt(d)===fmt(new Date())}
+
+function cambiarVista(v){
+  vista=v
+  document.getElementById('btn-sem').style.background=v==='semanal'?'#1a5c32':'#0a1a10'
+  document.getElementById('btn-sem').style.color=v==='semanal'?'#fff':'#4a7a5a'
+  document.getElementById('btn-quin').style.background=v==='quincenal'?'#1a5c32':'#0a1a10'
+  document.getElementById('btn-quin').style.color=v==='quincenal'?'#fff':'#4a7a5a'
+  renderAlmanaque()
+}
+function navAnterior(){offset--;cargarTareas()}
+function navSiguiente(){offset++;cargarTareas()}
+
+async function cargarTareas(){
+  const dias=getDias()
+  const desde=fmt(dias[0]), hasta=fmt(dias[dias.length-1])
+  const r=await fetch(SURL+'/rest/v1/tareas?lote_id=eq.'+loteId+'&fecha=gte.'+desde+'&fecha=lte.'+hasta+'&order=fecha,turno',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  tareas=await r.json()
+  const opts={timeZone:'America/Montevideo',day:'2-digit',month:'2-digit'}
+  document.getElementById('rango-fechas').textContent=
+    new Date(desde+'T12:00').toLocaleDateString('es-UY',opts)+' — '+
+    new Date(hasta+'T12:00').toLocaleDateString('es-UY',opts)
+  renderAlmanaque()
+}
+
+function renderAlmanaque(){
+  const dias=getDias()
+  document.getElementById('tbody').innerHTML=dias.map(d=>{
+    const fecha=fmt(d), hoy=esHoy(d)
+    const celdas=TURNOS.map(turno=>{
+      const tt=tareas.filter(t=>t.fecha===fecha&&t.turno===turno)
+      if(!tt.length){
+        return '<td><div class="celda" onclick="abrirModal(\''+fecha+'\',\''+turno+'\')"><span style="font-size:18px;color:#1a3d2b">+</span></div></td>'
+      }
+      const todas=tt.length
+      const hechas=tt.filter(t=>t.completada).length
+      const todas_hechas=todas===hechas
+      return '<td><div class="celda tiene-tarea'+(todas_hechas?' completada':'')+'" onclick="abrirModal(\''+fecha+'\',\''+turno+'\')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">' +
+        '<span style="font-size:10px;font-weight:700;color:'+(todas_hechas?'#f0b429':'#22c55e')+'">'+hechas+'/'+todas+'</span>' +
+        (todas_hechas?'<span style="font-size:10px;color:#f0b429">✓</span>':'') +
+        '</div>' +
+        tt.slice(0,2).map(t=>'<div style="font-size:9px;color:'+(t.completada?'#2d5a3d':'#e8f0eb')+';'+(t.completada?'text-decoration:line-through':'')+'">'+t.titulo+'</div>').join('') +
+        (tt.length>2?'<div style="font-size:9px;color:#2d5a3d">+'+( tt.length-2)+' más</div>':'') +
+        '</div></td>'
+    }).join('')
+    return '<tr class="'+(hoy?'hoy':'')+'"><td><div class="dia-label">'+DIAS[d.getDay()]+'</div><div class="dia-fecha">'+d.getDate()+'/'+(d.getMonth()+1)+'</div></td>'+celdas+'</tr>'
+  }).join('')
+}
+
+function abrirModal(fecha, turno){
+  celdaActual={fecha,turno}
+  const d=new Date(fecha+'T12:00')
+  const tLabel={manana:'Mañana',tarde:'Tarde',noche:'Noche'}[turno]
+  document.getElementById('modal-titulo').textContent=DIAS[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+' · '+tLabel
+  document.getElementById('t-titulo').value=''
+  document.getElementById('t-desc').value=''
+  renderTareasModal(fecha,turno)
+  document.getElementById('modal').style.display='flex'
+}
+function cerrarModal(){document.getElementById('modal').style.display='none';celdaActual=null}
+
+function renderTareasModal(fecha,turno){
+  const tt=tareas.filter(t=>t.fecha===fecha&&t.turno===turno)
+  const cont=document.getElementById('lista-tareas-modal')
+  if(!tt.length){
+    cont.innerHTML='<div style="color:#2d5a3d;font-size:13px;margin-bottom:8px">Sin tareas para este turno</div>'
+    return
+  }
+  cont.innerHTML=tt.map(t=>`
+    <div class="tarea-item ${t.completada?'hecha':''}" id="tarea-${t.id}">
+      <button onclick="toggleTarea(${t.id},${!t.completada})"
+        style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid ${t.completada?'#f0b429':'#1a5c32'};
+        background:${t.completada?'#f0b429':'transparent'};cursor:pointer;font-size:14px;padding:0;display:flex;align-items:center;justify-content:center">
+        ${t.completada?'✓':''}
+      </button>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;${t.completada?'text-decoration:line-through;color:#2d5a3d':''}">${t.titulo}</div>
+        ${t.descripcion?'<div style="font-size:11px;color:#4a7a5a;margin-top:2px">'+t.descripcion+'</div>':''}
+      </div>
+      <button onclick="borrarTarea(${t.id})"
+        style="flex-shrink:0;background:transparent;border:none;color:#dc2626;font-size:16px;cursor:pointer;padding:4px">
+        ×
+      </button>
+    </div>`).join('')
+}
+
+async function toggleTarea(id, completada){
+  await fetch(SURL+'/rest/v1/tareas?id=eq.'+id,{
+    method:'PATCH',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json'},
+    body:JSON.stringify({completada})
+  })
+  await cargarTareas()
+  if(celdaActual) renderTareasModal(celdaActual.fecha,celdaActual.turno)
+}
+
+async function borrarTarea(id){
+  await fetch(SURL+'/rest/v1/tareas?id=eq.'+id,{
+    method:'DELETE',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+  })
+  await cargarTareas()
+  if(celdaActual) renderTareasModal(celdaActual.fecha,celdaActual.turno)
+}
+
+async function agregarTarea(){
+  const titulo=document.getElementById('t-titulo').value.trim()
+  if(!titulo){alert('Escribí un título para la tarea');return}
+  await fetch(SURL+'/rest/v1/tareas',{
+    method:'POST',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify({
+      lote_id:parseInt(loteId),
+      titulo,
+      descripcion:document.getElementById('t-desc').value||null,
+      fecha:celdaActual.fecha,
+      turno:celdaActual.turno,
+      completada:false
+    })
+  })
+  document.getElementById('t-titulo').value=''
+  document.getElementById('t-desc').value=''
+  await cargarTareas()
+  renderTareasModal(celdaActual.fecha,celdaActual.turno)
+}
+
+cargarTareas()
+</script>
+</body>
+</html>

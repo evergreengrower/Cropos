@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CropOS - Calculador</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .fila{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0f172a}
+    .fila:last-child{border-bottom:none}
+    .marca-header{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#475569;padding:8px 0 2px;font-weight:600}
+    .ml-res{font-size:13px;font-weight:700;color:#22c55e;min-width:58px;text-align:right}
+    .tab{flex:1;padding:10px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+    .tab-on{background:#22c55e;color:#0f172a}
+    .tab-off{background:#1e293b;color:#64748b}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>🧪 Calculador de dosis</h1>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="tab tab-on" id="tab-veg" onclick="setTab('veg')">🌿 Vegetativo</button>
+      <button class="tab tab-off" id="tab-flor" onclick="setTab('flor')">🌸 Floracion</button>
+    </div>
+
+    <div class="card" style="padding:14px;margin-bottom:12px">
+      <label style="font-size:11px;color:#94a3b8">TANQUE (L)</label>
+      <input type="number" id="volumen" value="500" min="1" max="2000" oninput="calcular()" style="width:100%;margin-top:4px;margin-bottom:12px">
+      <label style="font-size:11px;color:#94a3b8">PORCENTAJE ATHENA (20-70%)</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input type="range" id="pct" min="20" max="70" value="50" step="5"
+          oninput="document.getElementById('pct-val').textContent=this.value+'%';calcular()"
+          style="flex:1">
+        <span id="pct-val" style="font-size:22px;font-weight:700;color:#22c55e;min-width:50px">50%</span>
+      </div>
+    </div>
+
+    <div id="lista" style="background:#1e293b;border-radius:12px;padding:12px"></div>
+    <div id="resultado" style="margin-top:12px"></div>
+    <div style="margin-top:16px"><a href="/" style="color:#22c55e;font-size:13px">← Volver</a></div>
+  </div>
+
+  <script>
+    const SURL = 'https://ufkyfsnbyouqumipoqss.supabase.co'
+    const SKEY = 'sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+
+    const TABS = {
+      veg:  [1,2,5,6,7,8,9,11,10,14,15,16],
+      flor: [1,3,4,5,6,7,8,9,11,12,13,10,14,15,16]
+    }
+
+    let fertis = []
+    let tab = 'veg'
+
+    function setTab(t) {
+      tab = t
+      document.getElementById('tab-veg').className  = 'tab ' + (t==='veg'  ? 'tab-on' : 'tab-off')
+      document.getElementById('tab-flor').className = 'tab ' + (t==='flor' ? 'tab-on' : 'tab-off')
+      render()
+    }
+
+    async function cargar() {
+      const r = await fetch(SURL+'/rest/v1/fertilizantes?activo=eq.true&select=*', {
+        headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+      })
+      fertis = await r.json()
+      render()
+    }
+
+    function render() {
+      const ids = TABS[tab]
+      const lista = ids.map(id => fertis.find(f => f.id === id)).filter(Boolean)
+      
+      const MARCAS = ['Athena','TreeMix','Namaste','Advance',null]
+      let html = ''
+      let marcaActual = 'NONE'
+
+      lista.forEach(f => {
+        if (f.marca !== marcaActual) {
+          marcaActual = f.marca
+          html += `<div class="marca-header">${f.marca || 'Otros'}</div>`
+        }
+        const athena = f.marca === 'Athena'
+        const ctrl = athena
+          ? `<span class="ml-res" id="res-${f.id}">-</span>`
+          : `<input type="number" min="0.5" max="${f.dosis_max}" value="${f.dosis_max}" step="0.5"
+               data-id="${f.id}" oninput="calcular()"
+               style="width:56px;background:#0f172a;color:white;border-radius:6px;padding:4px;border:none;font-size:13px;text-align:center">
+             <span style="font-size:10px;color:#64748b">${f.unidad}</span>
+             <span class="ml-res" id="res-${f.id}">-</span>`
+
+        html += `<div class="fila">
+          <input type="checkbox" data-id="${f.id}" oninput="calcular()" style="width:16px;height:16px;flex-shrink:0">
+          <span style="font-size:13px;flex:1">${f.nombre}</span>
+          <span style="font-size:10px;color:#475569">${f.aplicacion||''}</span>
+          ${ctrl}
+        </div>`
+      })
+      document.getElementById('lista').innerHTML = html
+      document.getElementById('resultado').innerHTML = ''
+    }
+
+    function calcular() {
+      const vol = parseFloat(document.getElementById('volumen').value)||0
+      const pct = parseInt(document.getElementById('pct').value)
+      fertis.forEach(f=>{const e=document.getElementById('res-'+f.id);if(e)e.textContent='-'})
+      const checks=[...document.querySelectorAll('input[type=checkbox]:checked')]
+      if(!checks.length||!vol){document.getElementById('resultado').innerHTML='';return}
+      const filas=[]
+      checks.forEach(chk=>{
+        const id=parseInt(chk.dataset.id)
+        const f=fertis.find(x=>x.id===id)
+        if(!f)return
+        let dosis
+        if(f.marca==='Athena'){
+          dosis=parseFloat((f.dosis_max*pct/70).toFixed(2))
+        } else {
+          const inp=document.querySelector('input[type=number][data-id="'+id+'"]')
+          dosis=parseFloat(inp?.value||f.dosis_max)
+        }
+        const ml=Math.round(dosis*vol)
+        const e=document.getElementById('res-'+f.id)
+        if(e)e.textContent=ml+' ml'
+        filas.push({nombre:f.nombre,marca:f.marca||'',ml})
+      })
+      document.getElementById('resultado').innerHTML=`
+        <div style="background:#1e293b;border-radius:12px;padding:14px">
+          <div style="font-weight:700;margin-bottom:10px;color:#22c55e">Tanque ${vol}L — Athena ${pct}%</div>
+          ${filas.map(f=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #0f172a;font-size:13px">
+            <span>${f.nombre} <span style="color:#475569;font-size:11px">${f.marca}</span></span>
+            <span style="font-weight:700;color:#22c55e">${f.ml} ml</span>
+          </div>`).join('')}
+          <div style="margin-top:10px;font-size:11px;color:#475569">Agregar al agua de a uno. pH al final.</div>
+        </div>`
+    }
+
+    cargar()
+  </script>
+</body>
+</html>

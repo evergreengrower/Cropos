@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CropOS</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+    .btn-mod{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:#1e293b;border-radius:14px;padding:20px 10px;text-decoration:none;
+      color:white;border:none;cursor:pointer;transition:background .15s;gap:8px}
+    .btn-mod:active{background:#334155}
+    .btn-mod .icon{font-size:32px}
+    .btn-mod .label{font-size:13px;font-weight:600;text-align:center}
+    .btn-mod .sub{font-size:10px;color:#64748b;text-align:center}
+    .kpi{background:#1e293b;border-radius:12px;padding:12px 14px}
+    .kpi-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#475569}
+    .kpi-val{font-size:24px;font-weight:700;margin-top:2px}
+    .kpi-sub{font-size:10px;color:#64748b;margin-top:1px}
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div>
+        <h1 style="margin-bottom:0">🌱 CropOS</h1>
+        <p style="margin:0;font-size:12px" id="fecha-hora"></p>
+      </div>
+      <div style="text-align:right;font-size:11px;color:#475569" id="ultimo-sync">—</div>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0">
+      <div class="kpi">
+        <div class="kpi-label">Mediciones</div>
+        <div class="kpi-val" id="kpi-med">—</div>
+        <div class="kpi-sub">total</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">VWC prom</div>
+        <div class="kpi-val" id="kpi-vwc">—</div>
+        <div class="kpi-sub">últimas 24h</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Riegos</div>
+        <div class="kpi-val" id="kpi-riegos">—</div>
+        <div class="kpi-sub">esta semana</div>
+      </div>
+    </div>
+
+    <!-- Alerta VWC -->
+    <div id="alerta-vwc" style="display:none;background:#1e293b;border-left:3px solid #ef4444;
+      border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px">
+    </div>
+
+    <!-- Módulos -->
+    <div class="grid">
+      <a href="/mediciones-list.html" class="btn-mod">
+        <span class="icon">📊</span>
+        <span class="label">Mediciones</span>
+        <span class="sub">Ver historial</span>
+      </a>
+      <a href="/calculador.html" class="btn-mod">
+        <span class="icon">🧪</span>
+        <span class="label">Calculador</span>
+        <span class="sub">Dosis de nutrientes</span>
+      </a>
+      <a href="/riego.html" class="btn-mod">
+        <span class="icon">💧</span>
+        <span class="label">Riego</span>
+        <span class="sub">Registrar evento</span>
+      </a>
+      <a href="/import.html" class="btn-mod">
+        <span class="icon">📥</span>
+        <span class="label">Importar CSV</span>
+        <span class="sub">BlueLab Pulse</span>
+      </a>
+    </div>
+
+    <!-- Acceso rapido registro -->
+    <div style="margin-top:12px">
+      <a href="/medicion.html" class="btn-mod" style="flex-direction:row;justify-content:center;
+        background:#22c55e;color:#0f172a;padding:14px;gap:10px">
+        <span style="font-size:22px">➕</span>
+        <span style="font-weight:700;font-size:15px">Nueva medición manual</span>
+      </a>
+    </div>
+
+    <!-- Últimas mediciones -->
+    <h3 style="margin-top:20px;margin-bottom:8px">Últimas mediciones</h3>
+    <div id="mediciones"></div>
+
+  </div>
+
+  <script>
+    const SURL = 'https://ufkyfsnbyouqumipoqss.supabase.co'
+    const SKEY = 'sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+
+    // Fecha y hora actual
+    function actualizarReloj() {
+      const ahora = new Date().toLocaleString('es-UY',{
+        timeZone:'America/Montevideo',
+        weekday:'short',day:'2-digit',month:'2-digit',
+        hour:'2-digit',minute:'2-digit'
+      })
+      document.getElementById('fecha-hora').textContent = ahora
+    }
+    actualizarReloj()
+    setInterval(actualizarReloj, 30000)
+
+    function formatFecha(f) {
+      if (!f) return '-'
+      return new Date(f).toLocaleString('es-UY',{
+        timeZone:'America/Montevideo',
+        day:'2-digit',month:'2-digit',
+        hour:'2-digit',minute:'2-digit'
+      })
+    }
+
+    async function cargarDashboard() {
+      // Mediciones totales + últimas 24h
+      const [resMed, resRiegos] = await Promise.all([
+        fetch(SURL+'/rest/v1/mediciones?select=id,vwc,fecha&order=fecha.desc&limit=20', {
+          headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+        }),
+        fetch(SURL+'/rest/v1/riegos?select=id&created_at=gte.'+new Date(Date.now()-7*86400000).toISOString(), {
+          headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+        })
+      ])
+
+      const mediciones = await resMed.json()
+      const riegos     = await resRiegos.json()
+
+      // KPI total mediciones
+      const resTotal = await fetch(SURL+'/rest/v1/mediciones?select=id', {
+        headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Prefer':'count=exact','Range':'0-0'}
+      })
+      const total = resTotal.headers.get('content-range')?.split('/')[1] || '—'
+      document.getElementById('kpi-med').textContent = parseInt(total).toLocaleString('es-UY')
+
+      // KPI VWC promedio últimas 24h
+      const vwcVals = mediciones
+        .filter(m => m.vwc && new Date(m.fecha) > new Date(Date.now()-86400000))
+        .map(m => parseFloat(m.vwc))
+        .filter(v => v > 0)
+      const vwcProm = vwcVals.length
+        ? (vwcVals.reduce((a,b)=>a+b,0)/vwcVals.length).toFixed(1)+'%'
+        : '—'
+      document.getElementById('kpi-vwc').textContent = vwcProm
+
+      // KPI riegos semana
+      document.getElementById('kpi-riegos').textContent = Array.isArray(riegos) ? riegos.length : '—'
+
+      // Última sync
+      if (mediciones[0]?.fecha) {
+        document.getElementById('ultimo-sync').textContent = 'Última lectura: '+formatFecha(mediciones[0].fecha)
+      }
+
+      // Alerta VWC
+      if (vwcVals.length > 0) {
+        const prom = parseFloat(vwcProm)
+        const alerta = document.getElementById('alerta-vwc')
+        if (prom < 20) {
+          alerta.style.display = 'block'
+          alerta.innerHTML = '🔴 <b>VWC crítico: '+vwcProm+'</b> — Por debajo del piso. Regar urgente.'
+          alerta.style.borderColor = '#ef4444'
+        } else if (prom < 22) {
+          alerta.style.display = 'block'
+          alerta.innerHTML = '🟡 <b>VWC bajo: '+vwcProm+'</b> — Acercándose al piso. Preparar riego.'
+          alerta.style.borderColor = '#f59e0b'
+        }
+      }
+
+      // Lista últimas mediciones
+      const cont = document.getElementById('mediciones')
+      const recientes = mediciones.slice(0,8)
+      cont.innerHTML = recientes.map(m => `
+        <div style="background:#1e293b;border-radius:10px;padding:10px 12px;margin-bottom:7px;
+          display:flex;justify-content:space-between;align-items:center;font-size:13px">
+          <div>
+            <div style="font-weight:600">${m.lote||'Sin lote'}</div>
+            <div style="color:#64748b;font-size:11px">${formatFecha(m.fecha)}</div>
+          </div>
+          <div style="text-align:right">
+            <div>💧 <b>${m.vwc||'-'}%</b></div>
+          </div>
+        </div>`).join('')
+    }
+
+    cargarDashboard()
+  </script>
+</body>
+</html>

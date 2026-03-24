@@ -1,0 +1,2 @@
+[dotenv@17.3.1] injecting env (3) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+Servidor corriendo en http://0.0.0.0:3000

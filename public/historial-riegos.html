@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial Riegos</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
+  <button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
+  <h3>Historial de Riegos</h3>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <select id="filtro-lote" onchange="cargar()" style="flex:1">
+      <option value="">Todos los lotes</option>
+    </select>
+    <select id="filtro-turno" onchange="cargar()" style="flex:1">
+      <option value="">Todos los turnos</option>
+      <option value="manana">Mañana</option>
+      <option value="tarde">Tarde</option>
+      <option value="noche">Noche</option>
+    </select>
+  </div>
+
+  <div id="lista"></div>
+</div>
+
+<script>
+const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+
+async function init(){
+  const r=await fetch(SURL+'/rest/v1/lotes?activo=eq.true&select=id,nombre',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  const lotes=await r.json()
+  const sel=document.getElementById('filtro-lote')
+  lotes.forEach(l=>{ const o=document.createElement('option'); o.value=l.id; o.textContent=l.nombre; sel.appendChild(o) })
+  cargar()
+}
+
+async function cargar(){
+  const loteId=document.getElementById('filtro-lote').value
+  const turno=document.getElementById('filtro-turno').value
+  let url=SURL+'/rest/v1/historial_riegos?order=created_at.desc&limit=50'
+  if(loteId) url+='&lote_id=eq.'+loteId
+  if(turno)  url+='&turno=eq.'+turno
+  const r=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  const data=await r.json()
+  const cont=document.getElementById('lista')
+  if(!data.length){cont.innerHTML='<p style="color:#2d5a3d;font-size:13px">Sin riegos registrados</p>';return}
+  cont.innerHTML=data.map(r=>{
+    const fecha=new Date(r.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
+    const turnoLabel={manana:'🌅 Mañana',tarde:'☀️ Tarde',noche:'🌙 Noche'}[r.turno]||r.turno||''
+    const volL=r.volumen_l||(r.ml_por_planta&&r.cantidad_plantas?((r.ml_por_planta*r.cantidad_plantas)/1000).toFixed(1):'-')
+    const prods=r.productos_ml?Object.entries(r.productos_ml).map(([k,v])=>k+': '+v+' ml').join(' · '):r.productos?Object.entries(r.productos).map(([k,v])=>k+': '+v).join(' · '):'—'
+    return '<div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:12px;padding:14px;margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
+      '<div><div style="font-weight:700;font-size:14px">'+(r.lote_nombre||'-')+'</div>' +
+      '<div style="font-size:11px;color:#2d5a3d;margin-top:2px">'+fecha+' · '+turnoLabel+'</div></div>' +
+      '<div style="text-align:right"><div style="font-size:20px;font-weight:700;color:#22c55e">'+volL+'L</div>' +
+      (r.ml_por_planta?'<div style="font-size:10px;color:#4a7a5a">'+r.ml_por_planta+'ml/pl × '+r.cantidad_plantas+'</div>':'') +
+      '</div></div>' +
+      '<div style="font-size:12px;color:#4a7a5a;margin-bottom:4px">'+prods+'</div>' +
+      (r.notas?'<div style="font-size:11px;color:#2d5a3d">📝 '+r.notas+'</div>':'') +
+      '</div>'
+  }).join('')
+}
+
+init()
+</script>
+</body>
+</html>

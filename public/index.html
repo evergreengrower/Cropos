@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a5c32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CropOS">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Evergreen Cultiva</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app">
+
+    <div class="header">
+      <img src="/logo.png" alt="Evergreen Cultiva" class="logo">
+      <div class="subtitle">Sistema de gestión de cultivo</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:12px;color:#4a7a5a" id="fecha-hora"></div>
+    </div>
+
+    <div id="vista-cultivos">
+      <h3>Cultivos activos</h3>
+      <div id="lista-cultivos"></div>
+    </div>
+
+    <div id="vista-lotes" style="display:none">
+      <button onclick="volverCultivos()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
+      <h3 id="titulo-cultivo"></h3>
+      <div id="lista-lotes"></div>
+    </div>
+
+    <div id="vista-acciones" style="display:none">
+      <button onclick="volverLotes()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
+      <h3 id="titulo-lote"></h3>
+
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <div class="kpi">
+          <div class="kpi-label">Pre Riego Matutino</div>
+          <div class="kpi-val" id="kpi-manana">—</div>
+          <div class="kpi-sub" id="kpi-manana-n"></div>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3d2b;font-size:10px;color:#2d5a3d" id="kpi-riego-manana">Sin riego</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Pre Riego Tarde/Noche</div>
+          <div class="kpi-val" id="kpi-tarde">—</div>
+          <div class="kpi-sub" id="kpi-tarde-n"></div>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3d2b;font-size:10px;color:#2d5a3d" id="kpi-riego-tarde">Sin riego</div>
+        </div>
+        <div class="kpi" id="kpi-alerta-box">
+          <div class="kpi-label">Próximo Riego</div>
+          <div class="kpi-val" id="kpi-proximo" style="font-size:16px">—</div>
+          <div class="kpi-sub" id="kpi-proximo-n"></div>
+        </div>
+        <div class="kpi" style="cursor:pointer" onclick="irATareas()">
+          <div class="kpi-label">Alerta Próxima Tarea</div>
+          <div class="kpi-val" id="kpi-tareas" style="font-size:16px">—</div>
+          <div class="kpi-sub" id="kpi-tareas-n"></div>
+        </div>
+      </div>
+
+      <!-- KPIs climaticos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="kpi">
+          <div class="kpi-label">Temperatura</div>
+          <div class="kpi-val" id="kpi-temp" style="font-size:20px">—</div>
+          <div class="kpi-sub" id="kpi-temp-n"></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Humedad</div>
+          <div class="kpi-val" id="kpi-hr" style="font-size:20px">—</div>
+          <div class="kpi-sub" id="kpi-hr-n"></div>
+        </div>
+        <div class="kpi" id="kpi-vpd-box">
+          <div class="kpi-label">VPD</div>
+          <div class="kpi-val" id="kpi-vpd" style="font-size:20px">—</div>
+          <div class="kpi-sub" id="kpi-vpd-n"></div>
+        </div>
+      </div>
+
+      <!-- Diagnostico cruzado clima + suelo -->
+      <div id="diagnostico-cruzado" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
+
+      <!-- Alerta VWC -->
+      <div id="alerta-lote" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:500"></div>
+
+      <!-- Acciones -->
+      <h3>Acciones</h3>
+      <div class="grid">
+        <a id="btn-plan" href="#" class="btn-mod">
+          <span class="icon">📋</span>
+          <span class="label">Planificacion</span>
+          <span class="sub">Fertiriego semanal</span>
+        </a>
+        <a id="btn-import" href="#" class="btn-mod">
+          <span class="icon">📥</span>
+          <span class="label">Importar CSV</span>
+          <span class="sub">BlueLab Pulse</span>
+        </a>
+        <a id="btn-historial" href="#" class="btn-mod">
+          <span class="icon">📊</span>
+          <span class="label">Historial Riegos</span>
+          <span class="sub">Ver registros</span>
+        </a>
+        <a id="btn-tareas" href="#" class="btn-mod">
+          <span class="icon">✅</span>
+          <span class="label">Tareas</span>
+          <span class="sub">Planificacion diaria</span>
+        </a>
+        <a id="btn-clima" href="#" class="btn-mod">
+          <span class="icon">🌡️</span>
+          <span class="label">Clima</span>
+          <span class="sub">Temp · HR · VPD</span>
+        </a>
+      </div>
+
+      <h3 style="margin-top:20px">Ultimas mediciones</h3>
+      <div id="ultimas-mediciones"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
+    const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+
+    let cultivoActual=null, loteActual=null
+
+    function actualizarReloj(){
+      document.getElementById('fecha-hora').textContent=new Date().toLocaleString('es-UY',{
+        timeZone:'America/Montevideo',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'
+      })
+    }
+    actualizarReloj()
+    setInterval(actualizarReloj,30000)
+
+    function formatFecha(f){
+      if(!f) return '-'
+      return new Date(f).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    }
+
+    function mostrar(id){
+      ['vista-cultivos','vista-lotes','vista-acciones'].forEach(v=>{
+        document.getElementById(v).style.display=v===id?'block':'none'
+      })
+    }
+    function volverCultivos(){mostrar('vista-cultivos')}
+    function volverLotes(){mostrar('vista-lotes')}
+
+    function irATareas(){
+      if(loteActual) location.href='/tareas.html?lote_id='+loteActual.id+'&lote='+encodeURIComponent(loteActual.nombre)
+    }
+
+    async function cargarCultivos(){
+      const res=await fetch(SURL+'/rest/v1/cultivos?activo=eq.true&order=id',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const cultivos=await res.json()
+      document.getElementById('lista-cultivos').innerHTML=cultivos.map(c=>`
+        <div onclick="abrirCultivo(${c.id},'${c.nombre}','${c.ubicacion}')"
+          style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:18px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:16px;font-weight:700">${c.nombre}</div>
+            <div style="font-size:11px;color:#2d5a3d;margin-top:3px">📍 ${c.ubicacion}</div>
+          </div>
+          <div style="font-size:22px;color:#2d5a3d">›</div>
+        </div>`).join('')+`
+        <div onclick="agregarCultivo()" style="background:transparent;border:1px dashed #1a3d2b;border-radius:14px;padding:14px;text-align:center;cursor:pointer;color:#2d5a3d;font-size:13px">
+          + Agregar cultivo
+        </div>`
+    }
+
+    async function abrirCultivo(id,nombre,ubicacion){
+      cultivoActual={id,nombre,ubicacion}
+      document.getElementById('titulo-cultivo').textContent=nombre+' · '+ubicacion
+      const res=await fetch(SURL+'/rest/v1/lotes?cultivo_id=eq.'+id+'&activo=eq.true&order=id',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const lotes=await res.json()
+      document.getElementById('lista-lotes').innerHTML=lotes.map(l=>`
+        <div onclick="abrirLote(${l.id},'${l.nombre.replace(/'/g,"\\'")}','${l.tipo}')"
+          style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:16px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:14px;font-weight:600">${l.nombre}</div>
+            <div style="font-size:10px;color:#2d5a3d;margin-top:2px">${l.tipo}</div>
+          </div>
+          <div style="font-size:20px;color:#2d5a3d">›</div>
+        </div>`).join('')+`
+        <div onclick="agregarLote()" style="background:transparent;border:1px dashed #1a3d2b;border-radius:14px;padding:12px;text-align:center;cursor:pointer;color:#2d5a3d;font-size:13px">
+          + Agregar lote
+        </div>`
+      mostrar('vista-lotes')
+    }
+
+    async function abrirLote(id,nombre,tipo){
+      loteActual={id,nombre,tipo}
+      document.getElementById('titulo-lote').textContent=nombre
+      document.getElementById('btn-plan').href     = `/planificacion.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
+      document.getElementById('btn-import').href   = `/import.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
+      document.getElementById('btn-historial').href= `/historial-riegos.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
+      document.getElementById('btn-tareas').href   = `/tareas.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
+      document.getElementById('btn-clima').href    = `/clima.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
+      mostrar('vista-acciones')
+      cargarKpisLote(id)
+    }
+
+    async function cargarKpisLote(loteId){
+      // Reset KPIs
+      ;['kpi-manana','kpi-tarde','kpi-proximo','kpi-tareas'].forEach(id=>{
+        document.getElementById(id).textContent='—'
+      })
+
+      // Mediciones últimas 48h
+      const hace48h=new Date(Date.now()-48*3600000).toISOString()
+      const resMeds=await fetch(SURL+'/rest/v1/mediciones?lote_id=eq.'+loteId+'&fecha=gte.'+hace48h+'&select=vwc,ec,temperatura,fecha&order=fecha.desc&limit=200',
+        {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const meds=await resMeds.json()
+
+      if(Array.isArray(meds)&&meds.length){
+        const hoy24h=new Date(Date.now()-24*3600000).toISOString()
+        const prom=arr=>arr.length?(arr.reduce((s,m)=>s+parseFloat(m.vwc),0)/arr.length).toFixed(1):null
+
+        const manana=meds.filter(m=>{
+          if(!m.vwc||parseFloat(m.vwc)<=0) return false
+          if(new Date(m.fecha)<=new Date(hoy24h)) return false
+          const h=parseInt(new Date(m.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',hour:'2-digit',hour12:false}))
+          return h<12
+        })
+        const tarde=meds.filter(m=>{
+          if(!m.vwc||parseFloat(m.vwc)<=0) return false
+          if(new Date(m.fecha)<=new Date(hoy24h)) return false
+          const h=parseInt(new Date(m.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',hour:'2-digit',hour12:false}))
+          return h>=12
+        })
+
+        const vMan=prom(manana), vTar=prom(tarde)
+        document.getElementById('kpi-manana').textContent=vMan?vMan+'%':'—'
+        const ultMan=manana[0]
+        document.getElementById('kpi-manana-n').textContent=manana.length+' med.'+(ultMan?' · '+formatFecha(ultMan.fecha):'')
+        document.getElementById('kpi-tarde').textContent=vTar?vTar+'%':'—'
+        const ultTar=tarde[0]
+        document.getElementById('kpi-tarde-n').textContent=tarde.length+' med.'+(ultTar?' · '+formatFecha(ultTar.fecha):'')
+
+        // Alerta VWC
+        const vActual=parseFloat(vTar||vMan||0)
+        const alerta=document.getElementById('alerta-lote')
+        const kpiProximo=document.getElementById('kpi-proximo')
+        const kpiProximoN=document.getElementById('kpi-proximo-n')
+        if(vActual>0&&vActual<20){
+          alerta.style.display='block';alerta.style.background='#1a0a0a';alerta.style.borderLeft='3px solid #dc2626'
+          alerta.innerHTML='🔴 <b>VWC critico: '+vActual+'%</b> — Regar urgente'
+          kpiProximo.textContent='URGENTE';kpiProximo.style.color='#dc2626'
+          kpiProximoN.textContent='VWC '+vActual+'%'
+          document.getElementById('kpi-alerta-box').style.borderColor='#dc2626'
+        } else if(vActual>0&&vActual<22){
+          alerta.style.display='block';alerta.style.background='#1a1200';alerta.style.borderLeft='3px solid #f0b429'
+          alerta.innerHTML='🟡 <b>VWC bajo: '+vActual+'%</b> — Preparar riego'
+          kpiProximo.textContent='HOY';kpiProximo.style.color='#f0b429'
+          kpiProximoN.textContent='VWC '+vActual+'%'
+          document.getElementById('kpi-alerta-box').style.borderColor='#f0b429'
+        } else if(vActual>=28){
+          alerta.style.display='none'
+          kpiProximo.textContent='OK';kpiProximo.style.color='#22c55e'
+          kpiProximoN.textContent='VWC '+vActual+'%'
+        } else if(vActual>0){
+          alerta.style.display='none'
+          kpiProximo.textContent=vActual+'%';kpiProximo.style.color='#4a7a5a'
+          kpiProximoN.textContent='monitorear'
+        }
+
+        // Ultimas mediciones
+        document.getElementById('ultimas-mediciones').innerHTML=meds.slice(0,8).map(m=>`
+          <div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;color:#2d5a3d">${formatFecha(m.fecha)}</div>
+            <div style="display:flex;gap:12px;font-size:13px">
+              <span>💧 <b style="color:#f0b429">${m.vwc||'—'}%</b></span>
+              ${m.ec?`<span>⚡ ${m.ec}</span>`:''}
+              ${m.temperatura?`<span>🌡️ ${m.temperatura}°</span>`:''}
+            </div>
+          </div>`).join('')
+      }
+
+      // Ultimo riego matutino y tarde del dia
+      try {
+        const hoy=new Date().toISOString().slice(0,10)
+        const rR=await fetch(SURL+'/rest/v1/historial_riegos?lote_id=eq.'+loteId+'&fecha=gte.'+hoy+'T00:00:00&order=fecha.desc&limit=10&select=turno,volumen_l,ml_por_planta,fecha',
+          {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+        const riegos=await rR.json()
+
+        const riegoManana=riegos.find(r=>r.turno==='manana')
+        const riegoTarde=riegos.find(r=>r.turno==='tarde'||r.turno==='noche')
+
+        const formatRiego=r=>{
+          if(!r) return 'Sin riego registrado'
+          const vol=r.volumen_l||(r.ml_por_planta?'~'+(r.ml_por_planta/1000).toFixed(1)+'L/pl':'—')
+          const fechaR=new Date(r.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+          return '💧 '+vol+'L · '+fechaR
+        }
+
+        document.getElementById('kpi-riego-manana').textContent=formatRiego(riegoManana)
+        document.getElementById('kpi-riego-manana').style.color=riegoManana?'#22c55e':'#2d5a3d'
+        document.getElementById('kpi-riego-tarde').textContent=formatRiego(riegoTarde)
+        document.getElementById('kpi-riego-tarde').style.color=riegoTarde?'#22c55e':'#2d5a3d'
+      } catch(e){console.log('riegos kpi',e)}
+
+      // Clima del dia
+      try {
+        const hoyClima=new Date(Date.now()-24*3600000).toISOString()
+        const rC=await fetch(SURL+'/rest/v1/mediciones_clima?lote_id=eq.'+loteId+'&fecha=gte.'+hoyClima+'&order=fecha.desc&limit=10',
+          {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+        const clima=await rC.json()
+        if(clima&&clima.length){
+          const promC=key=>parseFloat((clima.reduce((s,d)=>s+parseFloat(d[key]||0),0)/clima.length).toFixed(1))
+          const temp=promC('temperatura'), hr=promC('humedad'), vpd=parseFloat(promC('vpd').toFixed(3))
+          document.getElementById('kpi-temp').textContent=temp+'°C'
+          document.getElementById('kpi-hr').textContent=hr+'%'
+          document.getElementById('kpi-vpd').textContent=vpd+' kPa'
+          document.getElementById('kpi-temp-n').textContent=clima.length+' med. hoy'
+          document.getElementById('kpi-hr-n').textContent='HR promedio'
+
+          // Color VPD
+          const kVPD=document.getElementById('kpi-vpd')
+          const kVPDn=document.getElementById('kpi-vpd-n')
+          if(vpd<0.4||vpd>2.0){kVPD.style.color='#dc2626';kVPDn.textContent='crítico'}
+          else if(vpd<1.0||vpd>1.5){kVPD.style.color='#f0b429';kVPDn.textContent='alerta'}
+          else{kVPD.style.color='#22c55e';kVPDn.textContent='óptimo'}
+
+          // Color temperatura
+          const kTemp=document.getElementById('kpi-temp')
+          if(temp>38){kTemp.style.color='#dc2626'}
+          else if(temp>32){kTemp.style.color='#f0b429'}
+          else{kTemp.style.color='#f0b429'}
+
+          // Color HR
+          const kHR=document.getElementById('kpi-hr')
+          if(hr>75||hr<35){kHR.style.color='#dc2626'}
+          else if(hr>65){kHR.style.color='#f0b429'}
+          else{kHR.style.color='#22c55e'}
+
+          // Diagnostico cruzado clima + suelo
+          const vwcActual=parseFloat(document.getElementById('kpi-tarde')?.textContent||document.getElementById('kpi-manana')?.textContent||0)
+          const diagDiv=document.getElementById('diagnostico-cruzado')
+          const msgs=[], acciones=[]
+
+          // VPD alto + VWC bajo = doble estrés
+          if(vpd>1.5&&vwcActual>0&&vwcActual<22){
+            msgs.push('🔴 VPD alto + VWC bajo — doble estrés hídrico')
+            acciones.push('Aumentar volumen de riego','Mojar pasillos','Cerrar laterales')
+          }
+          // HR alta + riesgo hongos
+          if(hr>70&&vwcActual>28){
+            msgs.push('🔴 HR alta + sustrato húmedo — riesgo Botrytis')
+            acciones.push('NO foliar','Ventilación máxima','Reducir volumen de riego')
+          }
+          // Temperatura alta + VWC bajo
+          if(temp>32&&vwcActual>0&&vwcActual<20){
+            msgs.push('🔴 Estrés térmico + VWC crítico')
+            acciones.push('Regar urgente','Malla sombra','Abrir laterales')
+          }
+          // Todo ok
+          if(msgs.length===0&&vpd>=1.0&&vpd<=1.5&&hr<70&&temp<32){
+            msgs.push('🟢 Ambiente óptimo para floración')
+          }
+
+          if(msgs.length){
+            diagDiv.style.display='block'
+            const critico=msgs.some(m=>m.includes('🔴'))
+            diagDiv.style.background=critico?'#1a0a0a':'#0a1a10'
+            diagDiv.style.borderLeft='3px solid '+(critico?'#dc2626':'#22c55e')
+            diagDiv.innerHTML=
+              '<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Diagnóstico clima + suelo</div>'+
+              msgs.map(m=>'<div style="margin-bottom:4px">'+m+'</div>').join('')+
+              (acciones.length?'<div style="margin-top:6px;font-size:12px;color:#f0b429">→ '+acciones.join(' · ')+'</div>':'')
+          }
+        }
+      } catch(e){console.log('clima kpi',e)}
+
+      // Proxima tarea — siempre se ejecuta
+      try{
+        const hoy=new Date().toISOString().slice(0,10)
+        const rT=await fetch(SURL+'/rest/v1/tareas?lote_id=eq.'+loteId+'&completada=eq.false&fecha=gte.'+hoy+'&order=fecha,turno&limit=1&select=titulo,fecha,turno',
+          {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+        const pt=await rT.json()
+        const kT=document.getElementById('kpi-tareas')
+        const kTn=document.getElementById('kpi-tareas-n')
+        if(pt&&pt.length){
+          const t=pt[0]
+          const diff=Math.round((new Date(t.fecha+'T12:00')-new Date(hoy+'T12:00'))/(1000*60*60*24))
+          const tl={manana:'Mañana',tarde:'Tarde',noche:'Noche'}[t.turno]||t.turno
+          if(diff===0){kT.textContent='HOY';kT.style.color='#f0b429';kTn.textContent=tl+' · '+t.titulo.slice(0,22)}
+          else if(diff===1){kT.textContent='Mañana';kT.style.color='#22c55e';kTn.textContent=tl+' · '+t.titulo.slice(0,22)}
+          else{kT.textContent='En '+diff+' días';kT.style.color='#4a7a5a';kTn.textContent=new Date(t.fecha+'T12:00').toLocaleDateString('es-UY',{day:'2-digit',month:'2-digit'})+' · '+t.titulo.slice(0,22)}
+        } else {
+          kT.textContent='Al día';kT.style.color='#2d5a3d';kTn.textContent='sin tareas'
+        }
+      } catch(e){console.log('tareas',e)}
+    }
+
+    async function agregarCultivo(){
+      const nombre=prompt('Nombre del cultivo:'); if(!nombre) return
+      const ubicacion=prompt('Ubicacion:')
+      await fetch(SURL+'/rest/v1/cultivos',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({nombre,ubicacion,activo:true})})
+      cargarCultivos()
+    }
+
+    async function agregarLote(){
+      const nombre=prompt('Nombre del lote:'); if(!nombre) return
+      const tipo=prompt('Tipo (camellon / maceta):')||'camellon'
+      await fetch(SURL+'/rest/v1/lotes',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({nombre,tipo,cultivo_id:cultivoActual.id,ubicacion:cultivoActual.ubicacion,activo:true})})
+      abrirCultivo(cultivoActual.id,cultivoActual.nombre,cultivoActual.ubicacion)
+    }
+
+    cargarCultivos()
+
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW',e))
+    }
+  </script>
+</body>
+</html>

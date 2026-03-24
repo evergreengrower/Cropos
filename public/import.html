@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Importar metricas</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <img src="/logo.png" alt="Evergreen Cultiva" class="logo">
+  </div>
+
+  <button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
+
+  <h3 id="titulo-lote">Importar metricas</h3>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button class="tab tab-on" id="tab-foto" onclick="setMetodo('foto')">📸 Foto</button>
+    <button class="tab tab-off" id="tab-csv"  onclick="setMetodo('csv')">📄 CSV</button>
+  </div>
+
+  <!-- FOTO -->
+  <div id="seccion-foto">
+    <div class="card">
+      <label>Fase del cultivo</label>
+      <select id="fase" style="margin-top:4px">
+        <option value="floracion">Floracion</option>
+        <option value="vegetativo_avanzado">Vegetativo avanzado</option>
+        <option value="vegetativo_temprano">Vegetativo temprano</option>
+      </select>
+
+      <label style="margin-top:10px">Foto de la pantalla BlueLab</label>
+
+      <!-- Input file visible simple -->
+      <input type="file" id="input-foto" accept="image/*"
+        style="margin-top:8px;color:#e8f0eb;font-size:14px"
+        onchange="previsualizarFoto(this)">
+
+      <img id="preview-foto" style="display:none;width:100%;border-radius:10px;margin-top:8px;max-height:300px;object-fit:contain">
+
+      <button id="btn-analizar" onclick="analizarFoto()" style="display:none;margin-top:10px" class="btn-gold">
+        🔍 Analizar con IA
+      </button>
+    </div>
+
+    <div id="resultado-foto" style="display:none">
+      <div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:16px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:#4a7a5a;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Lecturas detectadas</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div class="kpi"><div class="kpi-label">VWC prom</div><div class="kpi-val" id="res-vwc">—</div><div class="kpi-sub" id="res-n"></div></div>
+          <div class="kpi"><div class="kpi-label">EC prom</div><div class="kpi-val" id="res-ec" style="font-size:20px">—</div><div class="kpi-sub">mS/cm</div></div>
+          <div class="kpi"><div class="kpi-label">Temp</div><div class="kpi-val" id="res-temp" style="font-size:20px">—</div><div class="kpi-sub">C</div></div>
+        </div>
+      </div>
+      <div id="res-recomendacion" style="border-radius:14px;padding:16px;margin-bottom:12px"></div>
+      <button onclick="confirmarFoto()" class="btn-gold">✅ Confirmar y guardar</button>
+    </div>
+
+    <div id="loading-foto" style="display:none;text-align:center;padding:30px">
+      <div style="font-size:36px;margin-bottom:12px">🤖</div>
+      <div style="font-size:14px;color:#4a7a5a">Claude esta analizando la imagen...</div>
+      <div style="font-size:12px;color:#2d5a3d;margin-top:6px">Esto tarda unos segundos</div>
+    </div>
+  </div>
+
+  <!-- CSV -->
+  <div id="seccion-csv" style="display:none">
+    <div class="card">
+      <label>Archivo CSV de BlueLab</label>
+      <input type="file" id="input-csv" accept=".csv"
+        style="margin-top:8px;color:#e8f0eb;font-size:14px"
+        onchange="previsualizarCSV(this)">
+      <div id="preview-csv" style="display:none;margin-top:8px;font-size:12px;color:#4a7a5a"></div>
+      <button id="btn-importar" onclick="importarCSV()" style="display:none;margin-top:10px" class="btn-gold">
+        📥 Importar mediciones
+      </button>
+    </div>
+    <div id="resultado-csv" style="display:none;background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:16px;margin-top:12px"></div>
+  </div>
+
+</div>
+
+<script>
+  const SURL = 'https://ufkyfsnbyouqumipoqss.supabase.co'
+  const SKEY = 'sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+  const params  = new URLSearchParams(location.search)
+  const loteId  = params.get('lote_id') || ''
+  const loteNom = decodeURIComponent(params.get('lote') || 'Lote')
+  const volver  = params.get('volver') || ''
+  const turno   = params.get('turno') || ''
+  const fecha   = params.get('fecha') || new Date().toISOString().slice(0,10)
+
+  document.getElementById('titulo-lote').textContent = loteNom + ' — Importar metricas'
+
+  let analisisActual = null
+
+  function setMetodo(m) {
+    document.getElementById('tab-foto').className = 'tab ' + (m==='foto' ? 'tab-on' : 'tab-off')
+    document.getElementById('tab-csv').className  = 'tab ' + (m==='csv'  ? 'tab-on' : 'tab-off')
+    document.getElementById('seccion-foto').style.display = m==='foto' ? 'block' : 'none'
+    document.getElementById('seccion-csv').style.display  = m==='csv'  ? 'block' : 'none'
+  }
+
+  function previsualizarFoto(input) {
+    const file = input.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = function(e) {
+      const img = document.getElementById('preview-foto')
+      img.src = e.target.result
+      img.style.display = 'block'
+      document.getElementById('btn-analizar').style.display = 'block'
+      document.getElementById('resultado-foto').style.display = 'none'
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function analizarFoto() {
+    const input = document.getElementById('input-foto')
+    const foto  = input.files[0]
+    if (!foto) { alert('Selecciona una imagen primero'); return }
+
+    document.getElementById('resultado-foto').style.display = 'none'
+    document.getElementById('loading-foto').style.display = 'block'
+    document.getElementById('btn-analizar').disabled = true
+    document.getElementById('btn-analizar').textContent = 'Analizando...'
+
+    const form = new FormData()
+    form.append('foto', foto)
+    form.append('lote_id', loteId)
+    form.append('lote', loteNom)
+    form.append('fase', document.getElementById('fase').value)
+
+    try {
+      const res  = await fetch('/analizar-foto', { method: 'POST', body: form })
+      const data = await res.json()
+
+      document.getElementById('loading-foto').style.display = 'none'
+      document.getElementById('btn-analizar').disabled = false
+      document.getElementById('btn-analizar').textContent = '🔍 Analizar con IA'
+
+      if (!data.ok) {
+        alert('Error: ' + data.mensaje)
+        return
+      }
+
+      analisisActual = data.analisis
+      mostrarResultado(data.analisis)
+
+    } catch(err) {
+      document.getElementById('loading-foto').style.display = 'none'
+      document.getElementById('btn-analizar').disabled = false
+      document.getElementById('btn-analizar').textContent = '🔍 Analizar con IA'
+      alert('Error de conexion: ' + err.message)
+    }
+  }
+
+  function mostrarResultado(a) {
+    const l = a.lecturas || {}
+    const r = a.recomendacion || {}
+    const d = a.diagnostico || {}
+
+    document.getElementById('res-vwc').textContent  = (l.vwc_promedio || '—') + '%'
+    document.getElementById('res-ec').textContent   = l.ec_promedio  || '—'
+    document.getElementById('res-temp').textContent = (l.temp_promedio || '—') + 'C'
+    document.getElementById('res-n').textContent    = (l.cantidad_lecturas || '—') + ' lecturas'
+
+    const colorBg     = r.regar ? (d.estado_vwc==='critico' ? '#1a0a0a' : '#1a1200') : '#0a1a10'
+    const colorBorder = r.regar ? (d.estado_vwc==='critico' ? '#dc2626' : '#f0b429')  : '#1a5c32'
+    const icono       = r.regar ? (d.estado_vwc==='critico' ? '🔴' : '🟡') : '🟢'
+
+    const rec = document.getElementById('res-recomendacion')
+    rec.style.background  = colorBg
+    rec.style.borderLeft  = '3px solid ' + colorBorder
+    rec.innerHTML =
+      '<div style="font-size:16px;font-weight:700;margin-bottom:8px">' + icono + ' ' + (r.regar ? 'REGAR' : 'NO REGAR') + '</div>' +
+      (r.regar && r.volumen_ml_por_planta ? '<div style="font-size:26px;font-weight:700;color:#f0b429;margin-bottom:6px">' + r.volumen_ml_por_planta + ' ml / planta</div>' : '') +
+      '<div style="font-size:13px;color:#a8c4b0">' + (r.motivo || '') + '</div>'
+
+    document.getElementById('resultado-foto').style.display = 'block'
+  }
+
+  function confirmarFoto() {
+    if (!analisisActual) {
+      navegarDestino(0, '', '', '', false)
+      return
+    }
+    const r    = analisisActual.recomendacion || {}
+    const l    = analisisActual.lecturas      || {}
+    const mlPl = r.volumen_ml_por_planta || 0
+    const hoy  = new Date().toISOString().slice(0, 10)
+    const h    = new Date().getHours()
+    const turnoActual = turno || (h<14 ? 'manana' : h<20 ? 'tarde' : 'noche')
+
+    // Actualizar plan en Supabase si hay ml
+    if (mlPl && loteId) {
+      fetch(SURL + '/rest/v1/planes_riego?lote_id=eq.' + loteId + '&fecha_inicio=eq.' + hoy + '&nombre=eq.' + turnoActual, {
+        method: 'PATCH',
+        headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ml_por_planta: mlPl })
+      }).finally(() => navegarDestino(mlPl, l.vwc_promedio, l.ec_promedio, r.motivo, r.regar, turnoActual))
+    } else {
+      navegarDestino(mlPl, l.vwc_promedio, l.ec_promedio, r.motivo, r.regar, turnoActual)
+    }
+  }
+
+  function navegarDestino(mlPl, vwc, ec, motivo, regar, turnoActual) {
+    const base = volver === 'planificacion'
+      ? '/planificacion.html?lote_id=' + loteId + '&lote=' + encodeURIComponent(loteNom) + '&turno=' + (turnoActual||turno) + '&fecha=' + fecha
+      : '/riego.html?lote_id='  + loteId + '&lote=' + encodeURIComponent(loteNom)
+    const url = base +
+      (mlPl  ? '&ml_planta=' + mlPl : '') +
+      (vwc   ? '&vwc='       + vwc  : '') +
+      (ec    ? '&ec='        + ec   : '') +
+      (motivo? '&motivo='    + encodeURIComponent(motivo) : '') +
+      '&regar=' + (regar ? '1' : '0')
+    window.location.href = url
+  }
+
+  // CSV
+  let csvFile = null
+  function previsualizarCSV(input) {
+    csvFile = input.files[0]
+    if (!csvFile) return
+    document.getElementById('preview-csv').style.display = 'block'
+    document.getElementById('preview-csv').textContent = csvFile.name + ' · ' + (csvFile.size/1024).toFixed(1) + ' KB'
+    document.getElementById('btn-importar').style.display = 'block'
+  }
+
+  async function importarCSV() {
+    if (!csvFile) return
+    document.getElementById('btn-importar').disabled = true
+    document.getElementById('btn-importar').textContent = 'Importando...'
+    const form = new FormData()
+    form.append('archivo', csvFile)
+    form.append('lote_id', loteId)
+    form.append('lote', loteNom)
+    try {
+      const res  = await fetch('/importar-csv', { method: 'POST', body: form })
+      const data = await res.json()
+      document.getElementById('btn-importar').disabled = false
+      document.getElementById('btn-importar').textContent = '📥 Importar mediciones'
+      const cont = document.getElementById('resultado-csv')
+      cont.style.display = 'block'
+      cont.innerHTML = data.ok
+        ? '<div style="color:#22c55e;font-weight:700;margin-bottom:8px">Importacion exitosa</div><div>Total: <b>' + data.total + '</b></div><div>Insertadas: <b>' + data.insertados + '</b></div><div>Saltadas: <b>' + data.saltadas + '</b></div>'
+        : '<div style="color:#dc2626">Error: ' + data.mensaje + '</div>'
+    } catch {
+      document.getElementById('btn-importar').disabled = false
+      document.getElementById('btn-importar').textContent = '📥 Importar mediciones'
+      alert('Error de conexion')
+    }
+  }
+</script>
+</body>
+</html>

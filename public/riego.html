@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Riego</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .fila{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #0a1a10}
+    .fila:last-child{border-bottom:none}
+    .marca-header{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#1a5c32;padding:8px 0 2px;font-weight:700}
+    .ml-res{font-size:13px;font-weight:700;color:#f0b429;min-width:58px;text-align:right}
+    .tab{flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+    .tab-on{background:#1a5c32;color:#fff}
+    .tab-off{background:#0a1a10;color:#2d5a3d;border:1px solid #1a3d2b}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
+  <button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
+  <h3 id="titulo-lote">Registro de Riego</h3>
+
+  <!-- PLAN ACTIVO — siempre visible -->
+  <div style="background:#0a1a10;border:1px solid #1a5c32;border-radius:14px;padding:14px;margin-bottom:14px">
+    <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Plan activo para este turno</div>
+    <div id="plan-detalle"><div style="color:#2d5a3d;font-size:13px">Cargando...</div></div>
+  </div>
+
+  <!-- Boton foto -->
+  <button id="btn-foto" style="background:#1a1200;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:12px;font-size:13px;width:100%;font-weight:600;margin-bottom:14px">
+    📸 Analizar foto para calcular volumen
+  </button>
+
+  <!-- Formulario -->
+  <form class="card" id="form-riego">
+    <label>Hora de inicio</label>
+    <input id="hora" type="time">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>ml / planta</label><input id="ml-planta" type="number" step="1" placeholder="800" oninput="calcularVolumen()"></div>
+      <div><label>Plantas</label><input id="plantas" type="number" placeholder="720" oninput="calcularVolumen()"></div>
+    </div>
+
+    <div id="vol-box" style="display:none;background:#060f0a;border:1px solid #1a3d2b;border-radius:8px;padding:8px;text-align:center">
+      <div style="font-size:10px;color:#4a7a5a">Volumen total</div>
+      <div id="vol-total" style="font-size:24px;font-weight:700;color:#22c55e">—</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>EC</label><input id="ec" type="number" step="0.01" placeholder="2.3"></div>
+      <div><label>pH</label><input id="ph" type="number" step="0.1" placeholder="6.0"></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <label style="font-size:11px;color:#4a7a5a">% ATHENA (20-70%)</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input type="range" id="pct" min="20" max="70" value="50" step="5" oninput="document.getElementById('pct-val').textContent=this.value+'%';actualizarMls()" style="flex:1">
+        <span id="pct-val" style="font-size:20px;font-weight:700;color:#f0b429;min-width:46px">50%</span>
+      </div>
+    </div>
+
+    <label style="margin-top:10px">Fase y productos aplicados</label>
+    <div style="display:flex;gap:8px;margin:6px 0 10px">
+      <button type="button" class="tab tab-on" id="tab-veg" onclick="setTab('veg')">🌿 Veg</button>
+      <button type="button" class="tab tab-off" id="tab-flor" onclick="setTab('flor')">🌸 Flora</button>
+    </div>
+    <div id="lista-productos" style="background:#060f0a;border-radius:10px;padding:10px"></div>
+
+    <label style="margin-top:10px">Notas</label>
+    <textarea id="notas" placeholder="Observaciones..." style="min-height:60px"></textarea>
+    <button type="submit" style="margin-top:10px;background:#1a5c32">💾 Guardar riego</button>
+  </form>
+
+  <p id="mensaje" style="margin-top:10px"></p>
+  <h3 style="margin-top:20px">Ultimos riegos</h3>
+  <div id="historial"></div>
+</div>
+
+<script>
+// ── Constantes ────────────────────────────────────────────────────────────
+const SURL = 'https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY = 'sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+const p    = new URLSearchParams(location.search)
+const loteId  = p.get('lote_id') || ''
+const loteNom = decodeURIComponent(p.get('lote') || '')
+
+// Resultado de IA (vienen en la URL)
+const iaML     = parseFloat(p.get('ml_planta')) || 0
+const iaVWC    = p.get('vwc')    || ''
+const iaEC     = p.get('ec')     || ''
+const iaMotivo = decodeURIComponent(p.get('motivo') || '')
+const iaRegar  = p.get('regar')  || ''
+
+// ── Estado ────────────────────────────────────────────────────────────────
+let fertis = []
+let tab    = 'veg'
+
+const TABS = {
+  veg:  [1,2,5,6,7,8,9,11,10,14,15,16],
+  flor: [1,3,4,5,6,7,8,9,11,12,13,10,14,15,16]
+}
+
+// ── Init DOM ──────────────────────────────────────────────────────────────
+document.getElementById('titulo-lote').textContent = (loteNom || 'Riego') + ' - Registro'
+document.getElementById('hora').value = new Date().toTimeString().slice(0,5)
+document.getElementById('btn-foto').onclick = () =>
+  location.href = '/import.html?lote_id=' + loteId + '&lote=' + encodeURIComponent(loteNom)
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function getTurno() {
+  const h = new Date().getHours()
+  return h < 14 ? 'manana' : h < 20 ? 'tarde' : 'noche'
+}
+
+function calcularVolumen() {
+  const ml   = parseFloat(document.getElementById('ml-planta').value) || 0
+  const plts = parseFloat(document.getElementById('plantas').value)   || 0
+  const box  = document.getElementById('vol-box')
+  if (ml > 0 && plts > 0) {
+    document.getElementById('vol-total').textContent = ((ml * plts) / 1000).toFixed(1) + ' L'
+    box.style.display = 'block'
+  } else {
+    box.style.display = 'none'
+  }
+  actualizarMls()
+}
+
+function setTab(t) {
+  tab = t
+  document.getElementById('tab-veg').className  = 'tab ' + (t === 'veg'  ? 'tab-on' : 'tab-off')
+  document.getElementById('tab-flor').className = 'tab ' + (t === 'flor' ? 'tab-on' : 'tab-off')
+  renderProductos()
+}
+
+function actualizarMls() {
+  const ml   = parseFloat(document.getElementById('ml-planta').value) || 0
+  const plts = parseFloat(document.getElementById('plantas').value)   || 0
+  const volL = (ml * plts) / 1000
+  const pct  = parseInt(document.getElementById('pct').value)
+  fertis.forEach(f => { const e = document.getElementById('res-' + f.id); if (e) e.textContent = '-' })
+  if (!volL) return
+  document.querySelectorAll('#lista-productos input[type=checkbox]:checked').forEach(chk => {
+    const id = parseInt(chk.dataset.id)
+    const f  = fertis.find(x => x.id === id)
+    if (!f) return
+    const dosis = f.marca === 'Athena'
+      ? parseFloat((f.dosis_max * pct / 70).toFixed(2))
+      : parseFloat(document.querySelector('input[type=number][data-id="' + id + '"]')?.value || f.dosis_max)
+    const e = document.getElementById('res-' + f.id)
+    if (e) e.textContent = Math.round(dosis * volL) + ' ml'
+  })
+}
+
+function renderProductos() {
+  const lista = TABS[tab].map(id => fertis.find(f => f.id === id)).filter(Boolean)
+  let html = '', marcaActual = 'NONE'
+  lista.forEach(f => {
+    if (f.marca !== marcaActual) {
+      marcaActual = f.marca
+      html += '<div class="marca-header">' + (f.marca || 'Otros') + '</div>'
+    }
+    const athena = f.marca === 'Athena'
+    const ctrl = athena
+      ? '<span class="ml-res" id="res-' + f.id + '">-</span>'
+      : '<input type="number" min="0.5" max="' + f.dosis_max + '" value="' + f.dosis_max + '" step="0.5" data-id="' + f.id + '" oninput="actualizarMls()" style="width:52px;background:#0a1a10;color:white;border-radius:6px;padding:4px;border:1px solid #1a3d2b;font-size:12px;text-align:center">' +
+        '<span style="font-size:10px;color:#2d5a3d">' + f.unidad + '</span>' +
+        '<span class="ml-res" id="res-' + f.id + '">-</span>'
+    html += '<div class="fila">' +
+      '<input type="checkbox" data-id="' + f.id + '" data-nombre="' + f.nombre + '" oninput="actualizarMls()" style="width:16px;height:16px;flex-shrink:0">' +
+      '<span style="font-size:13px;flex:1">' + f.nombre + '</span>' +
+      ctrl + '</div>'
+  })
+  document.getElementById('lista-productos').innerHTML = html
+  actualizarMls()
+}
+
+// ── Mostrar plan ──────────────────────────────────────────────────────────
+function mostrarPlan(mlPl, plts, productos, pct, ecObj, phObj, titulo, submensaje) {
+  const volL = (mlPl && plts) ? (mlPl * plts) / 1000 : 0
+  let html = '<div style="font-weight:700;font-size:14px;color:#22c55e;margin-bottom:10px">' + titulo + '</div>'
+
+  if (iaRegar === '0') {
+    html += '<div style="font-size:20px;font-weight:700;color:#22c55e;margin-bottom:8px">✅ NO REGAR</div>'
+  } else if (mlPl) {
+    html += '<div style="margin-bottom:8px">' +
+      '<span style="font-size:32px;font-weight:700;color:#f0b429">' + mlPl + '</span>' +
+      '<span style="font-size:14px;color:#4a7a5a"> ml / planta</span>'
+    if (plts) html += ' <span style="font-size:13px;color:#4a7a5a">× ' + plts + ' plantas</span>'
+    html += '</div>'
+  }
+
+  if (volL > 0) {
+    html += '<div style="background:#060f0a;border-radius:8px;padding:10px;margin-bottom:10px;text-align:center">' +
+      '<div style="font-size:10px;color:#4a7a5a;margin-bottom:4px">VOLUMEN TOTAL</div>' +
+      '<div style="font-size:32px;font-weight:700;color:#22c55e">' + volL.toFixed(1) + ' L</div></div>'
+  }
+
+  if (iaVWC) html += '<div style="font-size:12px;color:#4a7a5a;margin-bottom:6px">VWC: <b style="color:#f0b429">' + iaVWC + '%</b>' + (iaEC ? ' &nbsp;·&nbsp; EC: <b style="color:#f0b429">' + iaEC + '</b>' : '') + '</div>'
+  if (iaMotivo) html += '<div style="font-size:12px;color:#a8c4b0;margin-bottom:8px">' + iaMotivo + '</div>'
+  if (submensaje) html += submensaje
+
+  if (productos && volL > 0) {
+    html += '<div style="border-top:1px solid #1a3d2b;padding-top:10px;margin-top:6px">' +
+      '<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Fertilizantes a preparar</div>'
+    Object.entries(productos).forEach(([nombre, dosis]) => {
+      const ml = Math.round(parseFloat(dosis) * volL)
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #060f0a;font-size:13px">' +
+        '<span><b>' + nombre + '</b> <span style="color:#4a7a5a;font-size:11px">' + dosis + '</span></span>' +
+        '<span style="color:#f0b429;font-weight:700">' + ml + ' ml</span></div>'
+    })
+    html += '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700">' +
+      '<span style="color:#e8f0eb">Agua total</span>' +
+      '<span style="color:#22c55e">' + volL.toFixed(1) + ' L</span></div></div>'
+  }
+
+  if (ecObj) html += '<div style="font-size:11px;color:#4a7a5a;margin-top:6px">EC obj: ' + ecObj + ' · pH obj: ' + (phObj || '-') + '</div>'
+
+  document.getElementById('plan-detalle').innerHTML = html
+
+  // Precargar formulario — SOLO si los valores son válidos
+  if (mlPl > 0) document.getElementById('ml-planta').value = mlPl
+  if (plts  > 0) document.getElementById('plantas').value  = plts
+  if (ecObj) document.getElementById('ec').value = ecObj
+  if (phObj) document.getElementById('ph').value = phObj
+  if (pct)   { document.getElementById('pct').value = pct; document.getElementById('pct-val').textContent = pct + '%' }
+  calcularVolumen()
+}
+
+// ── Inicializar ───────────────────────────────────────────────────────────
+async function iniciar() {
+  // 1. Cargar fertilizantes
+  const rF = await fetch(SURL + '/rest/v1/fertilizantes?activo=eq.true&select=*', { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } })
+  fertis = await rF.json()
+  renderProductos()
+  cargarHistorial()
+
+  // 2. Cargar plantas del lote
+  let plantasLote = 0
+  if (loteId) {
+    const rL = await fetch(SURL + '/rest/v1/lotes?id=eq.' + loteId + '&select=cantidad_plantas', { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } })
+    const ld = await rL.json()
+    plantasLote = ld[0]?.cantidad_plantas || 0
+  }
+
+  // 3. Cargar plan del día (para productos y % Athena)
+  let plan = null
+  if (loteId) {
+    const hoy   = new Date().toISOString().slice(0, 10)
+    const turno = getTurno()
+    const rP = await fetch(SURL + '/rest/v1/planes_riego?lote_id=eq.' + loteId + '&fecha_inicio=eq.' + hoy + '&nombre=eq.' + turno + '&activo=eq.true&limit=1', { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } })
+    const planes = await rP.json()
+    plan = planes[0] || null
+  }
+
+  const turno     = getTurno()
+  const tLabel    = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche' }[turno]
+  const plts      = plan?.cantidad_plantas || plantasLote
+  const pct       = plan?.pct_athena || 50
+  const ecObj     = plan?.ec_objetivo || null
+  const phObj     = plan?.ph_objetivo || null
+  const productos = plan?.productos   || null
+
+  // 4. CASO A: viene resultado de IA → usar ml de IA, productos del plan
+  if (iaML > 0 || iaRegar !== '') {
+    document.getElementById('btn-foto').textContent = '📸 Volver a analizar foto'
+    mostrarPlan(iaML, plts, productos, pct, ecObj, phObj, 'Analisis IA completado', null)
+    return
+  }
+
+  // 5. CASO B: hay plan con ml definidos
+  if (plan && plan.ml_por_planta) {
+    mostrarPlan(plan.ml_por_planta, plts, productos, pct, ecObj, phObj,
+      tLabel + ' · ' + (plan.tipo === 'fertirrigacion' ? 'Fertirrigacion' : plan.tipo === 'agua_sola' ? 'Agua sola' : 'Flush'),
+      null)
+    return
+  }
+
+  // 6. CASO C: hay plan sin ml → mostrar sin volumen + botón
+  if (plan) {
+    mostrarPlan(0, plts, productos, pct, ecObj, phObj,
+      tLabel + ' · ' + (plan.tipo === 'fertirrigacion' ? 'Fertirrigacion' : plan.tipo === 'agua_sola' ? 'Agua sola' : 'Flush'),
+      '<div style="background:#1a1200;border:1px solid #f0b429;border-radius:8px;padding:8px;font-size:12px;color:#f0b429;margin-bottom:8px">Volumen no definido — usá el botón de foto para calcular</div>')
+    document.getElementById('plantas').value = plts
+    return
+  }
+
+  // 7. CASO D: sin plan
+  document.getElementById('plan-detalle').innerHTML = '<div style="color:#2d5a3d;font-size:13px">Sin plan para este turno. Completá manualmente o analizá una foto.</div>'
+  if (plantasLote) document.getElementById('plantas').value = plantasLote
+}
+
+// ── Historial ─────────────────────────────────────────────────────────────
+async function cargarHistorial() {
+  const url = loteId
+    ? SURL + '/rest/v1/riegos?lote_id=eq.' + loteId + '&order=created_at.desc&limit=5'
+    : SURL + '/rest/v1/riegos?order=created_at.desc&limit=5'
+  const res  = await fetch(url, { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } })
+  const data = await res.json()
+  const cont = document.getElementById('historial')
+  if (!data.length) { cont.innerHTML = '<p style="color:#2d5a3d;font-size:13px">Sin riegos registrados</p>'; return }
+  cont.innerHTML = data.map(r => {
+    const prods = r.productos ? Object.entries(r.productos).map(([k, v]) => k + ': ' + v).join(' · ') : '—'
+    const fecha = new Date(r.fecha).toLocaleString('es-UY', { timeZone: 'America/Montevideo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    const vol   = r.volumen_l || (r.ml_por_planta && r.cantidad_plantas ? ((r.ml_por_planta * r.cantidad_plantas) / 1000).toFixed(1) : '-')
+    return '<div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:12px;margin-bottom:8px;font-size:13px">' +
+      '<div style="font-weight:600;margin-bottom:4px">' + (r.lote || loteNom || '-') + ' <span style="color:#2d5a3d;font-size:11px">' + fecha + '</span></div>' +
+      '<div>💧 ' + vol + 'L · EC ' + (r.ec || '-') + ' · pH ' + (r.ph || '-') + '</div>' +
+      '<div style="color:#4a7a5a;margin-top:3px;font-size:11px">' + prods + '</div></div>'
+  }).join('')
+}
+
+// ── Guardar ───────────────────────────────────────────────────────────────
+document.getElementById('form-riego').addEventListener('submit', async e => {
+  e.preventDefault()
+  const pct  = parseInt(document.getElementById('pct').value)
+  const mlPl = parseFloat(document.getElementById('ml-planta').value) || null
+  const plts = parseFloat(document.getElementById('plantas').value)   || null
+  const volL = mlPl && plts ? parseFloat(((mlPl * plts) / 1000).toFixed(1)) : null
+  const checks = [...document.querySelectorAll('#lista-productos input[type=checkbox]:checked')]
+  const productos = {}
+  checks.forEach(chk => {
+    const id = parseInt(chk.dataset.id)
+    const f  = fertis.find(x => x.id === id)
+    if (!f) return
+    const dosis = f.marca === 'Athena'
+      ? parseFloat((f.dosis_max * pct / 70).toFixed(2))
+      : parseFloat(document.querySelector('input[type=number][data-id="' + id + '"]')?.value || f.dosis_max)
+    productos[f.nombre] = dosis + ' ml/L'
+  })
+  const payload = {
+    lote: loteNom || '', lote_id: loteId ? parseInt(loteId) : null,
+    hora_inicio: document.getElementById('hora').value || null,
+    ml_por_planta: mlPl, cantidad_plantas: plts, volumen_l: volL,
+    ec: parseFloat(document.getElementById('ec').value) || null,
+    ph: parseFloat(document.getElementById('ph').value) || null,
+    productos: Object.keys(productos).length ? productos : null,
+    notas: document.getElementById('notas').value || null,
+    fecha: new Date().toISOString()
+  }
+  const r = await fetch(SURL + '/rest/v1/riegos', {
+    method: 'POST',
+    headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify(payload)
+  })
+  const msg = document.getElementById('mensaje')
+  if (r.ok) {
+    msg.textContent = '✅ Riego registrado'
+    msg.style.color = '#22c55e'
+    document.getElementById('form-riego').reset()
+    document.getElementById('hora').value = new Date().toTimeString().slice(0, 5)
+    document.getElementById('pct-val').textContent = '50%'
+    document.getElementById('vol-box').style.display = 'none'
+    renderProductos()
+    cargarHistorial()
+  } else {
+    msg.textContent = '❌ Error al guardar'
+    msg.style.color = '#dc2626'
+  }
+})
+
+iniciar()
+</script>
+</body>
+</html>

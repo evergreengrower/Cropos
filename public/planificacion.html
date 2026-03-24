@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planificación Fertiriego</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .almanaque{width:100%;border-collapse:collapse;font-size:12px}
+    .almanaque th{background:#060f0a;color:#4a7a5a;padding:8px 4px;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1a3d2b}
+    .almanaque td{padding:4px 3px;border-bottom:1px solid #0a1a10;vertical-align:top}
+    .almanaque tr.hoy td{background:#0d2318}
+    .almanaque tr.hoy td:first-child{border-left:2px solid #f0b429}
+    .celda{background:#060f0a;border-radius:6px;padding:6px;min-height:54px;cursor:pointer;font-size:10px;color:#4a7a5a;border:1px dashed #1a3d2b;text-align:center;display:flex;align-items:center;justify-content:center}
+    .celda.tiene-plan{background:#0a1a10;border:1px solid #1a5c32;color:#e8f0eb;display:block;text-align:left}
+    .celda.confirmado{border:1px solid #f0b429;background:#1a1200}
+    .dia-label{font-size:11px;font-weight:600;color:#e8f0eb;text-align:center}
+    .dia-fecha{font-size:9px;color:#2d5a3d;text-align:center}
+    .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end}
+    .modal-content{background:#0a1a10;border-radius:16px 16px 0 0;padding:20px 16px;width:100%;max-height:92vh;overflow-y:auto;border-top:1px solid #1a3d2b}
+    .fila{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #060f0a}
+    .fila:last-child{border-bottom:none}
+    .marca-header{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#1a5c32;padding:6px 0 2px;font-weight:700}
+    .ml-res{font-size:12px;font-weight:700;color:#f0b429;min-width:52px;text-align:right}
+    .tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+    .tab-on{background:#1a5c32;color:#fff}
+    .tab-off{background:#060f0a;color:#2d5a3d;border:1px solid #1a3d2b}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
+  <div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">← Volver</button><button onclick="location.href='/index.html'" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">🏠 Dashboard</button></div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <h3 id="titulo-lote" style="margin:0">Planificación</h3>
+    <div style="display:flex;gap:6px">
+      <button onclick="cambiarVista('semanal')" id="btn-sem" style="width:auto;padding:5px 10px;font-size:11px;background:#1a5c32;color:#fff;border:none;border-radius:6px">Semanal</button>
+      <button onclick="cambiarVista('quincenal')" id="btn-quin" style="width:auto;padding:5px 10px;font-size:11px;background:#0a1a10;color:#4a7a5a;border:1px solid #1a3d2b;border-radius:6px">Quincenal</button>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <button onclick="navAnterior()" style="width:auto;padding:5px 14px;font-size:16px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px">‹</button>
+    <div style="font-size:12px;color:#4a7a5a;text-align:center" id="rango-fechas"></div>
+    <button onclick="navSiguiente()" style="width:auto;padding:5px 14px;font-size:16px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px">›</button>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table class="almanaque">
+      <thead>
+        <tr>
+          <th style="min-width:36px">Día</th>
+          <th>🌅 Mañana</th>
+          <th>☀️ Tarde</th>
+          <th>🌙 Noche</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:#2d5a3d;text-align:center">+ para planificar · ✓ Regar para confirmar</div>
+</div>
+
+<!-- Modal planificacion (agrónomo) -->
+<div id="modal-plan" class="modal" style="display:none" onclick="if(event.target===this)cerrarModalPlan()">
+<div class="modal-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h3 id="plan-titulo" style="margin:0;font-size:15px"></h3>
+    <button onclick="cerrarModalPlan()" style="width:auto;padding:4px 12px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;font-size:13px">✕</button>
+  </div>
+
+  <label>Tipo de riego</label>
+  <div style="display:flex;gap:8px;margin:6px 0 12px">
+    <button type="button" class="tab tab-on"  id="tipo-fert"  onclick="setTipo('fertirrigacion')">Fertirrigacion</button>
+    <button type="button" class="tab tab-off" id="tipo-agua"  onclick="setTipo('agua_sola')">Agua sola</button>
+    <button type="button" class="tab tab-off" id="tipo-flush" onclick="setTipo('flush')">Flush</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div><label>ml / planta</label><input type="number" id="p-ml" placeholder="800" oninput="calcPlanTotal()" style="margin-top:4px"></div>
+    <div><label>Plantas</label><input type="number" id="p-plantas" placeholder="720" oninput="calcPlanTotal()" style="margin-top:4px"></div>
+  </div>
+
+  <div id="p-total-box" style="display:none;background:#060f0a;border:1px solid #f0b429;border-radius:8px;padding:8px;text-align:center;margin-bottom:10px">
+    <div style="font-size:10px;color:#4a7a5a">Volumen total</div>
+    <div id="p-total" style="font-size:26px;font-weight:700;color:#f0b429">—</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+    <div><label>EC objetivo</label><input type="number" id="p-ec" placeholder="2.3" step="0.1" style="margin-top:4px"></div>
+    <div><label>pH objetivo</label><input type="number" id="p-ph" placeholder="6.0" step="0.1" style="margin-top:4px"></div>
+  </div>
+
+  <div id="p-seccion-prod">
+    <label>Productos</label>
+    <div style="display:flex;gap:8px;margin:6px 0 8px">
+      <button type="button" class="tab tab-on"  id="p-tab-veg"  onclick="setPlanFase('veg')">🌿 Veg</button>
+      <button type="button" class="tab tab-off" id="p-tab-flor" onclick="setPlanFase('flor')">🌸 Flora</button>
+    </div>
+    <div style="background:#060f0a;border-radius:8px;padding:8px;margin-bottom:8px">
+      <label>% Athena (20-70%)</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <input type="range" id="p-pct" min="20" max="70" value="50" step="5" oninput="document.getElementById('p-pct-val').textContent=this.value+'%';actualizarPlanMls()" style="flex:1">
+        <span id="p-pct-val" style="font-size:16px;font-weight:700;color:#f0b429;min-width:40px">50%</span>
+      </div>
+    </div>
+    <div id="p-lista-prod" style="background:#060f0a;border-radius:8px;padding:8px"></div>
+  </div>
+
+  <label style="margin-top:10px;display:block">Notas</label>
+  <textarea id="p-notas" style="margin-top:4px;min-height:40px" placeholder="Observaciones..."></textarea>
+
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button type="button" onclick="borrarPlan()" style="flex:1;background:transparent;border:1px solid #dc2626;color:#dc2626;font-size:13px;border-radius:8px;padding:10px">🗑 Borrar</button>
+    <button type="button" onclick="guardarPlan()" class="btn-gold" style="flex:2">💾 Guardar plan</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal confirmar riego (operario) -->
+<div id="modal-riego" class="modal" style="display:none" onclick="if(event.target===this)cerrarModalRiego()">
+<div class="modal-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h3 id="riego-titulo" style="margin:0;font-size:15px;color:#22c55e"></h3>
+    <button onclick="cerrarModalRiego()" style="width:auto;padding:4px 12px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;font-size:13px">✕</button>
+  </div>
+
+  <div id="riego-resumen" style="background:#060f0a;border-radius:10px;padding:12px;margin-bottom:12px"></div>
+
+  <div id="riego-foto-btn" style="display:none;margin-bottom:12px">
+    <button onclick="irAFoto()" style="background:#1a1200;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:12px;font-size:13px;width:100%;font-weight:600">
+      📸 Analizar foto para calcular volumen
+    </button>
+  </div>
+
+  <label>Fase y productos aplicados</label>
+  <div style="display:flex;gap:8px;margin:6px 0 8px">
+    <button type="button" class="tab tab-on"  id="r-tab-veg"  onclick="setRiegoFase('veg')">🌿 Veg</button>
+    <button type="button" class="tab tab-off" id="r-tab-flor" onclick="setRiegoFase('flor')">🌸 Flora</button>
+  </div>
+  <div style="background:#060f0a;border-radius:8px;padding:8px;margin-bottom:8px">
+    <label>% Athena</label>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <input type="range" id="r-pct" min="20" max="70" value="50" step="5" oninput="document.getElementById('r-pct-val').textContent=this.value+'%';actualizarRiegoMls()" style="flex:1">
+      <span id="r-pct-val" style="font-size:16px;font-weight:700;color:#f0b429;min-width:40px">50%</span>
+    </div>
+  </div>
+  <div id="r-lista-prod" style="background:#060f0a;border-radius:8px;padding:8px;margin-bottom:12px"></div>
+
+  <label>Notas del riego</label>
+  <textarea id="r-notas" style="margin-top:4px;min-height:40px" placeholder="Observaciones..."></textarea>
+
+  <button onclick="confirmarRiego()" class="btn-gold" style="margin-top:14px;font-size:15px">
+    ✅ Confirmar y guardar riego
+  </button>
+</div>
+</div>
+
+<script>
+const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+const urlP=new URLSearchParams(location.search)
+const loteId  = urlP.get('lote_id')||''
+const loteNom = decodeURIComponent(urlP.get('lote')||'Lote')
+const iaML    = parseFloat(urlP.get('ml_planta'))||0
+const iaVWC   = urlP.get('vwc')||''
+const iaEC    = urlP.get('ec')||''
+const iaMotivo= (function(){ try { return decodeURIComponent(urlP.get('motivo')||'') } catch(e){ return urlP.get('motivo')||'' } })()
+const iaTurno = urlP.get('turno')||''
+const iaRegar = urlP.get('regar')||''
+
+document.getElementById('titulo-lote').textContent = loteNom
+
+const DIAS=['Dom','Lun','Mar','Mie','Jue','Vie','Sab']
+const TURNOS=['manana','tarde','noche']
+const TABS_FERT={
+  veg: [1,2,5,6,7,8,9,11,10,14,15,16],
+  flor:[1,3,4,5,6,7,8,9,11,12,13,10,14,15,16]
+}
+
+let vista='semanal', offset=0, planes=[], fertis=[]
+let planFase='veg', tipoRiego='fertirrigacion', celdaActual=null
+let riegoFase='veg', planActual=null, plantasLote=0
+
+function getLunes(){
+  const hoy=new Date(), dia=hoy.getDay()
+  const diff=(dia===0?-6:1-dia)+offset*7
+  const lun=new Date(hoy); lun.setDate(hoy.getDate()+diff); lun.setHours(0,0,0,0); return lun
+}
+function getDias(){
+  const lun=getLunes(), cant=vista==='semanal'?7:14
+  return Array.from({length:cant},(_,i)=>{const d=new Date(lun);d.setDate(lun.getDate()+i);return d})
+}
+function fmt(d){return d.toISOString().slice(0,10)}
+function esHoy(d){return fmt(d)===fmt(new Date())}
+function getTurnoActual(){const h=new Date().getHours();return h<14?'manana':h<20?'tarde':'noche'}
+
+function cambiarVista(v){
+  vista=v
+  document.getElementById('btn-sem').style.background  = v==='semanal'?'#1a5c32':'#0a1a10'
+  document.getElementById('btn-sem').style.color        = v==='semanal'?'#fff':'#4a7a5a'
+  document.getElementById('btn-quin').style.background = v==='quincenal'?'#1a5c32':'#0a1a10'
+  document.getElementById('btn-quin').style.color      = v==='quincenal'?'#fff':'#4a7a5a'
+  renderAlmanaque()
+}
+function navAnterior(){offset--;cargarPlanes()}
+function navSiguiente(){offset++;cargarPlanes()}
+
+async function init(){
+  const rF=await fetch(SURL+'/rest/v1/fertilizantes?activo=eq.true&select=*',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  fertis=await rF.json()
+  if(loteId){
+    const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+loteId+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+    const ld=await rL.json(); plantasLote=ld[0]?.cantidad_plantas||0
+  }
+  await cargarPlanes()
+  // Si viene con resultado de IA, abrir modal de riego
+  if(iaML>0||iaRegar!==''){
+    const hoy = urlP.get('fecha') || fmt(new Date())
+    const turnoParaAbrir = iaTurno || urlP.get('turno') || getTurnoActual()
+    const plan=planes.find(p=>p.fecha_inicio===hoy&&p.nombre===turnoParaAbrir)
+    abrirModalRiego(
+      plan||{id:null,turno:turnoParaAbrir,fecha_inicio:hoy,tipo:'fertirrigacion',ml_por_planta:null,cantidad_plantas:plantasLote,productos:null,pct_athena:50,ec_objetivo:null,ph_objetivo:null},
+      hoy, turnoParaAbrir, true
+    )
+  }
+}
+
+async function cargarPlanes(){
+  const dias=getDias()
+  const desde=fmt(dias[0]), hasta=fmt(dias[dias.length-1])
+  const r=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  planes=await r.json()
+  const opts={timeZone:'America/Montevideo',day:'2-digit',month:'2-digit'}
+  document.getElementById('rango-fechas').textContent=
+    new Date(desde+'T12:00').toLocaleDateString('es-UY',opts)+' — '+
+    new Date(hasta+'T12:00').toLocaleDateString('es-UY',opts)
+  renderAlmanaque()
+}
+
+function renderAlmanaque(){
+  const dias=getDias()
+  document.getElementById('tbody').innerHTML=dias.map(d=>{
+    const fecha=fmt(d), hoy=esHoy(d)
+    const celdas=TURNOS.map(turno=>{
+      const plan=planes.find(p=>p.fecha_inicio===fecha&&p.nombre===turno)
+      if(!plan){
+        return '<td><div class="celda" onclick="abrirModalPlan(\''+fecha+'\',\''+turno+'\')"><span style="font-size:20px;color:#1a3d2b">+</span></div></td>'
+      }
+      const confirmado=plan.confirmado
+      const mlPl=plan.ml_por_planta
+      const tipo=plan.tipo==='fertirrigacion'?'Fert':plan.tipo==='agua_sola'?'Agua':'Flush'
+      return '<td><div class="celda tiene-plan'+(confirmado?' confirmado':'')+'">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">' +
+        '<span style="font-size:9px;color:#22c55e;font-weight:700">'+tipo+'</span>' +
+        '<button onclick="event.stopPropagation();abrirRiegoConPlan(\''+fecha+'\',\''+turno+'\')" style="background:'+(confirmado?'#f0b429':'#1a5c32')+';border:none;border-radius:4px;padding:2px 7px;font-size:10px;color:#0a1a10;cursor:pointer;font-weight:700">'+(confirmado?'✓ OK':'✓ Regar')+'</button>' +
+        '</div>' +
+        (mlPl?'<div style="font-size:11px;color:#f0b429;font-weight:600">'+mlPl+' ml/pl</div>':'<div style="font-size:9px;color:#f0b429">Sin vol →📸</div>') +
+        '<div style="font-size:9px;color:#4a7a5a;margin-top:2px;cursor:pointer" onclick="abrirModalPlan(\''+fecha+'\',\''+turno+'\')">editar</div>' +
+        '</div></td>'
+    }).join('')
+    return '<tr class="'+(hoy?'hoy':'')+'"><td><div class="dia-label">'+DIAS[d.getDay()]+'</div><div class="dia-fecha">'+d.getDate()+'/'+(d.getMonth()+1)+'</div></td>'+celdas+'</tr>'
+  }).join('')
+}
+
+// Función llamada desde el botón ✓ Regar del almanaque
+function abrirRiegoConPlan(fecha, turno){
+  const plan = planes.find(p => p.fecha_inicio===fecha && p.nombre===turno)
+  const planFinal = {
+    id:               plan?.id               || null,
+    turno:            turno,
+    fecha_inicio:     fecha,
+    tipo:             plan?.tipo             || 'fertirrigacion',
+    ml_por_planta:    plan?.ml_por_planta    || null,
+    cantidad_plantas: plan?.cantidad_plantas || plantasLote,
+    productos:        plan?.productos        || null,
+    pct_athena:       plan?.pct_athena       || 50,
+    ec_objetivo:      plan?.ec_objetivo      || null,
+    ph_objetivo:      plan?.ph_objetivo      || null,
+    confirmado:       plan?.confirmado       || false
+  }
+  abrirModalRiego(planFinal, fecha, turno, false)
+}
+
+// ── Modal planificacion ───────────────────────────────────────────────────
+function abrirModalPlan(fecha, turno){
+  celdaActual={fecha,turno}
+  const plan=planes.find(p=>p.fecha_inicio===fecha&&p.nombre===turno)
+  const d=new Date(fecha+'T12:00')
+  const tLabel={manana:'Mañana',tarde:'Tarde',noche:'Noche'}[turno]
+  document.getElementById('plan-titulo').textContent=DIAS[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+' · '+tLabel
+  document.getElementById('p-ml').value      = plan?.ml_por_planta||''
+  document.getElementById('p-plantas').value = plan?.cantidad_plantas||plantasLote||''
+  document.getElementById('p-ec').value      = plan?.ec_objetivo||''
+  document.getElementById('p-ph').value      = plan?.ph_objetivo||''
+  document.getElementById('p-notas').value   = plan?.notas||''
+  document.getElementById('p-pct').value     = plan?.pct_athena||50
+  document.getElementById('p-pct-val').textContent=(plan?.pct_athena||50)+'%'
+  setTipo(plan?.tipo||'fertirrigacion')
+  renderPlanProd(plan?.productos||{})
+  calcPlanTotal()
+  document.getElementById('modal-plan').style.display='flex'
+}
+function cerrarModalPlan(){document.getElementById('modal-plan').style.display='none';celdaActual=null}
+
+function setTipo(t){
+  tipoRiego=t
+  ;['fert','agua','flush'].forEach(x=>{
+    const isOn=(x==='fert'&&t==='fertirrigacion')||(x==='agua'&&t==='agua_sola')||(x==='flush'&&t==='flush')
+    document.getElementById('tipo-'+x).className='tab '+(isOn?'tab-on':'tab-off')
+  })
+  document.getElementById('p-seccion-prod').style.display=t==='fertirrigacion'?'block':'none'
+}
+
+function setPlanFase(f){
+  planFase=f
+  document.getElementById('p-tab-veg').className='tab '+(f==='veg'?'tab-on':'tab-off')
+  document.getElementById('p-tab-flor').className='tab '+(f==='flor'?'tab-on':'tab-off')
+  renderPlanProd({})
+}
+
+function calcPlanTotal(){
+  const ml=parseFloat(document.getElementById('p-ml').value)||0
+  const plts=parseFloat(document.getElementById('p-plantas').value)||0
+  const box=document.getElementById('p-total-box')
+  if(ml>0&&plts>0){document.getElementById('p-total').textContent=((ml*plts)/1000).toFixed(1)+' L';box.style.display='block'}
+  else box.style.display='none'
+  actualizarPlanMls()
+}
+
+function renderPlanProd(sel){
+  const lista=TABS_FERT[planFase].map(id=>fertis.find(f=>f.id===id)).filter(Boolean)
+  let html='',ma='NONE'
+  lista.forEach(f=>{
+    if(f.marca!==ma){ma=f.marca;html+='<div class="marca-header">'+(f.marca||'Otros')+'</div>'}
+    const athena=f.marca==='Athena'
+    const checked=sel[f.nombre]?'checked':''
+    const ctrl=athena
+      ?'<span class="ml-res" id="pm-'+f.id+'">-</span>'
+      :'<input type="number" min="0.5" max="'+f.dosis_max+'" value="'+f.dosis_max+'" step="0.5" data-id="'+f.id+'" oninput="actualizarPlanMls()" style="width:48px;background:#0a1a10;color:white;border-radius:6px;padding:3px;border:1px solid #1a3d2b;font-size:11px;text-align:center"><span style="font-size:9px;color:#2d5a3d">'+f.unidad+'</span><span class="ml-res" id="pm-'+f.id+'">-</span>'
+    html+='<div class="fila"><input type="checkbox" data-id="'+f.id+'" data-nombre="'+f.nombre+'" '+checked+' oninput="actualizarPlanMls()" style="width:15px;height:15px;flex-shrink:0"><span style="font-size:12px;flex:1">'+f.nombre+'</span>'+ctrl+'</div>'
+  })
+  document.getElementById('p-lista-prod').innerHTML=html
+  actualizarPlanMls()
+}
+
+function actualizarPlanMls(){
+  const ml=parseFloat(document.getElementById('p-ml').value)||0
+  const plts=parseFloat(document.getElementById('p-plantas').value)||0
+  const volL=(ml*plts)/1000, pct=parseInt(document.getElementById('p-pct').value)
+  fertis.forEach(f=>{const e=document.getElementById('pm-'+f.id);if(e)e.textContent='-'})
+  if(!volL) return
+  document.querySelectorAll('#p-lista-prod input[type=checkbox]:checked').forEach(chk=>{
+    const id=parseInt(chk.dataset.id),f=fertis.find(x=>x.id===id);if(!f) return
+    const dosis=f.marca==='Athena'?parseFloat((f.dosis_max*pct/70).toFixed(2)):parseFloat(document.querySelector('#p-lista-prod input[type=number][data-id="'+id+'"]')?.value||f.dosis_max)
+    const e=document.getElementById('pm-'+f.id);if(e)e.textContent=Math.round(dosis*volL)+' ml'
+  })
+}
+
+async function guardarPlan(){
+  if(!celdaActual) return
+  const mlPl=parseFloat(document.getElementById('p-ml').value)||null
+  const plts=parseFloat(document.getElementById('p-plantas').value)||null
+  const pct=parseInt(document.getElementById('p-pct').value)
+  const volL=mlPl&&plts?parseFloat(((mlPl*plts)/1000).toFixed(1)):null
+  const productos={}
+  document.querySelectorAll('#p-lista-prod input[type=checkbox]:checked').forEach(chk=>{
+    const id=parseInt(chk.dataset.id),f=fertis.find(x=>x.id===id);if(!f) return
+    const dosis=f.marca==='Athena'?parseFloat((f.dosis_max*pct/70).toFixed(2)):parseFloat(document.querySelector('#p-lista-prod input[type=number][data-id="'+id+'"]')?.value||f.dosis_max)
+    productos[f.nombre]=dosis+' ml/L'
+  })
+  const payload={lote_id:parseInt(loteId),nombre:celdaActual.turno,tipo:tipoRiego,fecha_inicio:celdaActual.fecha,fecha_fin:celdaActual.fecha,ml_por_planta:mlPl,cantidad_plantas:plts,volumen_l:volL,ec_objetivo:parseFloat(document.getElementById('p-ec').value)||null,ph_objetivo:parseFloat(document.getElementById('p-ph').value)||null,pct_athena:pct,productos:Object.keys(productos).length?productos:null,notas:document.getElementById('p-notas').value||null,activo:true,confirmado:false}
+  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  await fetch(SURL+'/rest/v1/planes_riego',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)})
+  cerrarModalPlan(); cargarPlanes()
+}
+
+async function borrarPlan(){
+  if(!celdaActual) return
+  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  cerrarModalPlan(); cargarPlanes()
+}
+
+// ── Modal riego (operario) ────────────────────────────────────────────────
+function abrirModalRiego(plan, fecha, turno, conIA){
+  planActual={...plan, fecha, turno}
+  const d=new Date(fecha+'T12:00')
+  const tLabel={manana:'Mañana',tarde:'Tarde',noche:'Noche'}[turno]||turno
+  document.getElementById('riego-titulo').textContent=DIAS[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1)+' · '+tLabel
+
+  const mlPl = conIA&&iaML>0 ? iaML : (plan?.ml_por_planta||0)
+  const plts  = plan?.cantidad_plantas||plantasLote
+  const volL  = mlPl&&plts ? (mlPl*plts)/1000 : 0
+  const pct   = plan?.pct_athena||50
+  const prods = plan?.productos||{}
+
+  planActual.mlPl=mlPl; planActual.plts=plts; planActual.volL=volL; planActual.pct=pct; planActual.prods=prods
+
+  // Resumen
+  let res=''
+  if(conIA&&iaML>0){
+    res+='<div style="font-weight:700;color:#22c55e;font-size:13px;margin-bottom:8px">✅ Sugerencia IA</div>'
+    if(iaVWC) res+='<div style="font-size:12px;color:#4a7a5a;margin-bottom:4px">VWC: <b style="color:#f0b429">'+iaVWC+'%</b>'+(iaEC?' · EC: <b style="color:#f0b429">'+iaEC+'</b>':'')+'</div>'
+    if(iaMotivo) res+='<div style="font-size:12px;color:#a8c4b0;margin-bottom:8px">'+iaMotivo+'</div>'
+  }
+  if(mlPl>0){
+    res+='<div style="margin-bottom:8px"><span style="font-size:28px;font-weight:700;color:#f0b429">'+mlPl+'</span> <span style="color:#4a7a5a;font-size:13px">ml/planta × '+plts+' plantas</span></div>'
+  }
+  if(volL>0){
+    res+='<div style="background:#0a1a10;border-radius:8px;padding:8px;text-align:center;margin-bottom:10px">'
+    res+='<div style="font-size:10px;color:#4a7a5a;margin-bottom:2px">VOLUMEN TOTAL</div>'
+    res+='<div style="font-size:30px;font-weight:700;color:#22c55e">'+volL.toFixed(1)+' L</div></div>'
+  }
+  if(Object.keys(prods).length>0&&volL>0){
+    res+='<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;margin-bottom:4px">Fertilizantes</div>'
+    Object.entries(prods).forEach(([nombre,dosis])=>{
+      const ml=Math.round(parseFloat(dosis)*volL)
+      res+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #0a1a10;font-size:13px"><span><b>'+nombre+'</b> <span style="color:#4a7a5a">'+dosis+'</span></span><span style="color:#f0b429;font-weight:700">'+ml+' ml</span></div>'
+    })
+    res+='<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;font-weight:700"><span>Agua total</span><span style="color:#22c55e">'+volL.toFixed(1)+' L</span></div>'
+  }
+  document.getElementById('riego-resumen').innerHTML=res
+
+  // Botón foto si no hay ml
+  document.getElementById('riego-foto-btn').style.display=(!mlPl)?'block':'none'
+
+  // Precargar fase y pct
+  document.getElementById('r-pct').value=pct
+  document.getElementById('r-pct-val').textContent=pct+'%'
+  renderRiegoProd(prods)
+
+  document.getElementById('modal-riego').style.display='flex'
+}
+function cerrarModalRiego(){document.getElementById('modal-riego').style.display='none';planActual=null}
+
+function irAFoto(){
+  const turno = planActual?.turno || planActual?.nombre || getTurnoActual()
+  const fecha = planActual?.fecha_inicio || new Date().toISOString().slice(0,10)
+  location.href='/import.html?lote_id='+loteId+'&lote='+encodeURIComponent(loteNom)+'&turno='+turno+'&fecha='+fecha+'&volver=planificacion'
+}
+
+function setRiegoFase(f){
+  riegoFase=f
+  document.getElementById('r-tab-veg').className='tab '+(f==='veg'?'tab-on':'tab-off')
+  document.getElementById('r-tab-flor').className='tab '+(f==='flor'?'tab-on':'tab-off')
+  renderRiegoProd(planActual?.prods||{})
+}
+
+function renderRiegoProd(sel){
+  const lista=TABS_FERT[riegoFase].map(id=>fertis.find(f=>f.id===id)).filter(Boolean)
+  let html='',ma='NONE'
+  lista.forEach(f=>{
+    if(f.marca!==ma){ma=f.marca;html+='<div class="marca-header">'+(f.marca||'Otros')+'</div>'}
+    const athena=f.marca==='Athena'
+    const checked=sel[f.nombre]?'checked':''
+    const ctrl=athena
+      ?'<span class="ml-res" id="rm-'+f.id+'">-</span>'
+      :'<input type="number" min="0.5" max="'+f.dosis_max+'" value="'+f.dosis_max+'" step="0.5" data-id="'+f.id+'" oninput="actualizarRiegoMls()" style="width:48px;background:#0a1a10;color:white;border-radius:6px;padding:3px;border:1px solid #1a3d2b;font-size:11px;text-align:center"><span style="font-size:9px;color:#2d5a3d">'+f.unidad+'</span><span class="ml-res" id="rm-'+f.id+'">-</span>'
+    html+='<div class="fila"><input type="checkbox" data-id="'+f.id+'" data-nombre="'+f.nombre+'" '+checked+' oninput="actualizarRiegoMls()" style="width:15px;height:15px;flex-shrink:0"><span style="font-size:12px;flex:1">'+f.nombre+'</span>'+ctrl+'</div>'
+  })
+  document.getElementById('r-lista-prod').innerHTML=html
+  actualizarRiegoMls()
+}
+
+function actualizarRiegoMls(){
+  if(!planActual) return
+  const volL=planActual.volL||0, pct=parseInt(document.getElementById('r-pct').value)
+  fertis.forEach(f=>{const e=document.getElementById('rm-'+f.id);if(e)e.textContent='-'})
+  if(!volL) return
+  document.querySelectorAll('#r-lista-prod input[type=checkbox]:checked').forEach(chk=>{
+    const id=parseInt(chk.dataset.id),f=fertis.find(x=>x.id===id);if(!f) return
+    const dosis=f.marca==='Athena'?parseFloat((f.dosis_max*pct/70).toFixed(2)):parseFloat(document.querySelector('#r-lista-prod input[type=number][data-id="'+id+'"]')?.value||f.dosis_max)
+    const e=document.getElementById('rm-'+f.id);if(e)e.textContent=Math.round(dosis*volL)+' ml'
+  })
+}
+
+async function confirmarRiego(){
+  if(!planActual) return
+  const pct=parseInt(document.getElementById('r-pct').value)
+  const volL=planActual.volL||0
+  const productosConc={}, productosML={}
+  document.querySelectorAll('#r-lista-prod input[type=checkbox]:checked').forEach(chk=>{
+    const id=parseInt(chk.dataset.id),f=fertis.find(x=>x.id===id);if(!f) return
+    const dosis=f.marca==='Athena'?parseFloat((f.dosis_max*pct/70).toFixed(2)):parseFloat(document.querySelector('#r-lista-prod input[type=number][data-id="'+id+'"]')?.value||f.dosis_max)
+    productosConc[f.nombre]=dosis+' ml/L'
+    if(volL>0) productosML[f.nombre]=Math.round(dosis*volL)+' ml'
+  })
+
+  const payload={
+    lote_id:         parseInt(loteId),
+    lote_nombre:     loteNom,
+    fecha:           new Date().toISOString(),
+    turno:           planActual.turno,
+    ml_por_planta:   planActual.mlPl||null,
+    cantidad_plantas:planActual.plts||null,
+    volumen_l:       volL||null,
+    pct_athena:      pct,
+    productos:       Object.keys(productosConc).length?productosConc:null,
+    productos_ml:    Object.keys(productosML).length?productosML:null,
+    notas:           document.getElementById('r-notas').value||null,
+    plan_id:         planActual.id||null
+  }
+
+  const r=await fetch(SURL+'/rest/v1/historial_riegos',{
+    method:'POST',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify(payload)
+  })
+
+  if(r.ok){
+    // Si no habia plan, crear uno marcado como confirmado
+    if(!planActual.id && planActual.mlPl > 0){
+      const hoy=new Date().toISOString().slice(0,10)
+      await fetch(SURL+'/rest/v1/planes_riego',{
+        method:'POST',
+        headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({
+          lote_id:parseInt(loteId), nombre:planActual.turno, tipo:'fertirrigacion',
+          fecha_inicio:hoy, fecha_fin:hoy,
+          ml_por_planta:planActual.mlPl, cantidad_plantas:planActual.plts,
+          volumen_l:planActual.volL||null,
+          pct_athena:pct, productos:Object.keys(productosConc).length?productosConc:null,
+          activo:true, confirmado:true
+        })
+      })
+    } else if(planActual.id){
+      await fetch(SURL+'/rest/v1/planes_riego?id=eq.'+planActual.id,{
+        method:'PATCH',
+        headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json'},
+        body:JSON.stringify({confirmado:true})
+      })
+    }
+    cerrarModalRiego()
+    // Redirigir limpio para recargar almanaque sin params de IA
+    window.location.href = '/planificacion.html?lote_id=' + loteId + '&lote=' + encodeURIComponent(loteNom)
+  } else {
+    const err=await r.text()
+    alert('❌ Error: '+err)
+  }
+}
+
+init()
+</script>
+</body>
+</html>
