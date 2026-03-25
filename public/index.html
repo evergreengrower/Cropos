@@ -65,22 +65,56 @@
         </div>
       </div>
 
-      <!-- KPIs climaticos -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-        <div class="kpi">
-          <div class="kpi-label">Temperatura</div>
-          <div class="kpi-val" id="kpi-temp" style="font-size:20px">—</div>
-          <div class="kpi-sub" id="kpi-temp-n"></div>
+      <!-- KPIs climaticos por franja -->
+      <div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;justify-content:space-between">
+          <span>🌡️ Clima hoy</span>
+          <a id="btn-clima-lote" href="#" style="color:#1a5c32;font-size:10px;text-decoration:none">Ver detalle →</a>
         </div>
-        <div class="kpi">
-          <div class="kpi-label">Humedad</div>
-          <div class="kpi-val" id="kpi-hr" style="font-size:20px">—</div>
-          <div class="kpi-sub" id="kpi-hr-n"></div>
-        </div>
-        <div class="kpi" id="kpi-vpd-box">
-          <div class="kpi-label">VPD</div>
-          <div class="kpi-val" id="kpi-vpd" style="font-size:20px">—</div>
-          <div class="kpi-sub" id="kpi-vpd-n"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <!-- Headers -->
+          <div style="font-size:9px;color:#2d5a3d;text-align:center;padding-bottom:4px;border-bottom:1px solid #1a3d2b">Total día</div>
+          <div style="font-size:9px;color:#2d5a3d;text-align:center;padding-bottom:4px;border-bottom:1px solid #1a3d2b">🌅 Mañana</div>
+          <div style="font-size:9px;color:#2d5a3d;text-align:center;padding-bottom:4px;border-bottom:1px solid #1a3d2b">🌆 Tarde/Noche</div>
+          <!-- Temperatura -->
+          <div style="text-align:center;padding:6px 0">
+            <div style="font-size:16px;font-weight:700;color:#f0b429" id="kpi-temp">—</div>
+            <div style="font-size:9px;color:#2d5a3d" id="kpi-temp-n">T°C</div>
+          </div>
+          <div style="text-align:center;padding:6px 0">
+            <div style="font-size:16px;font-weight:700;color:#f0b429" id="kpi-temp-man">—</div>
+            <div style="font-size:9px;color:#2d5a3d">T°C</div>
+          </div>
+          <div style="text-align:center;padding:6px 0">
+            <div style="font-size:16px;font-weight:700;color:#f0b429" id="kpi-temp-tar">—</div>
+            <div style="font-size:9px;color:#2d5a3d">T°C</div>
+          </div>
+          <!-- HR -->
+          <div style="text-align:center;padding:6px 0;border-top:1px solid #060f0a">
+            <div style="font-size:16px;font-weight:700;color:#22c55e" id="kpi-hr">—</div>
+            <div style="font-size:9px;color:#2d5a3d" id="kpi-hr-n">HR%</div>
+          </div>
+          <div style="text-align:center;padding:6px 0;border-top:1px solid #060f0a">
+            <div style="font-size:16px;font-weight:700;color:#22c55e" id="kpi-hr-man">—</div>
+            <div style="font-size:9px;color:#2d5a3d">HR%</div>
+          </div>
+          <div style="text-align:center;padding:6px 0;border-top:1px solid #060f0a">
+            <div style="font-size:16px;font-weight:700;color:#22c55e" id="kpi-hr-tar">—</div>
+            <div style="font-size:9px;color:#2d5a3d">HR%</div>
+          </div>
+          <!-- VPD -->
+          <div style="text-align:center;padding:6px 0;border-top:1px solid #060f0a">
+            <div style="font-size:16px;font-weight:700" id="kpi-vpd">—</div>
+            <div style="font-size:9px;color:#2d5a3d" id="kpi-vpd-n">VPD</div>
+          </div>
+          <div style="text-align:center;padding:6px 0;border-top:1px solid #060f0a">
+            <div style="font-size:16px;font-weight:700" id="kpi-vpd-man">—</div>
+            <div style="font-size:9px;color:#2d5a3d">VPD</div>
+          </div>
+          <div style="text-align:center;padding:6px 0;border-top:1px solid #060f0a">
+            <div style="font-size:16px;font-weight:700" id="kpi-vpd-tar">—</div>
+            <div style="font-size:9px;color:#2d5a3d">VPD</div>
+          </div>
         </div>
       </div>
 
@@ -117,6 +151,11 @@
           <span class="icon">🌡️</span>
           <span class="label">Clima</span>
           <span class="sub">Temp · HR · VPD</span>
+        </a>
+        <a id="btn-visual" href="#" class="btn-mod">
+          <span class="icon">📸</span>
+          <span class="label">Visual</span>
+          <span class="sub">Fotos del cultivo</span>
         </a>
       </div>
 
@@ -202,6 +241,7 @@
       document.getElementById('btn-historial').href= `/historial-riegos.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
       document.getElementById('btn-tareas').href   = `/tareas.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
       document.getElementById('btn-clima').href    = `/clima.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
+      document.getElementById('btn-visual').href   = `/visual.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
       mostrar('vista-acciones')
       cargarKpisLote(id)
     }
@@ -305,74 +345,60 @@
         document.getElementById('kpi-riego-tarde').style.color=riegoTarde?'#22c55e':'#2d5a3d'
       } catch(e){console.log('riegos kpi',e)}
 
-      // Clima del dia
+      // Clima del dia por franja
       try {
+        document.getElementById('btn-clima-lote').href='/clima.html?lote_id='+loteId+'&lote='+encodeURIComponent(nombre||loteActual?.nombre||'')
         const hoyClima=new Date(Date.now()-24*3600000).toISOString()
-        const rC=await fetch(SURL+'/rest/v1/mediciones_clima?lote_id=eq.'+loteId+'&fecha=gte.'+hoyClima+'&order=fecha.desc&limit=10',
+        const rC=await fetch(SURL+'/rest/v1/mediciones_clima?lote_id=eq.'+loteId+'&fecha=gte.'+hoyClima+'&order=fecha.desc&limit=50',
           {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
         const clima=await rC.json()
         if(clima&&clima.length){
-          const promC=key=>parseFloat((clima.reduce((s,d)=>s+parseFloat(d[key]||0),0)/clima.length).toFixed(1))
-          const temp=promC('temperatura'), hr=promC('humedad'), vpd=parseFloat(promC('vpd').toFixed(3))
-          document.getElementById('kpi-temp').textContent=temp+'°C'
-          document.getElementById('kpi-hr').textContent=hr+'%'
-          document.getElementById('kpi-vpd').textContent=vpd+' kPa'
-          document.getElementById('kpi-temp-n').textContent=clima.length+' med. hoy'
-          document.getElementById('kpi-hr-n').textContent='HR promedio'
+          const man=clima.filter(d=>d.turno==='manana')
+          const tar=clima.filter(d=>d.turno==='tarde'||d.turno==='noche')
+          const todos=clima
 
-          // Color VPD
-          const kVPD=document.getElementById('kpi-vpd')
-          const kVPDn=document.getElementById('kpi-vpd-n')
-          if(vpd<0.4||vpd>2.0){kVPD.style.color='#dc2626';kVPDn.textContent='crítico'}
-          else if(vpd<1.0||vpd>1.5){kVPD.style.color='#f0b429';kVPDn.textContent='alerta'}
-          else{kVPD.style.color='#22c55e';kVPDn.textContent='óptimo'}
+          const promG=(arr,key)=>arr.length?parseFloat((arr.reduce((s,d)=>s+parseFloat(d[key]||0),0)/arr.length).toFixed(1)):null
 
-          // Color temperatura
-          const kTemp=document.getElementById('kpi-temp')
-          if(temp>38){kTemp.style.color='#dc2626'}
-          else if(temp>32){kTemp.style.color='#f0b429'}
-          else{kTemp.style.color='#f0b429'}
-
-          // Color HR
-          const kHR=document.getElementById('kpi-hr')
-          if(hr>75||hr<35){kHR.style.color='#dc2626'}
-          else if(hr>65){kHR.style.color='#f0b429'}
-          else{kHR.style.color='#22c55e'}
-
-          // Diagnostico cruzado clima + suelo
-          const vwcActual=parseFloat(document.getElementById('kpi-tarde')?.textContent||document.getElementById('kpi-manana')?.textContent||0)
-          const diagDiv=document.getElementById('diagnostico-cruzado')
-          const msgs=[], acciones=[]
-
-          // VPD alto + VWC bajo = doble estrés
-          if(vpd>1.5&&vwcActual>0&&vwcActual<22){
-            msgs.push('🔴 VPD alto + VWC bajo — doble estrés hídrico')
-            acciones.push('Aumentar volumen de riego','Mojar pasillos','Cerrar laterales')
-          }
-          // HR alta + riesgo hongos
-          if(hr>70&&vwcActual>28){
-            msgs.push('🔴 HR alta + sustrato húmedo — riesgo Botrytis')
-            acciones.push('NO foliar','Ventilación máxima','Reducir volumen de riego')
-          }
-          // Temperatura alta + VWC bajo
-          if(temp>32&&vwcActual>0&&vwcActual<20){
-            msgs.push('🔴 Estrés térmico + VWC crítico')
-            acciones.push('Regar urgente','Malla sombra','Abrir laterales')
-          }
-          // Todo ok
-          if(msgs.length===0&&vpd>=1.0&&vpd<=1.5&&hr<70&&temp<32){
-            msgs.push('🟢 Ambiente óptimo para floración')
+          const setClima=(sufijo,arr)=>{
+            const temp=promG(arr,'temperatura'), hr=promG(arr,'humedad'), vpd=promG(arr,'vpd')
+            const ids=sufijo===''?['kpi-temp','kpi-hr','kpi-vpd']:['kpi-temp-'+sufijo,'kpi-hr-'+sufijo,'kpi-vpd-'+sufijo]
+            if(temp!==null) document.getElementById(ids[0]).textContent=temp+'°C'
+            if(hr!==null)   document.getElementById(ids[1]).textContent=hr+'%'
+            if(vpd!==null){
+              const el=document.getElementById(ids[2])
+              el.textContent=vpd+' kPa'
+              el.style.color=vpd<0.4||vpd>2.0?'#dc2626':vpd<1.0||vpd>1.5?'#f0b429':'#22c55e'
+            }
           }
 
-          if(msgs.length){
-            diagDiv.style.display='block'
-            const critico=msgs.some(m=>m.includes('🔴'))
-            diagDiv.style.background=critico?'#1a0a0a':'#0a1a10'
-            diagDiv.style.borderLeft='3px solid '+(critico?'#dc2626':'#22c55e')
-            diagDiv.innerHTML=
-              '<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Diagnóstico clima + suelo</div>'+
-              msgs.map(m=>'<div style="margin-bottom:4px">'+m+'</div>').join('')+
-              (acciones.length?'<div style="margin-top:6px;font-size:12px;color:#f0b429">→ '+acciones.join(' · ')+'</div>':'')
+          setClima('',todos)
+          setClima('man',man)
+          setClima('tar',tar)
+
+          // Kpi labels
+          const total=todos.length
+          if(document.getElementById('kpi-temp-n')) document.getElementById('kpi-temp-n').textContent=total+' med.'
+          if(document.getElementById('kpi-hr-n'))   document.getElementById('kpi-hr-n').textContent='HR%'
+          if(document.getElementById('kpi-vpd-n'))  document.getElementById('kpi-vpd-n').textContent='VPD'
+
+          // Diagnostico cruzado
+          const temp=promG(todos,'temperatura'), hr=promG(todos,'humedad'), vpd=promG(todos,'vpd')
+          if(temp&&hr&&vpd){
+            const vwcEl=document.getElementById('kpi-tarde')
+            const vwcActual=vwcEl?parseFloat(vwcEl.textContent)||0:0
+            const diagDiv=document.getElementById('diagnostico-cruzado')
+            const msgs=[],acciones=[]
+            if(vpd>1.5&&vwcActual>0&&vwcActual<22){msgs.push('🔴 VPD alto + VWC bajo — doble estrés hídrico');acciones.push('Aumentar volumen de riego','Mojar pasillos')}
+            if(hr>70&&vwcActual>28){msgs.push('🔴 HR alta + sustrato húmedo — riesgo Botrytis');acciones.push('NO foliar','Ventilación máxima')}
+            if(temp>32&&vwcActual>0&&vwcActual<20){msgs.push('🔴 Estrés térmico + VWC crítico');acciones.push('Regar urgente','Malla sombra')}
+            if(!msgs.length&&vpd>=1.0&&vpd<=1.5&&hr<70&&temp<32) msgs.push('🟢 Ambiente óptimo para floración')
+            if(msgs.length){
+              diagDiv.style.display='block'
+              const critico=msgs.some(m=>m.includes('🔴'))
+              diagDiv.style.background=critico?'#1a0a0a':'#0a1a10'
+              diagDiv.style.borderLeft='3px solid '+(critico?'#dc2626':'#22c55e')
+              diagDiv.innerHTML='<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Diagnóstico clima + suelo</div>'+msgs.map(m=>'<div style="margin-bottom:4px">'+m+'</div>').join('')+(acciones.length?'<div style="margin-top:6px;font-size:12px;color:#f0b429">→ '+acciones.join(' · ')+'</div>':'')
+            }
           }
         }
       } catch(e){console.log('clima kpi',e)}
