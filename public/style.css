@@ -22,7 +22,7 @@ button:active{background:#145228}
 .kpi-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#2d5a3d;font-weight:600}
 .kpi-val{font-size:26px;font-weight:700;margin-top:3px;color:#f0b429}
 .kpi-sub{font-size:10px;color:#2d5a3d;margin-top:1px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .btn-mod{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:20px 10px;text-decoration:none;color:#e8f0eb;cursor:pointer;gap:8px;transition:border-color .15s,background .15s}
 .btn-mod:active{background:#0f2318;border-color:#2d7a4a}
 .btn-mod .icon{font-size:30px}

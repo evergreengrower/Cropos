@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a5c32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>CropOS · Login</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .login-box{max-width:360px;margin:60px auto;padding:32px 24px;background:#0a1a10;border:1px solid #1a3d2b;border-radius:18px}
+    .login-box img{display:block;margin:0 auto 24px;height:70px}
+    .login-box h2{text-align:center;font-size:18px;margin-bottom:24px;color:#e8f0eb}
+    .login-box input{width:100%;margin-bottom:14px;padding:12px 14px;background:#050d0a;border:1px solid #1a3d2b;border-radius:10px;color:#e8f0eb;font-size:15px;box-sizing:border-box}
+    .login-box button{width:100%;padding:13px;background:#1a5c32;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px}
+    .login-box button:active{background:#2d7a4a}
+    #error-msg{color:#f87171;font-size:13px;text-align:center;margin-top:12px;display:none}
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <img src="/logo.png" alt="Evergreen Cultiva">
+    <h2>Ingresá a CropOS</h2>
+    <input type="email" id="email" placeholder="Email" autocomplete="email">
+    <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+    <button onclick="login()">Ingresar</button>
+    <div id="error-msg">Email o contraseña incorrectos</div>
+  </div>
+
+  <script>
+    const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
+    const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+
+    // Si ya hay sesión activa, redirigir directo
+    const session = localStorage.getItem('cropos_session')
+    if(session) location.href='/'
+
+    async function login(){
+      const email    = document.getElementById('email').value.trim()
+      const password = document.getElementById('password').value
+      const btn      = document.querySelector('button')
+      const errDiv   = document.getElementById('error-msg')
+
+      if(!email || !password) return
+
+      btn.textContent = 'Ingresando...'
+      btn.disabled = true
+      errDiv.style.display = 'none'
+
+      const res = await fetch(SURL+'/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: {'apikey': SKEY, 'Content-Type': 'application/json'},
+        body: JSON.stringify({email, password})
+      })
+      const data = await res.json()
+
+      if(!res.ok || !data.access_token){
+        errDiv.style.display = 'block'
+        btn.textContent = 'Ingresar'
+        btn.disabled = false
+        return
+      }
+
+      // Guardar sesión
+      localStorage.setItem('cropos_session', JSON.stringify({
+        access_token: data.access_token,
+        user_id: data.user.id
+      }))
+
+      location.href = '/'
+    }
+
+    // Enter para login
+    document.addEventListener('keydown', e => { if(e.key==='Enter') login() })
+  </script>
+</body>
+</html>

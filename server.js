@@ -160,33 +160,6 @@ Analizá esta imagen de la pantalla del sensor BlueLab Pulse y extraé los valor
 
 Esta es la pantalla de historial de la app BlueLab Pulse. Muestra filas de mediciones. Cada fila tiene 3 columnas: COLUMNA IZQUIERDA = EC (numero con superindice EC), COLUMNA CENTRAL = VWC Humedad (numero con superindice % o asterisco), COLUMNA DERECHA = Temperatura (numero con superindice C). Lee cada fila de arriba hacia abajo. Extrae SOLO los numeros de la COLUMNA CENTRAL (VWC). Ignora la ultima fila si esta cortada. Suma todos los valores de VWC que pudiste leer completamente y divide por la cantidad de filas completas. Devuelve tambien cuantas filas leiste.
 
-Luego, basándote en estos protocolos reales del cultivo Carmelo:
-
-FASE ACTUAL: ${fase}
-TARGET PRE-RIEGO VWC: ${target.preRiego}%
-TARGET POST-RIEGO VWC: ${target.postRiego}%
-
-PROTOCOLO DE CORRECCIÓN (${fase}):
-- Post-riego objetivo: ${target.postRiego}%
-- Si VWC actual >= target pre-riego: NO REGAR
-- Si VWC < pre-riego: calcular volumen de corrección
-
-TABLA DE CORRECCIÓN GENERATIVA (floración):
-27% → no tocar si promedio estable
-26% → +400 ml por planta
-25% → +600 ml por planta
-24% → +800 ml por planta
-22-23% → +1000 ml por planta
-< 22% → +1200 ml por planta
-
-TABLA DE CORRECCIÓN VEGETATIVA AVANZADA:
->= 27% → NO REGAR
-26% → 1500 ml
-24-25% → 1500 ml
-22-23% → +800 ml extra
-20-21% → +1000 ml extra
-< 18% → +1500 ml extra
-
 Respondé SOLO en este formato JSON exacto, sin texto adicional:
 {
   "lecturas": {
@@ -194,16 +167,6 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
     "vwc_promedio": 0.0,
     "temp_promedio": 0.0,
     "cantidad_lecturas": 0
-  },
-  "diagnostico": {
-    "estado_vwc": "ok|bajo|critico",
-    "diferencia_target": 0.0,
-    "accion": "no_regar|regar|correccion_urgente"
-  },
-  "recomendacion": {
-    "regar": true,
-    "volumen_ml_por_planta": 0,
-    "motivo": "texto explicativo breve"
   }
 }`
           }
@@ -231,6 +194,32 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
         notas:       'Importado desde foto BlueLab · Análisis IA',
         fecha:       new Date().toISOString()
       }])
+    }
+
+    // Lógica determinista de recomendación según fase
+    const vwc = analisis.lecturas?.vwc_promedio || 0
+
+    let regar = false
+    let volumen = 0
+    let motivo = ''
+
+    if (fase === 'floracion') {
+      if (vwc >= 27)      { regar = false; volumen = 0;   motivo = 'VWC '+vwc+'% — No regar (generativa)' }
+      else if (vwc >= 25) { regar = true;  volumen = 400; motivo = 'VWC '+vwc+'% — Regar 400ml (generativa ~26%)' }
+      else if (vwc >= 23) { regar = true;  volumen = 550; motivo = 'VWC '+vwc+'% — Regar 550ml (generativa ~24%)' }
+      else if (vwc >= 21) { regar = true;  volumen = 700; motivo = 'VWC '+vwc+'% — Regar 700ml (generativa ~22%)' }
+      else                { regar = true;  volumen = 800; motivo = 'VWC '+vwc+'% — Regar 800ml (generativa ~20%)' }
+    } else {
+      const t = targets[fase] || targets.floracion
+      if (vwc >= t.preRiego) { regar = false; volumen = 0; motivo = 'VWC '+vwc+'% sobre target '+t.preRiego+'%' }
+      else                   { regar = true;  volumen = 800; motivo = 'VWC '+vwc+'% bajo target '+t.preRiego+'%' }
+    }
+
+    analisis.recomendacion = { regar, volumen_ml_por_planta: volumen, motivo }
+    analisis.diagnostico = {
+      estado_vwc: vwc < 20 ? 'critico' : vwc < 24 ? 'bajo' : 'ok',
+      diferencia_target: parseFloat((vwc - (targets[fase]?.preRiego || 20)).toFixed(1)),
+      accion: regar ? (vwc < 20 ? 'correccion_urgente' : 'regar') : 'no_regar'
     }
 
     res.json({ ok: true, analisis })

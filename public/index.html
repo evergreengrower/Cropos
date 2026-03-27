@@ -54,9 +54,10 @@
           <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3d2b;font-size:10px;color:#2d5a3d" id="kpi-riego-tarde">Sin riego</div>
         </div>
         <div class="kpi" id="kpi-alerta-box">
-          <div class="kpi-label">Próximo Riego</div>
-          <div class="kpi-val" id="kpi-proximo" style="font-size:16px">—</div>
+          <div class="kpi-label">Riego Reciente</div>
+          <div class="kpi-val" id="kpi-proximo" style="font-size:22px;color:#f0b429">—</div>
           <div class="kpi-sub" id="kpi-proximo-n"></div>
+          <div style="margin-top:4px;font-size:10px;color:#2d5a3d" id="kpi-proximo-fert"></div>
         </div>
         <div class="kpi" style="cursor:pointer" onclick="irATareas()">
           <div class="kpi-label">Alerta Próxima Tarea</div>
@@ -132,30 +133,30 @@
           <span class="label">Planificacion</span>
           <span class="sub">Fertiriego semanal</span>
         </a>
+        <a id="btn-visual" href="#" class="btn-mod">
+          <span class="icon">📸</span>
+          <span class="label">Visual</span>
+          <span class="sub">Fotos del cultivo</span>
+        </a>
         <a id="btn-import" href="#" class="btn-mod">
           <span class="icon">📥</span>
           <span class="label">Importar CSV</span>
           <span class="sub">BlueLab Pulse</span>
-        </a>
-        <a id="btn-historial" href="#" class="btn-mod">
-          <span class="icon">📊</span>
-          <span class="label">Historial Riegos</span>
-          <span class="sub">Ver registros</span>
         </a>
         <a id="btn-tareas" href="#" class="btn-mod">
           <span class="icon">✅</span>
           <span class="label">Tareas</span>
           <span class="sub">Planificacion diaria</span>
         </a>
+        <a id="btn-historial" href="#" class="btn-mod">
+          <span class="icon">📊</span>
+          <span class="label">Historial Riegos</span>
+          <span class="sub">Ver registros</span>
+        </a>
         <a id="btn-clima" href="#" class="btn-mod">
           <span class="icon">🌡️</span>
           <span class="label">Clima</span>
           <span class="sub">Temp · HR · VPD</span>
-        </a>
-        <a id="btn-visual" href="#" class="btn-mod">
-          <span class="icon">📸</span>
-          <span class="label">Visual</span>
-          <span class="sub">Fotos del cultivo</span>
         </a>
       </div>
 
@@ -169,7 +170,39 @@
     const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
     const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
 
-    let cultivoActual=null, loteActual=null
+    let cultivoActual=null, loteActual=null, usuarioActual=null
+
+    // ── AUTH ──────────────────────────────────────────────
+    async function verificarSesion(){
+      const raw = localStorage.getItem('cropos_session')
+      const session = JSON.parse(raw)
+
+      // Obtener perfil del usuario
+      const res = await fetch(SURL+'/rest/v1/usuarios?id=eq.'+session.user_id+'&select=*',{
+        headers:{'apikey':SKEY,'Authorization':'Bearer '+session.access_token}
+      })
+      const data = await res.json()
+
+      usuarioActual = {...data[0], access_token: session.access_token}
+      sessionStorage.setItem('cropos_usuario', JSON.stringify(usuarioActual))
+
+      // Mostrar nombre y boton logout en header (solo una vez)
+      const hdr = document.querySelector('.header')
+      if(hdr && !document.getElementById('user-bar')){
+        const bar = document.createElement('div')
+        bar.id = 'user-bar'
+        bar.style = 'display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#4a7a5a;margin-top:6px'
+        bar.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:13px">👤</span><span style="font-size:12px;color:#e8f0eb">'+usuarioActual.nombre+'</span><span style="font-size:10px;color:#1a5c32;background:#0a1a10;border:1px solid #1a3d2b;border-radius:4px;padding:1px 6px">'+usuarioActual.rol+'</span></span><button onclick="logout()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;white-space:nowrap;width:auto">← Salir</button>'
+        hdr.appendChild(bar)
+      }
+      return usuarioActual
+    }
+
+    function logout(){
+      localStorage.removeItem('cropos_session')
+      location.href='/login.html'
+    }
+    // ─────────────────────────────────────────────────────
 
     function actualizarReloj(){
       document.getElementById('fecha-hora').textContent=new Date().toLocaleString('es-UY',{
@@ -197,8 +230,24 @@
     }
 
     async function cargarCultivos(){
-      const res=await fetch(SURL+'/rest/v1/cultivos?activo=eq.true&order=id',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      if(!usuarioActual){ const u=sessionStorage.getItem('cropos_usuario'); if(u) usuarioActual=JSON.parse(u) }
+      if(!usuarioActual){ location.href='/login.html'; return }
+      const token = usuarioActual.access_token
+      let url = SURL+'/rest/v1/cultivos?activo=eq.true&order=id'
+      // Operador: solo ve su cultivo asignado
+      if(usuarioActual.rol === 'operador' && usuarioActual.cultivo_id){
+        url = SURL+'/rest/v1/cultivos?activo=eq.true&id=eq.'+usuarioActual.cultivo_id
+      }
+      const res=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+token}})
       const cultivos=await res.json()
+
+      // Si operador tiene 1 solo cultivo, entrar directo sin mostrar lista
+      if(usuarioActual.rol === 'operador' && cultivos.length === 1){
+        abrirCultivo(cultivos[0].id, cultivos[0].nombre, cultivos[0].ubicacion)
+        return
+      }
+
+      const esAdmin = usuarioActual.rol === 'admin'
       document.getElementById('lista-cultivos').innerHTML=cultivos.map(c=>`
         <div onclick="abrirCultivo(${c.id},'${c.nombre}','${c.ubicacion}')"
           style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:18px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
@@ -207,10 +256,10 @@
             <div style="font-size:11px;color:#2d5a3d;margin-top:3px">📍 ${c.ubicacion}</div>
           </div>
           <div style="font-size:22px;color:#2d5a3d">›</div>
-        </div>`).join('')+`
+        </div>`).join('')+(esAdmin ? `
         <div onclick="agregarCultivo()" style="background:transparent;border:1px dashed #1a3d2b;border-radius:14px;padding:14px;text-align:center;cursor:pointer;color:#2d5a3d;font-size:13px">
           + Agregar cultivo
-        </div>`
+        </div>` : '')
     }
 
     async function abrirCultivo(id,nombre,ubicacion){
@@ -286,28 +335,37 @@
         // Alerta VWC
         const vActual=parseFloat(vTar||vMan||0)
         const alerta=document.getElementById('alerta-lote')
-        const kpiProximo=document.getElementById('kpi-proximo')
-        const kpiProximoN=document.getElementById('kpi-proximo-n')
         if(vActual>0&&vActual<20){
           alerta.style.display='block';alerta.style.background='#1a0a0a';alerta.style.borderLeft='3px solid #dc2626'
           alerta.innerHTML='🔴 <b>VWC critico: '+vActual+'%</b> — Regar urgente'
-          kpiProximo.textContent='URGENTE';kpiProximo.style.color='#dc2626'
-          kpiProximoN.textContent='VWC '+vActual+'%'
-          document.getElementById('kpi-alerta-box').style.borderColor='#dc2626'
         } else if(vActual>0&&vActual<22){
           alerta.style.display='block';alerta.style.background='#1a1200';alerta.style.borderLeft='3px solid #f0b429'
           alerta.innerHTML='🟡 <b>VWC bajo: '+vActual+'%</b> — Preparar riego'
-          kpiProximo.textContent='HOY';kpiProximo.style.color='#f0b429'
-          kpiProximoN.textContent='VWC '+vActual+'%'
-          document.getElementById('kpi-alerta-box').style.borderColor='#f0b429'
-        } else if(vActual>=28){
+        } else {
           alerta.style.display='none'
-          kpiProximo.textContent='OK';kpiProximo.style.color='#22c55e'
-          kpiProximoN.textContent='VWC '+vActual+'%'
-        } else if(vActual>0){
-          alerta.style.display='none'
-          kpiProximo.textContent=vActual+'%';kpiProximo.style.color='#4a7a5a'
-          kpiProximoN.textContent='monitorear'
+        }
+
+        // Último riego
+        const resRiego=await fetch(SURL+'/rest/v1/historial_riegos?lote_id=eq.'+loteId+'&order=fecha.desc&limit=1&select=ml_por_planta,volumen_l,fecha,turno,ec',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+        const ultimosRiegos=await resRiego.json()
+        const kpiProximo=document.getElementById('kpi-proximo')
+        const kpiProximoN=document.getElementById('kpi-proximo-n')
+        const kpiProximoFert=document.getElementById('kpi-proximo-fert')
+        if(ultimosRiegos&&ultimosRiegos[0]){
+          const ur=ultimosRiegos[0]
+          kpiProximo.textContent=(ur.ml_planta||'—')+' ml'
+          kpiProximo.style.color='#f0b429'
+          kpiProximoN.textContent=formatFecha(ur.fecha)
+          // Fertilizantes
+          if(ur.productos&&Object.keys(ur.productos).length){
+            kpiProximoFert.textContent='🧪 '+Object.entries(ur.productos).map(([k,v])=>k+' '+v+'ml').join(' · ')
+          } else {
+            kpiProximoFert.textContent='Sin fertilizantes'
+          }
+        } else {
+          kpiProximo.textContent='—'
+          kpiProximoN.textContent='Sin riegos'
+          kpiProximoFert.textContent=''
         }
 
         // Ultimas mediciones
@@ -428,7 +486,6 @@
       const nombre=prompt('Nombre del cultivo:'); if(!nombre) return
       const ubicacion=prompt('Ubicacion:')
       await fetch(SURL+'/rest/v1/cultivos',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({nombre,ubicacion,activo:true})})
-      cargarCultivos()
     }
 
     async function agregarLote(){
@@ -438,7 +495,11 @@
       abrirCultivo(cultivoActual.id,cultivoActual.nombre,cultivoActual.ubicacion)
     }
 
-    cargarCultivos()
+    // Arranque
+    ;(async function(){
+      const u = await verificarSesion()
+      if(u) await cargarCultivos()
+    })()
 
     if('serviceWorker' in navigator){
       navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW',e))
