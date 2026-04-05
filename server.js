@@ -478,13 +478,25 @@ const TUYA_BASE_URL      = 'https://openapi.tuyaeu.com'
 let tuyaToken = null
 let tuyaTokenExpiry = 0
 
+function tuyaSign(secret, str) {
+  return crypto.createHmac('sha256', secret).update(str).digest('hex').toUpperCase()
+}
+
+function tuyaBuildSignStr(clientId, accessToken, t, nonce, method, path, body) {
+  const bodyHash = crypto.createHash('sha256').update(body || '').digest('hex')
+  const strToSign = [method, bodyHash, '', path].join('\n')
+  return clientId + accessToken + t + nonce + strToSign
+}
+
 async function getTuyaToken() {
   if (tuyaToken && Date.now() < tuyaTokenExpiry) return tuyaToken
-  const t    = Date.now().toString()
-  const str  = TUYA_CLIENT_ID + t
-  const sign = crypto.createHmac('sha256', TUYA_CLIENT_SECRET).update(str).digest('hex').toUpperCase()
-  const r    = await fetch(TUYA_BASE_URL + '/v1.0/token?grant_type=1', {
-    headers: { 'client_id': TUYA_CLIENT_ID, 'sign': sign, 'sign_method': 'HMAC-SHA256', 't': t, 'Content-Type': 'application/json' }
+  const t     = Date.now().toString()
+  const nonce = ''
+  const path  = '/v1.0/token?grant_type=1'
+  const signStr = tuyaBuildSignStr(TUYA_CLIENT_ID, '', t, nonce, 'GET', path, '')
+  const sign    = tuyaSign(TUYA_CLIENT_SECRET, signStr)
+  const r = await fetch(TUYA_BASE_URL + path, {
+    headers: { 'client_id': TUYA_CLIENT_ID, 'sign': sign, 'sign_method': 'HMAC-SHA256', 't': t, 'nonce': nonce, 'Content-Type': 'application/json' }
   })
   const data = await r.json()
   if (!data.success) throw new Error('Tuya auth error: ' + JSON.stringify(data))
@@ -496,10 +508,12 @@ async function getTuyaToken() {
 async function getTuyaDeviceStatus(deviceId) {
   const token = await getTuyaToken()
   const t     = Date.now().toString()
-  const str   = TUYA_CLIENT_ID + token + t
-  const sign  = crypto.createHmac('sha256', TUYA_CLIENT_SECRET).update(str).digest('hex').toUpperCase()
-  const r     = await fetch(TUYA_BASE_URL + '/v1.0/devices/' + deviceId + '/status', {
-    headers: { 'client_id': TUYA_CLIENT_ID, 'access_token': token, 'sign': sign, 'sign_method': 'HMAC-SHA256', 't': t, 'Content-Type': 'application/json' }
+  const nonce = ''
+  const path  = '/v1.0/devices/' + deviceId + '/status'
+  const signStr = tuyaBuildSignStr(TUYA_CLIENT_ID, token, t, nonce, 'GET', path, '')
+  const sign    = tuyaSign(TUYA_CLIENT_SECRET, signStr)
+  const r = await fetch(TUYA_BASE_URL + path, {
+    headers: { 'client_id': TUYA_CLIENT_ID, 'access_token': token, 'sign': sign, 'sign_method': 'HMAC-SHA256', 't': t, 'nonce': nonce, 'Content-Type': 'application/json' }
   })
   return r.json()
 }
