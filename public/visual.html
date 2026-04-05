@@ -5,6 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Retroalimentacion Visual</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    @keyframes pulse-mic {
+      0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.4)}
+      50%{box-shadow:0 0 0 10px rgba(220,38,38,0)}
+    }
+    .btn-mic {
+      background:#0a1a10;
+      border:1px solid #1a3d2b;
+      color:#7ecf6a;
+      border-radius:8px;
+      padding:8px 14px;
+      font-size:13px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-weight:600;
+      transition:all .2s;
+      white-space:nowrap;
+    }
+    .btn-mic:hover{background:#0f2a18;border-color:#7ecf6a}
+    .btn-mic.grabando {
+      background:#2a0a0a;
+      border-color:#dc2626;
+      color:#dc2626;
+      animation:pulse-mic 1.2s infinite;
+    }
+    .mic-dot {
+      width:8px;height:8px;border-radius:50%;
+      background:#7ecf6a;
+      display:inline-block;
+    }
+    .btn-mic.grabando .mic-dot{background:#dc2626}
+    #mic-status {
+      font-size:11px;
+      color:#4a7a5a;
+      margin-top:5px;
+      min-height:16px;
+      font-style:italic;
+    }
+  </style>
 </head>
 <body>
 <div class="app">
@@ -63,8 +104,16 @@
       </div>
     </div>
 
-    <label>Observación</label>
-    <textarea id="observacion" placeholder="Estado general, notas del operario..." style="margin-top:4px;min-height:70px"></textarea>
+    <!-- Observación + Micrófono -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <label style="margin:0">Observación</label>
+      <button class="btn-mic" id="btn-mic" onclick="toggleMic()">
+        <span class="mic-dot"></span>
+        <span id="mic-label">🎤 Grabar voz</span>
+      </button>
+    </div>
+    <textarea id="observacion" placeholder="Estado general, notas del operario... o grabá tu voz con el botón 🎤" style="margin-top:4px;min-height:80px"></textarea>
+    <div id="mic-status"></div>
 
     <button onclick="analizarConIA()" id="btn-ia" style="display:none;margin-top:10px;background:#0a1a10;border:1px solid #1a5c32;color:#22c55e;border-radius:8px;padding:10px;font-size:13px;width:100%;font-weight:600;cursor:pointer">🤖 Analizar con IA antes de guardar</button>
 
@@ -77,7 +126,7 @@
     <button onclick="guardarRegistro()" class="btn-gold" style="margin-top:10px">💾 Guardar registro</button>
   </div>
 
-  <!-- Historial -->
+  <!-- Historial: más reciente arriba, más antiguo abajo -->
   <h3 style="margin-bottom:10px">Historial cronológico</h3>
   <div id="historial"></div>
 </div>
@@ -96,6 +145,7 @@ let turnoActual='manana'
 const fotosData={}
 let diagnosticoIA=null
 
+// ─── TURNO ───────────────────────────────────────────────────
 function setTurno(t){
   turnoActual=t
   document.getElementById('turno-man').style.background=t==='manana'?'#1a5c32':'#0a1a10'
@@ -104,99 +154,81 @@ function setTurno(t){
   document.getElementById('turno-tar').style.color=t==='tarde'?'#fff':'#2d5a3d'
 }
 
-async function analizarConIA(){
-  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
-  const btn=document.getElementById('btn-ia')
-  btn.textContent='Analizando...'
-  btn.disabled=true
-  const form=new FormData()
-  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
-  form.append('fase',document.getElementById('fase').value)
-  form.append('observacion',document.getElementById('observacion').value||'')
-  try{
-    const r=await fetch('/analizar-visual',{method:'POST',body:form})
-    const data=await r.json()
-    btn.textContent='🤖 Analizar con IA antes de guardar'
-    btn.disabled=false
-    if(!data.ok){alert('Error: '+data.mensaje);return}
-    diagnosticoIA=data.diagnostico
-    const d=data.diagnostico
-    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
-    const col=colores[d.estado_general]||'#4a7a5a'
-    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
-    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
-    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
-    document.getElementById('ia-contenido').innerHTML=html
-    document.getElementById('resultado-ia').style.display='block'
-  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+// ─── MICRÓFONO / VOZ A TEXTO ─────────────────────────────────
+let recognition=null
+let grabando=false
+
+function toggleMic(){
+  if(grabando){
+    detenerMic()
+  } else {
+    iniciarMic()
+  }
 }
 
-async function analizarConIA(){
-  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
-  const btn=document.getElementById('btn-ia')
-  btn.textContent='Analizando...'
-  btn.disabled=true
-  const form=new FormData()
-  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
-  form.append('fase',document.getElementById('fase').value)
-  form.append('observacion',document.getElementById('observacion').value||'')
-  try{
-    const r=await fetch('/analizar-visual',{method:'POST',body:form})
-    const data=await r.json()
-    btn.textContent='🤖 Analizar con IA antes de guardar'
-    btn.disabled=false
-    if(!data.ok){alert('Error: '+data.mensaje);return}
-    diagnosticoIA=data.diagnostico
-    const d=data.diagnostico
-    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
-    const col=colores[d.estado_general]||'#4a7a5a'
-    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
-    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
-    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
-    document.getElementById('ia-contenido').innerHTML=html
-    document.getElementById('resultado-ia').style.display='block'
-  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+function iniciarMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition
+  if(!SR){
+    alert('Tu navegador no soporta reconocimiento de voz. Usá Chrome o Safari actualizado.')
+    return
+  }
+  recognition=new SR()
+  recognition.lang='es-UY'
+  recognition.continuous=true
+  recognition.interimResults=true
+
+  recognition.onstart=()=>{
+    grabando=true
+    const btn=document.getElementById('btn-mic')
+    btn.classList.add('grabando')
+    document.getElementById('mic-label').textContent='⏹ Detener'
+    document.getElementById('mic-status').textContent='🔴 Grabando... hablá ahora'
+  }
+
+  recognition.onresult=(e)=>{
+    let interino=''
+    let final=''
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal){
+        final+=e.results[i][0].transcript
+      } else {
+        interino+=e.results[i][0].transcript
+      }
+    }
+    if(final){
+      const obs=document.getElementById('observacion')
+      const prev=obs.value.trim()
+      obs.value=(prev?prev+' ':'')+final.trim()
+    }
+    document.getElementById('mic-status').textContent=interino?'💬 '+interino:'🔴 Grabando...'
+  }
+
+  recognition.onerror=(e)=>{
+    document.getElementById('mic-status').textContent='⚠️ Error: '+e.error
+    detenerMic()
+  }
+
+  recognition.onend=()=>{
+    if(grabando) recognition.start() // mantener grabando hasta que el usuario detenga
+  }
+
+  recognition.start()
 }
 
-async function analizarConIA(){
-  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
-  const btn=document.getElementById('btn-ia')
-  btn.textContent='Analizando...'
-  btn.disabled=true
-  const form=new FormData()
-  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
-  form.append('fase',document.getElementById('fase').value)
-  form.append('observacion',document.getElementById('observacion').value||'')
-  try{
-    const r=await fetch('/analizar-visual',{method:'POST',body:form})
-    const data=await r.json()
-    btn.textContent='🤖 Analizar con IA antes de guardar'
-    btn.disabled=false
-    if(!data.ok){alert('Error: '+data.mensaje);return}
-    diagnosticoIA=data.diagnostico
-    const d=data.diagnostico
-    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
-    const col=colores[d.estado_general]||'#4a7a5a'
-    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
-    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
-    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
-    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
-    document.getElementById('ia-contenido').innerHTML=html
-    document.getElementById('resultado-ia').style.display='block'
-  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+function detenerMic(){
+  grabando=false
+  if(recognition){
+    recognition.onend=null
+    recognition.stop()
+    recognition=null
+  }
+  const btn=document.getElementById('btn-mic')
+  btn.classList.remove('grabando')
+  document.getElementById('mic-label').textContent='🎤 Grabar voz'
+  document.getElementById('mic-status').textContent='✅ Transcripción lista — podés editarla arriba'
 }
 
+// ─── FOTOS ───────────────────────────────────────────────────
 function cargarFoto(n, input){
   const file=input.files[0]; if(!file) return
   fotosData[n]=file
@@ -210,6 +242,39 @@ function cargarFoto(n, input){
   reader.readAsDataURL(file)
 }
 
+// ─── IA ──────────────────────────────────────────────────────
+async function analizarConIA(){
+  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
+  const btn=document.getElementById('btn-ia')
+  btn.textContent='Analizando...'
+  btn.disabled=true
+  const form=new FormData()
+  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
+  form.append('fase',document.getElementById('fase').value)
+  form.append('observacion',document.getElementById('observacion').value||'')
+  try{
+    const r=await fetch('/analizar-visual',{method:'POST',body:form})
+    const data=await r.json()
+    btn.textContent='🤖 Analizar con IA antes de guardar'
+    btn.disabled=false
+    if(!data.ok){alert('Error: '+data.mensaje);return}
+    diagnosticoIA=data.diagnostico
+    const d=data.diagnostico
+    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
+    const col=colores[d.estado_general]||'#4a7a5a'
+    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
+    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
+    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
+    document.getElementById('ia-contenido').innerHTML=html
+    document.getElementById('resultado-ia').style.display='block'
+  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+}
+
+// ─── SUBIR FOTO ──────────────────────────────────────────────
 async function subirFoto(file, nombre){
   const ext=file.name.split('.').pop()
   const path=loteId+'/'+nombre+'.'+ext
@@ -222,10 +287,12 @@ async function subirFoto(file, nombre){
   return SURL+'/storage/v1/object/public/'+encodeURIComponent(BUCKET)+'/'+path
 }
 
+// ─── GUARDAR ─────────────────────────────────────────────────
 async function guardarRegistro(){
   if(Object.keys(fotosData).length===0){alert('Agregá al menos una foto');return}
+  // Detener micrófono si está activo
+  if(grabando) detenerMic()
   document.getElementById('progreso').style.display='block'
-
   try {
     const ts=Date.now()
     const urls={}
@@ -233,7 +300,6 @@ async function guardarRegistro(){
       const nombre='lote'+loteId+'_'+ts+'_foto'+n
       urls['foto_'+n]=await subirFoto(file,nombre)
     }
-
     const payload={
       lote_id:parseInt(loteId),
       lote_nombre:loteNom,
@@ -244,22 +310,24 @@ async function guardarRegistro(){
       diagnostico_ia:diagnosticoIA||null,
       fecha:new Date().toISOString()
     }
-
     const r=await fetch(SURL+'/rest/v1/registros_visuales',{
       method:'POST',
       headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
       body:JSON.stringify(payload)
     })
-
     if(r.ok){
       document.getElementById('progreso').style.display='none'
+      document.getElementById('mic-status').textContent=''
       alert('✅ Registro guardado')
-      // Reset
+      // Reset formulario
       for(let i=1;i<=4;i++){
         document.getElementById('slot-'+i).innerHTML='<span style="font-size:28px;color:#1a3d2b">📷</span><input type="file" id="foto-'+i+'" accept="image/*" style="display:none" onchange="cargarFoto('+i+',this)">'
         document.getElementById('slot-'+i).style.border='2px dashed #1a3d2b'
       }
       document.getElementById('observacion').value=''
+      document.getElementById('resultado-ia').style.display='none'
+      document.getElementById('btn-ia').style.display='none'
+      diagnosticoIA=null
       Object.keys(fotosData).forEach(k=>delete fotosData[k])
       cargarHistorial()
     } else {
@@ -272,12 +340,18 @@ async function guardarRegistro(){
   }
 }
 
+// ─── HISTORIAL (más reciente primero) ────────────────────────
 async function cargarHistorial(){
-  const r=await fetch(SURL+'/rest/v1/registros_visuales?lote_id=eq.'+loteId+'&order=fecha.desc&limit=20',
-    {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  const r=await fetch(
+    SURL+'/rest/v1/registros_visuales?lote_id=eq.'+loteId+'&order=fecha.desc&limit=50',
+    {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}}
+  )
   const data=await r.json()
   const cont=document.getElementById('historial')
-  if(!data||!data.length){cont.innerHTML='<p style="color:#2d5a3d;font-size:13px">Sin registros visuales</p>';return}
+  if(!data||!data.length){
+    cont.innerHTML='<p style="color:#2d5a3d;font-size:13px">Sin registros visuales</p>'
+    return
+  }
 
   const faseLabel={
     vegetativo_temprano:'Veg. temprano',
@@ -288,8 +362,13 @@ async function cargarHistorial(){
   }
   const turnoIcon={manana:'🌅',tarde:'🌆',noche:'🌙'}
 
+  // data ya viene ordenado fecha.desc desde Supabase (más reciente primero)
   cont.innerHTML=data.map(d=>{
-    const fecha=new Date(d.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    const fecha=new Date(d.fecha).toLocaleString('es-UY',{
+      timeZone:'America/Montevideo',
+      weekday:'short',day:'2-digit',month:'2-digit',
+      hour:'2-digit',minute:'2-digit'
+    })
     const fotos=d.fotos?Object.values(d.fotos):[]
     return `<div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:14px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -306,6 +385,7 @@ async function cargarHistorial(){
   }).join('')
 }
 
+// ─── VER FOTO EN PANTALLA COMPLETA ───────────────────────────
 function verFoto(url){
   const overlay=document.createElement('div')
   overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:999;display:flex;align-items:center;justify-content:center'

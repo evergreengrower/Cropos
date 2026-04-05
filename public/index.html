@@ -142,25 +142,29 @@
         <div id="alerta-lote" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:500"></div>
         <div id="diagnostico-cruzado" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
 
-        <!-- Fila 1: KPIs -->
-        <div class="kpi-row">
-          <div class="kpi-card">
-            <div class="kpi-label">VWC post-riego · Mañana</div>
-            <div class="kpi-val" id="kpi-manana">&#8212;</div>
-            <div class="kpi-sub" id="kpi-manana-n"></div>
-            <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);font-size:10px;color:var(--dim)" id="kpi-riego-manana">Sin riego</div>
+        <!-- Mini card: Sensores cultivo Smartlife -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div class="kpi-card" style="background:rgba(126,207,106,0.04);border-color:var(--green3);position:relative">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div class="kpi-label" style="font-size:9px">🌡 TEMP · HR CULTIVO</div>
+              <span id="smartlife-status" style="font-size:8px;font-family:var(--mono);color:var(--dim);background:#0a1a10;border:0.5px solid var(--border);border-radius:10px;padding:2px 7px">Sin sensor</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div>
+                <div style="font-size:22px;font-weight:700;color:#f0b429;font-family:var(--mono)" id="sensor-temp-cultivo">&#8212;</div>
+                <div style="font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:700;color:#22c55e;font-family:var(--mono)" id="sensor-hr-cultivo">&#8212;</div>
+                <div style="font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
+              </div>
+            </div>
+            <button onclick="configurarSmartlife()" style="margin-top:8px;width:100%;padding:5px;font-size:10px;background:transparent;border:0.5px solid var(--border);color:var(--dim);border-radius:6px;cursor:pointer">
+              ⚙ Conectar Smartlife
+            </button>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-label">VWC post-riego · Tarde</div>
-            <div class="kpi-val" id="kpi-tarde">&#8212;</div>
-            <div class="kpi-sub" id="kpi-tarde-n"></div>
-            <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);font-size:10px;color:var(--dim)" id="kpi-riego-tarde">Sin riego</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Próximo riego</div>
-            <div class="kpi-val" id="kpi-proximo" style="font-size:20px">&#8212;</div>
-            <div class="kpi-sub" id="kpi-proximo-n"></div>
-          </div>
+
+          <!-- Próxima tarea (conservado) -->
           <div class="kpi-card" style="cursor:pointer" onclick="irATareas()">
             <div class="kpi-label">Próxima tarea</div>
             <div class="kpi-val" id="kpi-tareas" style="font-size:20px">&#8212;</div>
@@ -168,85 +172,30 @@
           </div>
         </div>
 
-        <!-- KPIs clima inline -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-header">
-            <span class="card-title">Clima hoy</span>
-            <a id="btn-clima-lote" href="#" style="color:var(--green2);font-size:10px;font-family:var(--mono);text-decoration:none">Ver detalle &#8594;</a>
+        <!-- Fila 1: KPIs principales -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">VWC PRE + Último Riego</div>
+            <div class="kpi-val" id="kpi-manana">&#8212;</div>
+            <div class="kpi-sub" id="kpi-manana-n"></div>
+            <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);font-size:10px;color:var(--dim)" id="kpi-riego-manana">Sin riego registrado</div>
           </div>
-          <div class="clima-grid-3">
-            <div class="clima-col-header">Total día</div>
-            <div class="clima-col-header">Mañana</div>
-            <div class="clima-col-header">Tarde/Noche</div>
-            <div class="clima-val" style="color:#f0b429" id="kpi-temp">&#8212;</div>
-            <div class="clima-val" style="color:#f0b429" id="kpi-temp-man">&#8212;</div>
-            <div class="clima-val" style="color:#f0b429" id="kpi-temp-tar">&#8212;</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
-            <div class="clima-val" style="color:#22c55e" id="kpi-hr">&#8212;</div>
-            <div class="clima-val" style="color:#22c55e" id="kpi-hr-man">&#8212;</div>
-            <div class="clima-val" style="color:#22c55e" id="kpi-hr-tar">&#8212;</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
-            <div class="clima-val" id="kpi-vpd">&#8212;</div>
-            <div class="clima-val" id="kpi-vpd-man">&#8212;</div>
-            <div class="clima-val" id="kpi-vpd-tar">&#8212;</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">VPD</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">VPD</div>
-            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">VPD</div>
+          <div class="kpi-card">
+            <div class="kpi-label">EC Solución</div>
+            <div class="kpi-val" id="kpi-tarde">&#8212;</div>
+            <div class="kpi-sub" id="kpi-tarde-n"></div>
+            <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);font-size:10px;color:var(--dim)" id="kpi-riego-tarde">mS/cm</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">VPD actual</div>
+            <div class="kpi-val" id="kpi-proximo" style="font-size:20px">&#8212;</div>
+            <div class="kpi-sub" id="kpi-proximo-n" style="font-size:10px;color:var(--dim)">kPa</div>
           </div>
         </div>
 
-        <!-- Fila 2: Gráfico + Diagnóstico IA -->
-        <div class="panel-row">
-
-          <!-- Gráfico VWC -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">VWC · Historial 7 días</span>
-              <span class="live-badge">LIVE</span>
-            </div>
-            <div class="chart-area" id="chart-vwc">
-              <div class="chart-placeholder" id="chart-placeholder">
-                <div style="font-size:24px;margin-bottom:8px">&#128202;</div>
-                Importá un CSV para ver el historial de VWC
-              </div>
-              <!-- Las barras se generan por JS -->
-              <div id="chart-bars" style="display:flex;align-items:flex-end;gap:3px;height:100%;width:100%;padding:10px;display:none"></div>
-            </div>
-            <!-- Ultimas mediciones -->
-            <div style="margin-top:14px">
-              <div class="card-title" style="margin-bottom:8px">Últimas mediciones</div>
-              <div id="ultimas-mediciones"></div>
-            </div>
-          </div>
-
-          <!-- Diagnóstico IA -->
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">&#9679; Diagnóstico IA</span>
-              <span class="diag-dot"></span>
-            </div>
-            <div class="diag-text" id="diag-texto">
-              Seleccioná un lote para ver el diagnóstico agronómico generado por IA basado en tus datos de riego y clima.
-            </div>
-            <div class="diag-btns">
-              <button class="btn-aprobar" onclick="accionDiag('aprobar')">&#10003; Aprobar</button>
-              <button class="btn-rechazar" onclick="accionDiag('rechazar')">&#10005; Rechazar</button>
-            </div>
-            <!-- Lotes activos mini lista -->
-            <div style="margin-top:16px">
-              <div class="card-title" style="margin-bottom:8px">Lotes activos</div>
-              <div id="mini-lotes-diag"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fila 3: Módulos acciones -->
-        <h3>Módulos</h3>
-        <div class="modulos-grid">
+        <!-- Fila 2: Módulos -->
+        <h3 style="margin-top:4px">Módulos</h3>
+        <div class="modulos-grid" style="margin-bottom:16px">
           <button onclick="mostrarVista('lote-dna')" class="btn-mod" style="border-color:var(--green3);box-shadow:0 0 20px rgba(126,207,106,.08)">
             <span class="ai-tag">DNA</span>
             <span class="icon">&#129516;</span>
@@ -292,6 +241,81 @@
             <span class="label">Clima</span>
             <span class="sub">Temp · HR · VPD</span>
           </a>
+        </div>
+
+        <!-- Clima hoy compact (25% altura original) -->
+        <div class="card" style="margin-bottom:16px;padding:10px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="card-title" style="font-size:11px">&#127777; Clima hoy</span>
+            <a id="btn-clima-lote" href="#" style="color:var(--green2);font-size:10px;font-family:var(--mono);text-decoration:none">Ver detalle &#8594;</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:20px;margin-top:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">T°C</span>
+              <span style="font-size:20px;font-weight:700;color:#f0b429;font-family:var(--mono)" id="kpi-temp">&#8212;</span>
+              <span style="font-size:9px;color:var(--dim)">prom día</span>
+            </div>
+            <div style="width:0.5px;height:24px;background:var(--border)"></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">HR%</span>
+              <span style="font-size:20px;font-weight:700;color:#22c55e;font-family:var(--mono)" id="kpi-hr">&#8212;</span>
+              <span style="font-size:9px;color:var(--dim)">prom día</span>
+            </div>
+            <div style="width:0.5px;height:24px;background:var(--border)"></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;color:var(--dim);font-family:var(--mono)">VPD</span>
+              <span style="font-size:20px;font-weight:700;color:var(--green);font-family:var(--mono)" id="kpi-vpd">&#8212;</span>
+            </div>
+            <!-- IDs ocultos para mantener compatibilidad JS -->
+            <span id="kpi-temp-man" style="display:none"></span>
+            <span id="kpi-temp-tar" style="display:none"></span>
+            <span id="kpi-hr-man" style="display:none"></span>
+            <span id="kpi-hr-tar" style="display:none"></span>
+            <span id="kpi-vpd-man" style="display:none"></span>
+            <span id="kpi-vpd-tar" style="display:none"></span>
+          </div>
+        </div>
+
+        <!-- Fila final: VWC Historial + Diagnóstico IA -->
+        <div class="panel-row">
+
+          <!-- Gráfico VWC -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">VWC · Historial 7 días</span>
+              <span class="live-badge">LIVE</span>
+            </div>
+            <div class="chart-area" id="chart-vwc">
+              <div class="chart-placeholder" id="chart-placeholder">
+                <div style="font-size:24px;margin-bottom:8px">&#128202;</div>
+                Importá un CSV para ver el historial de VWC
+              </div>
+              <div id="chart-bars" style="display:flex;align-items:flex-end;gap:3px;height:100%;width:100%;padding:10px;display:none"></div>
+            </div>
+            <div style="margin-top:14px">
+              <div class="card-title" style="margin-bottom:8px">Últimas mediciones</div>
+              <div id="ultimas-mediciones"></div>
+            </div>
+          </div>
+
+          <!-- Diagnóstico IA -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">&#9679; Diagnóstico IA</span>
+              <span class="diag-dot"></span>
+            </div>
+            <div class="diag-text" id="diag-texto">
+              Seleccioná un lote para ver el diagnóstico agronómico generado por IA basado en tus datos de riego y clima.
+            </div>
+            <div class="diag-btns">
+              <button class="btn-aprobar" onclick="accionDiag('aprobar')">&#10003; Aprobar</button>
+              <button class="btn-rechazar" onclick="accionDiag('rechazar')">&#10005; Rechazar</button>
+            </div>
+            <div style="margin-top:16px">
+              <div class="card-title" style="margin-bottom:8px">Lotes activos</div>
+              <div id="mini-lotes-diag"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1112,6 +1136,52 @@ function irModulo(mod) {
 function irATareas() {
   irModulo('tareas')
 }
+
+// ─── SMARTLIFE SENSOR ────────────────────────────────────────
+function configurarSmartlife() {
+  const deviceId = prompt('Ingresá el Device ID de tu sensor Smartlife/Tuya:\n(Ej: bf1234567890abc)\n\nSi no tenés el ID, abrí la app Smartlife → dispositivo → compartir → copiar ID)');
+  if (!deviceId) return;
+  localStorage.setItem('smartlife_device_id', deviceId.trim());
+  alert('✅ Sensor guardado. Los datos aparecerán cuando el dispositivo esté activo.\n\nNota: para conexión automática se requiere configurar la clave API de Tuya en el servidor.');
+  actualizarSmartlife();
+}
+
+async function actualizarSmartlife() {
+  const deviceId = localStorage.getItem('smartlife_device_id');
+  const statusEl = document.getElementById('smartlife-status');
+  const tempEl = document.getElementById('sensor-temp-cultivo');
+  const hrEl = document.getElementById('sensor-hr-cultivo');
+  if (!deviceId || !statusEl) return;
+
+  statusEl.textContent = 'Conectando...';
+  statusEl.style.color = '#f0b429';
+
+  try {
+    const r = await fetch('/smartlife-sensor?device_id=' + encodeURIComponent(deviceId));
+    if (r.ok) {
+      const data = await r.json();
+      if (data.temp !== undefined) {
+        tempEl.textContent = data.temp.toFixed(1);
+        hrEl.textContent = data.hr.toFixed(0);
+        statusEl.textContent = '● EN VIVO';
+        statusEl.style.color = '#22c55e';
+      } else {
+        statusEl.textContent = 'Sin datos';
+        statusEl.style.color = 'var(--dim)';
+      }
+    } else {
+      statusEl.textContent = 'Sin conexión';
+      statusEl.style.color = 'var(--dim)';
+    }
+  } catch(e) {
+    statusEl.textContent = 'Sin conexión';
+    statusEl.style.color = 'var(--dim)';
+  }
+}
+
+// Intentar cargar sensor Smartlife al iniciar
+setTimeout(() => actualizarSmartlife(), 1500);
+setInterval(() => actualizarSmartlife(), 60000); // actualizar cada 1 min
 
 /* ─── CARGA CULTIVOS ───────────────────────────────────────── */
 async function cargarCultivos() {
@@ -2253,60 +2323,4 @@ function bvAbrirModal(id) {
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${ia.hipotesis}</div>
       <div style="font-size:11px;color:var(--green2)">${ia.sugerencia}</div>
       ${ia.contexto_dna ? `<div style="margin-top:8px;font-size:10px;color:var(--dim);font-family:var(--mono)">🧬 ${ia.contexto_dna}</div>` : ''}
-    </div>`
-  }
-
-  // Validación previa
-  if (r.validacion) {
-    body += `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px">✅ Validado: <b>${r.validacion}</b>${r.nota_val ? ' — ' + r.nota_val : ''}</div>`
-  }
-
-  document.getElementById('bvm-body').innerHTML = body
-
-  // Botones validación
-  const vals = ['confirmado','parcialmente_confirmado','descartado','en_seguimiento','resuelto']
-  document.getElementById('bvm-val-btns').innerHTML = vals.map(v =>
-    `<button onclick="bvSetValidacion('${v}')" class="bv-sev-btn" style="flex:none;font-size:10px;padding:6px 10px;${r.validacion===v?'border-color:var(--green);color:var(--green)':''}">${v.replace(/_/g,' ')}</button>`
-  ).join('')
-  document.getElementById('bvm-nota-val').value = r.nota_val || ''
-
-  document.getElementById('bv-modal').style.display = 'flex'
-}
-
-function bvSetValidacion(val) {
-  if (!bvEventoActivo) return
-  bvEventoActivo.validacion = val
-  document.getElementById('bvm-val-btns').querySelectorAll('button').forEach(b => {
-    b.style.borderColor = ''
-    b.style.color = ''
-    if (b.textContent.trim() === val.replace(/_/g,' ')) { b.style.borderColor = 'var(--green)'; b.style.color = 'var(--green)' }
-  })
-}
-
-function bvGuardarValidacion() {
-  if (!bvEventoActivo) return
-  const nota = document.getElementById('bvm-nota-val').value
-  bvEventoActivo.nota_val = nota
-  if (bvEventoActivo.validacion === 'resuelto') bvEventoActivo.estado = 'resuelto'
-  else if (bvEventoActivo.validacion === 'en_seguimiento') bvEventoActivo.estado = 'en_seguimiento'
-  try { localStorage.setItem(BV_KEY, JSON.stringify(bvRegistros)) } catch(e) {}
-  mostrarToast('✅ Validación guardada')
-  bvCerrarModal()
-  bvRenderTimeline()
-}
-
-function bvCerrarModal(e) {
-  if (e && e.target !== document.getElementById('bv-modal')) return
-  document.getElementById('bv-modal').style.display = 'none'
-  bvEventoActivo = null
-}
-
-/* ─── INIT ─────────────────────────────────────────────────── */
-cargarCultivos()
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW', e))
-}
-</script>
-</body>
-</html>
+   
