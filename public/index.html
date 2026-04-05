@@ -3,420 +3,2310 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1a5c32">
+  <meta name="theme-color" content="#0a120c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="CropOS">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <title>Evergreen Cultiva</title>
+  <title>CropOS</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="app">
 
-    <div class="header">
-      <img src="/logo.png" alt="Evergreen Cultiva" class="logo">
-      <div class="subtitle">Sistema de gestión de cultivo</div>
+<!-- Toggle móvil -->
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Menú">&#9776;</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div class="app-shell">
+
+  <!-- ═══ SIDEBAR ═══════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-logo">
+      <img src="/logo.png" alt="CropOS">
+      <div class="sidebar-logo-text">
+        <span class="sidebar-logo-name">CropOS</span>
+        <span class="sidebar-logo-ver">v2.0 · Sistema Cultivo</span>
+      </div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-size:12px;color:#4a7a5a" id="fecha-hora"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Principal</div>
+      <ul class="sidebar-nav">
+        <li>
+          <button class="active" onclick="mostrarVista('dashboard')">
+            <span class="nav-icon">&#9783;</span> Dashboard
+          </button>
+        </li>
+        <li>
+          <button onclick="mostrarVista('lote-dna')" id="nav-lote-dna">
+            <span class="nav-icon">&#129516;</span> Lote DNA Engine
+            <span class="sidebar-badge">DNA</span>
+          </button>
+        </li>
+        <li>
+          <button onclick="mostrarVista('bitacora')">
+            <span class="nav-icon">&#128247;</span> Bitácora Visual IA
+            <span class="sidebar-badge">IA</span>
+          </button>
+        </li>
+        <li>
+          <button onclick="irModulo('riego')">
+            <span class="nav-icon">&#128167;</span> Riego
+          </button>
+        </li>
+        <li>
+          <button onclick="irModulo('clima')">
+            <span class="nav-icon">&#127777;</span> Clima
+          </button>
+        </li>
+        <li>
+          <button onclick="irModulo('visual')">
+            <span class="nav-icon">&#128247;</span> Visual
+          </button>
+        </li>
+      </ul>
     </div>
 
-    <div id="vista-cultivos">
-      <h3>Cultivos activos</h3>
-      <div id="lista-cultivos"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Cultivo</div>
+      <ul class="sidebar-nav">
+        <li>
+          <button onclick="mostrarVista('nutricion')">
+            <span class="nav-icon">&#9881;</span> Nutrición
+          </button>
+        </li>
+        <li>
+          <button onclick="irModulo('tareas')">
+            <span class="nav-icon">&#9989;</span> Tareas
+          </button>
+        </li>
+      </ul>
     </div>
 
-    <div id="vista-lotes" style="display:none">
-      <button onclick="volverCultivos()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
-      <h3 id="titulo-cultivo"></h3>
-      <div id="lista-lotes"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">IA</div>
+      <ul class="sidebar-nav">
+        <li>
+          <button onclick="mostrarVista('diagnostico-ia')">
+            <span class="nav-icon">&#129302;</span> Diagnóstico IA
+            <span class="sidebar-badge">IA</span>
+          </button>
+        </li>
+      </ul>
     </div>
 
-    <div id="vista-acciones" style="display:none">
-      <button onclick="volverLotes()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto;margin-bottom:16px">← Volver</button>
-      <h3 id="titulo-lote"></h3>
+    <div class="sidebar-footer">
+      <div class="sidebar-clock" id="sidebar-clock"></div>
+    </div>
+  </aside>
 
-      <!-- KPIs -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-        <div class="kpi">
-          <div class="kpi-label">Pre Riego Matutino</div>
-          <div class="kpi-val" id="kpi-manana">—</div>
-          <div class="kpi-sub" id="kpi-manana-n"></div>
-          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3d2b;font-size:10px;color:#2d5a3d" id="kpi-riego-manana">Sin riego</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Pre Riego Tarde/Noche</div>
-          <div class="kpi-val" id="kpi-tarde">—</div>
-          <div class="kpi-sub" id="kpi-tarde-n"></div>
-          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1a3d2b;font-size:10px;color:#2d5a3d" id="kpi-riego-tarde">Sin riego</div>
-        </div>
-        <div class="kpi" id="kpi-alerta-box">
-          <div class="kpi-label">Próximo Riego</div>
-          <div class="kpi-val" id="kpi-proximo" style="font-size:16px">—</div>
-          <div class="kpi-sub" id="kpi-proximo-n"></div>
-        </div>
-        <div class="kpi" style="cursor:pointer" onclick="irATareas()">
-          <div class="kpi-label">Alerta Próxima Tarea</div>
-          <div class="kpi-val" id="kpi-tareas" style="font-size:16px">—</div>
-          <div class="kpi-sub" id="kpi-tareas-n"></div>
+  <!-- ═══ MAIN CONTENT ═══════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- ── TOPBAR ── -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 id="topbar-titulo">Dashboard General</h1>
+        <div class="topbar-sub" id="topbar-sub">Seleccioná un cultivo y lote para ver datos en tiempo real</div>
+      </div>
+      <div class="topbar-right">
+        <div class="alerta-btn" id="btn-alertas" style="display:none">
+          <span id="alertas-texto">0 alertas IA</span>
         </div>
       </div>
-
-      <!-- KPIs climaticos -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-        <div class="kpi">
-          <div class="kpi-label">Temperatura</div>
-          <div class="kpi-val" id="kpi-temp" style="font-size:20px">—</div>
-          <div class="kpi-sub" id="kpi-temp-n"></div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Humedad</div>
-          <div class="kpi-val" id="kpi-hr" style="font-size:20px">—</div>
-          <div class="kpi-sub" id="kpi-hr-n"></div>
-        </div>
-        <div class="kpi" id="kpi-vpd-box">
-          <div class="kpi-label">VPD</div>
-          <div class="kpi-val" id="kpi-vpd" style="font-size:20px">—</div>
-          <div class="kpi-sub" id="kpi-vpd-n"></div>
-        </div>
-      </div>
-
-      <!-- Diagnostico cruzado clima + suelo -->
-      <div id="diagnostico-cruzado" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
-
-      <!-- Alerta VWC -->
-      <div id="alerta-lote" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:500"></div>
-
-      <!-- Acciones -->
-      <h3>Acciones</h3>
-      <div class="grid">
-        <a id="btn-plan" href="#" class="btn-mod">
-          <span class="icon">📋</span>
-          <span class="label">Planificacion</span>
-          <span class="sub">Fertiriego semanal</span>
-        </a>
-        <a id="btn-import" href="#" class="btn-mod">
-          <span class="icon">📥</span>
-          <span class="label">Importar CSV</span>
-          <span class="sub">BlueLab Pulse</span>
-        </a>
-        <a id="btn-historial" href="#" class="btn-mod">
-          <span class="icon">📊</span>
-          <span class="label">Historial Riegos</span>
-          <span class="sub">Ver registros</span>
-        </a>
-        <a id="btn-tareas" href="#" class="btn-mod">
-          <span class="icon">✅</span>
-          <span class="label">Tareas</span>
-          <span class="sub">Planificacion diaria</span>
-        </a>
-        <a id="btn-clima" href="#" class="btn-mod">
-          <span class="icon">🌡️</span>
-          <span class="label">Clima</span>
-          <span class="sub">Temp · HR · VPD</span>
-        </a>
-      </div>
-
-      <h3 style="margin-top:20px">Ultimas mediciones</h3>
-      <div id="ultimas-mediciones"></div>
     </div>
 
-  </div>
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- VISTA: DASHBOARD                                       -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="vista activa" id="vista-dashboard">
 
-  <script>
-    const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
-    const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+      <!-- Cultivos -->
+      <div id="panel-cultivos">
+        <h3>Cultivos activos</h3>
+        <div id="lista-cultivos"></div>
+      </div>
 
-    let cultivoActual=null, loteActual=null
+      <!-- Lotes -->
+      <div id="panel-lotes" style="display:none">
+        <button class="btn-back" onclick="volverCultivos()">&#8592; Volver</button>
+        <h3 id="titulo-cultivo-panel"></h3>
+        <div id="lista-lotes"></div>
+      </div>
 
-    function actualizarReloj(){
-      document.getElementById('fecha-hora').textContent=new Date().toLocaleString('es-UY',{
-        timeZone:'America/Montevideo',weekday:'long',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'
-      })
-    }
-    actualizarReloj()
-    setInterval(actualizarReloj,30000)
+      <!-- Dashboard lote seleccionado -->
+      <div id="panel-lote-data" style="display:none">
+        <button class="btn-back" onclick="volverLotes()">&#8592; Volver a lotes</button>
+        <div id="alerta-lote" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:500"></div>
+        <div id="diagnostico-cruzado" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px"></div>
 
-    function formatFecha(f){
-      if(!f) return '-'
-      return new Date(f).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
-    }
-
-    function mostrar(id){
-      ['vista-cultivos','vista-lotes','vista-acciones'].forEach(v=>{
-        document.getElementById(v).style.display=v===id?'block':'none'
-      })
-    }
-    function volverCultivos(){mostrar('vista-cultivos')}
-    function volverLotes(){mostrar('vista-lotes')}
-
-    function irATareas(){
-      if(loteActual) location.href='/tareas.html?lote_id='+loteActual.id+'&lote='+encodeURIComponent(loteActual.nombre)
-    }
-
-    async function cargarCultivos(){
-      const res=await fetch(SURL+'/rest/v1/cultivos?activo=eq.true&order=id',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-      const cultivos=await res.json()
-      document.getElementById('lista-cultivos').innerHTML=cultivos.map(c=>`
-        <div onclick="abrirCultivo(${c.id},'${c.nombre}','${c.ubicacion}')"
-          style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:18px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:16px;font-weight:700">${c.nombre}</div>
-            <div style="font-size:11px;color:#2d5a3d;margin-top:3px">📍 ${c.ubicacion}</div>
+        <!-- Fila 1: KPIs -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">VWC post-riego · Mañana</div>
+            <div class="kpi-val" id="kpi-manana">&#8212;</div>
+            <div class="kpi-sub" id="kpi-manana-n"></div>
+            <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);font-size:10px;color:var(--dim)" id="kpi-riego-manana">Sin riego</div>
           </div>
-          <div style="font-size:22px;color:#2d5a3d">›</div>
-        </div>`).join('')+`
-        <div onclick="agregarCultivo()" style="background:transparent;border:1px dashed #1a3d2b;border-radius:14px;padding:14px;text-align:center;cursor:pointer;color:#2d5a3d;font-size:13px">
-          + Agregar cultivo
-        </div>`
-    }
-
-    async function abrirCultivo(id,nombre,ubicacion){
-      cultivoActual={id,nombre,ubicacion}
-      document.getElementById('titulo-cultivo').textContent=nombre+' · '+ubicacion
-      const res=await fetch(SURL+'/rest/v1/lotes?cultivo_id=eq.'+id+'&activo=eq.true&order=id',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-      const lotes=await res.json()
-      document.getElementById('lista-lotes').innerHTML=lotes.map(l=>`
-        <div onclick="abrirLote(${l.id},'${l.nombre.replace(/'/g,"\\'")}','${l.tipo}')"
-          style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:16px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:14px;font-weight:600">${l.nombre}</div>
-            <div style="font-size:10px;color:#2d5a3d;margin-top:2px">${l.tipo}</div>
+          <div class="kpi-card">
+            <div class="kpi-label">VWC post-riego · Tarde</div>
+            <div class="kpi-val" id="kpi-tarde">&#8212;</div>
+            <div class="kpi-sub" id="kpi-tarde-n"></div>
+            <div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border);font-size:10px;color:var(--dim)" id="kpi-riego-tarde">Sin riego</div>
           </div>
-          <div style="font-size:20px;color:#2d5a3d">›</div>
-        </div>`).join('')+`
-        <div onclick="agregarLote()" style="background:transparent;border:1px dashed #1a3d2b;border-radius:14px;padding:12px;text-align:center;cursor:pointer;color:#2d5a3d;font-size:13px">
-          + Agregar lote
-        </div>`
-      mostrar('vista-lotes')
-    }
+          <div class="kpi-card">
+            <div class="kpi-label">Próximo riego</div>
+            <div class="kpi-val" id="kpi-proximo" style="font-size:20px">&#8212;</div>
+            <div class="kpi-sub" id="kpi-proximo-n"></div>
+          </div>
+          <div class="kpi-card" style="cursor:pointer" onclick="irATareas()">
+            <div class="kpi-label">Próxima tarea</div>
+            <div class="kpi-val" id="kpi-tareas" style="font-size:20px">&#8212;</div>
+            <div class="kpi-sub" id="kpi-tareas-n"></div>
+          </div>
+        </div>
 
-    async function abrirLote(id,nombre,tipo){
-      loteActual={id,nombre,tipo}
-      document.getElementById('titulo-lote').textContent=nombre
-      document.getElementById('btn-plan').href     = `/planificacion.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
-      document.getElementById('btn-import').href   = `/import.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
-      document.getElementById('btn-historial').href= `/historial-riegos.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
-      document.getElementById('btn-tareas').href   = `/tareas.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
-      document.getElementById('btn-clima').href    = `/clima.html?lote_id=${id}&lote=${encodeURIComponent(nombre)}`
-      mostrar('vista-acciones')
-      cargarKpisLote(id)
-    }
+        <!-- KPIs clima inline -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <span class="card-title">Clima hoy</span>
+            <a id="btn-clima-lote" href="#" style="color:var(--green2);font-size:10px;font-family:var(--mono);text-decoration:none">Ver detalle &#8594;</a>
+          </div>
+          <div class="clima-grid-3">
+            <div class="clima-col-header">Total día</div>
+            <div class="clima-col-header">Mañana</div>
+            <div class="clima-col-header">Tarde/Noche</div>
+            <div class="clima-val" style="color:#f0b429" id="kpi-temp">&#8212;</div>
+            <div class="clima-val" style="color:#f0b429" id="kpi-temp-man">&#8212;</div>
+            <div class="clima-val" style="color:#f0b429" id="kpi-temp-tar">&#8212;</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">T°C</div>
+            <div class="clima-val" style="color:#22c55e" id="kpi-hr">&#8212;</div>
+            <div class="clima-val" style="color:#22c55e" id="kpi-hr-man">&#8212;</div>
+            <div class="clima-val" style="color:#22c55e" id="kpi-hr-tar">&#8212;</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">HR%</div>
+            <div class="clima-val" id="kpi-vpd">&#8212;</div>
+            <div class="clima-val" id="kpi-vpd-man">&#8212;</div>
+            <div class="clima-val" id="kpi-vpd-tar">&#8212;</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">VPD</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">VPD</div>
+            <div style="text-align:center;font-size:9px;color:var(--dim);font-family:var(--mono)">VPD</div>
+          </div>
+        </div>
 
-    async function cargarKpisLote(loteId){
-      // Reset KPIs
-      ;['kpi-manana','kpi-tarde','kpi-proximo','kpi-tareas'].forEach(id=>{
-        document.getElementById(id).textContent='—'
-      })
+        <!-- Fila 2: Gráfico + Diagnóstico IA -->
+        <div class="panel-row">
 
-      // Mediciones últimas 48h
-      const hace48h=new Date(Date.now()-48*3600000).toISOString()
-      const resMeds=await fetch(SURL+'/rest/v1/mediciones?lote_id=eq.'+loteId+'&fecha=gte.'+hace48h+'&select=vwc,ec,temperatura,fecha&order=fecha.desc&limit=200',
-        {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-      const meds=await resMeds.json()
-
-      if(Array.isArray(meds)&&meds.length){
-        const hoy24h=new Date(Date.now()-24*3600000).toISOString()
-        const prom=arr=>arr.length?(arr.reduce((s,m)=>s+parseFloat(m.vwc),0)/arr.length).toFixed(1):null
-
-        const manana=meds.filter(m=>{
-          if(!m.vwc||parseFloat(m.vwc)<=0) return false
-          if(new Date(m.fecha)<=new Date(hoy24h)) return false
-          const h=parseInt(new Date(m.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',hour:'2-digit',hour12:false}))
-          return h<12
-        })
-        const tarde=meds.filter(m=>{
-          if(!m.vwc||parseFloat(m.vwc)<=0) return false
-          if(new Date(m.fecha)<=new Date(hoy24h)) return false
-          const h=parseInt(new Date(m.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',hour:'2-digit',hour12:false}))
-          return h>=12
-        })
-
-        const vMan=prom(manana), vTar=prom(tarde)
-        document.getElementById('kpi-manana').textContent=vMan?vMan+'%':'—'
-        const ultMan=manana[0]
-        document.getElementById('kpi-manana-n').textContent=manana.length+' med.'+(ultMan?' · '+formatFecha(ultMan.fecha):'')
-        document.getElementById('kpi-tarde').textContent=vTar?vTar+'%':'—'
-        const ultTar=tarde[0]
-        document.getElementById('kpi-tarde-n').textContent=tarde.length+' med.'+(ultTar?' · '+formatFecha(ultTar.fecha):'')
-
-        // Alerta VWC
-        const vActual=parseFloat(vTar||vMan||0)
-        const alerta=document.getElementById('alerta-lote')
-        const kpiProximo=document.getElementById('kpi-proximo')
-        const kpiProximoN=document.getElementById('kpi-proximo-n')
-        if(vActual>0&&vActual<20){
-          alerta.style.display='block';alerta.style.background='#1a0a0a';alerta.style.borderLeft='3px solid #dc2626'
-          alerta.innerHTML='🔴 <b>VWC critico: '+vActual+'%</b> — Regar urgente'
-          kpiProximo.textContent='URGENTE';kpiProximo.style.color='#dc2626'
-          kpiProximoN.textContent='VWC '+vActual+'%'
-          document.getElementById('kpi-alerta-box').style.borderColor='#dc2626'
-        } else if(vActual>0&&vActual<22){
-          alerta.style.display='block';alerta.style.background='#1a1200';alerta.style.borderLeft='3px solid #f0b429'
-          alerta.innerHTML='🟡 <b>VWC bajo: '+vActual+'%</b> — Preparar riego'
-          kpiProximo.textContent='HOY';kpiProximo.style.color='#f0b429'
-          kpiProximoN.textContent='VWC '+vActual+'%'
-          document.getElementById('kpi-alerta-box').style.borderColor='#f0b429'
-        } else if(vActual>=28){
-          alerta.style.display='none'
-          kpiProximo.textContent='OK';kpiProximo.style.color='#22c55e'
-          kpiProximoN.textContent='VWC '+vActual+'%'
-        } else if(vActual>0){
-          alerta.style.display='none'
-          kpiProximo.textContent=vActual+'%';kpiProximo.style.color='#4a7a5a'
-          kpiProximoN.textContent='monitorear'
-        }
-
-        // Ultimas mediciones
-        document.getElementById('ultimas-mediciones').innerHTML=meds.slice(0,8).map(m=>`
-          <div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:11px;color:#2d5a3d">${formatFecha(m.fecha)}</div>
-            <div style="display:flex;gap:12px;font-size:13px">
-              <span>💧 <b style="color:#f0b429">${m.vwc||'—'}%</b></span>
-              ${m.ec?`<span>⚡ ${m.ec}</span>`:''}
-              ${m.temperatura?`<span>🌡️ ${m.temperatura}°</span>`:''}
+          <!-- Gráfico VWC -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">VWC · Historial 7 días</span>
+              <span class="live-badge">LIVE</span>
             </div>
-          </div>`).join('')
+            <div class="chart-area" id="chart-vwc">
+              <div class="chart-placeholder" id="chart-placeholder">
+                <div style="font-size:24px;margin-bottom:8px">&#128202;</div>
+                Importá un CSV para ver el historial de VWC
+              </div>
+              <!-- Las barras se generan por JS -->
+              <div id="chart-bars" style="display:flex;align-items:flex-end;gap:3px;height:100%;width:100%;padding:10px;display:none"></div>
+            </div>
+            <!-- Ultimas mediciones -->
+            <div style="margin-top:14px">
+              <div class="card-title" style="margin-bottom:8px">Últimas mediciones</div>
+              <div id="ultimas-mediciones"></div>
+            </div>
+          </div>
+
+          <!-- Diagnóstico IA -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">&#9679; Diagnóstico IA</span>
+              <span class="diag-dot"></span>
+            </div>
+            <div class="diag-text" id="diag-texto">
+              Seleccioná un lote para ver el diagnóstico agronómico generado por IA basado en tus datos de riego y clima.
+            </div>
+            <div class="diag-btns">
+              <button class="btn-aprobar" onclick="accionDiag('aprobar')">&#10003; Aprobar</button>
+              <button class="btn-rechazar" onclick="accionDiag('rechazar')">&#10005; Rechazar</button>
+            </div>
+            <!-- Lotes activos mini lista -->
+            <div style="margin-top:16px">
+              <div class="card-title" style="margin-bottom:8px">Lotes activos</div>
+              <div id="mini-lotes-diag"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fila 3: Módulos acciones -->
+        <h3>Módulos</h3>
+        <div class="modulos-grid">
+          <button onclick="mostrarVista('lote-dna')" class="btn-mod" style="border-color:var(--green3);box-shadow:0 0 20px rgba(126,207,106,.08)">
+            <span class="ai-tag">DNA</span>
+            <span class="icon">&#129516;</span>
+            <span class="label">Lote DNA Engine</span>
+            <span class="sub">Perfil estructural del cultivo</span>
+          </button>
+          <button onclick="mostrarVista('bitacora')" class="btn-mod" style="border-color:var(--green3);box-shadow:0 0 20px rgba(126,207,106,.08)">
+            <span class="ai-tag">IA</span>
+            <span class="icon">&#128247;</span>
+            <span class="label">Bitácora Visual IA</span>
+            <span class="sub">Observación agronómica trazable</span>
+          </button>
+          <a id="btn-plan" href="#" class="btn-mod">
+            <span class="ai-tag">IA</span>
+            <span class="icon">&#128203;</span>
+            <span class="label">Planificación</span>
+            <span class="sub">Fertiriego semanal</span>
+          </a>
+          <a id="btn-visual" href="#" class="btn-mod">
+            <span class="ai-tag">IA</span>
+            <span class="icon">&#128247;</span>
+            <span class="label">Visual</span>
+            <span class="sub">Registro fotográfico</span>
+          </a>
+          <a id="btn-import" href="#" class="btn-mod">
+            <span class="icon">&#128229;</span>
+            <span class="label">Importar CSV</span>
+            <span class="sub">BlueLab Pulse</span>
+          </a>
+          <a id="btn-tareas" href="#" class="btn-mod">
+            <span class="icon">&#9989;</span>
+            <span class="label">Tareas</span>
+            <span class="sub">Planificación diaria</span>
+          </a>
+          <a id="btn-historial" href="#" class="btn-mod">
+            <span class="icon">&#128202;</span>
+            <span class="label">Historial Riegos</span>
+            <span class="sub">Ver registros</span>
+          </a>
+          <a id="btn-clima" href="#" class="btn-mod">
+            <span class="ai-tag">IA</span>
+            <span class="icon">&#127777;</span>
+            <span class="label">Clima</span>
+            <span class="sub">Temp · HR · VPD</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- VISTA: LOTE DNA ENGINE                                 -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="vista" id="vista-lote-dna">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">&#129516; Lote DNA Engine</div>
+          <div style="font-size:12px;color:var(--muted)" id="dna-lote-nombre">Seleccioná un lote para cargar su perfil</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="dna-progreso-badge" style="font-size:10px;font-family:var(--mono);color:var(--dim);border:0.5px solid var(--border);border-radius:20px;padding:4px 12px">0/10 secciones</div>
+          <button onclick="guardarDNA()" style="width:auto;padding:8px 18px;font-size:12px;background:rgba(126,207,106,.12);border:0.5px solid var(--green2);color:var(--green)">&#10003; Guardar todo</button>
+        </div>
+      </div>
+      <div style="height:2px;background:linear-gradient(90deg,var(--green),transparent);border-radius:2px;margin-bottom:20px;opacity:.3" id="dna-progress-bar"></div>
+
+      <!-- Acordeón de secciones -->
+
+      <!-- 1. IDENTIFICACIÓN -->
+      <div class="dna-section" id="dna-sec-1">
+        <div class="dna-sec-header" onclick="toggleDNA(1)">
+          <div class="dna-sec-title"><span class="dna-sec-num">01</span> Identificación del lote</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-1"></span>
+            <span class="dna-chevron" id="dna-chev-1">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-1">
+          <div class="dna-grid2">
+            <div class="dna-field"><label>Nombre del lote</label><input type="text" id="dna-nombre-lote" placeholder="Ej: Camellón Norte A"></div>
+            <div class="dna-field"><label>Código interno</label><input type="text" id="dna-codigo" placeholder="Ej: CNT-A-01"></div>
+            <div class="dna-field"><label>Ubicación</label>
+              <select id="dna-ubicacion">
+                <option value="">-- Seleccionar --</option>
+                <option>Campo / exterior</option>
+                <option>Invernadero</option>
+                <option>Indoor</option>
+                <option>Greenhouse</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Superficie</label><input type="text" id="dna-superficie" placeholder="Ej: 500 m²"></div>
+            <div class="dna-field"><label>Fecha de inicio</label><input type="date" id="dna-fecha-inicio"></div>
+            <div class="dna-field"><label>Responsable técnico</label><input type="text" id="dna-responsable" placeholder="Nombre del técnico"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. ESTRUCTURA DE PLANTACIÓN -->
+      <div class="dna-section" id="dna-sec-2">
+        <div class="dna-sec-header" onclick="toggleDNA(2)">
+          <div class="dna-sec-title"><span class="dna-sec-num">02</span> Estructura de plantación</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-2"></span>
+            <span class="dna-chevron" id="dna-chev-2">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-2" style="display:none">
+          <div class="dna-grid2">
+            <div class="dna-field"><label>Cantidad de plantas</label><input type="number" id="dna-plantas" placeholder="Ej: 120"></div>
+            <div class="dna-field"><label>Tipo de cultivo</label>
+              <select id="dna-tipo-cultivo">
+                <option value="">-- Seleccionar --</option>
+                <option>Macetas</option>
+                <option>Suelo</option>
+                <option>Camellón</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Distancia entre plantas</label><input type="text" id="dna-dist-plantas" placeholder="Ej: 1.2 m"></div>
+            <div class="dna-field"><label>Distancia entre líneas</label><input type="text" id="dna-dist-lineas" placeholder="Ej: 1.5 m"></div>
+            <div class="dna-field"><label>Volumen de maceta</label><input type="text" id="dna-vol-maceta" placeholder="Ej: 20L"></div>
+            <div class="dna-field"><label>Densidad plantas/m²</label><input type="number" id="dna-densidad" placeholder="Ej: 4"></div>
+          </div>
+          <div class="dna-info-box">&#9432; Estos valores se usarán para calcular consumo de agua, fertilización estimada y rendimiento por lote.</div>
+        </div>
+      </div>
+
+      <!-- 3. GENÉTICA -->
+      <div class="dna-section" id="dna-sec-3">
+        <div class="dna-sec-header" onclick="toggleDNA(3)">
+          <div class="dna-sec-title"><span class="dna-sec-num">03</span> Genética del cultivo</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-3"></span>
+            <span class="dna-chevron" id="dna-chev-3">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-3" style="display:none">
+          <div class="dna-grid2">
+            <div class="dna-field"><label>Variedad</label><input type="text" id="dna-variedad" placeholder="Ej: White Widow"></div>
+            <div class="dna-field"><label>Breeder / Banco</label><input type="text" id="dna-breeder" placeholder="Ej: Royal Queen Seeds"></div>
+            <div class="dna-field"><label>Dominancia</label>
+              <select id="dna-dominancia">
+                <option value="">-- Seleccionar --</option>
+                <option>Índica</option>
+                <option>Sativa</option>
+                <option>Híbrida</option>
+                <option>Ruderalis</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>THC estimado (%)</label><input type="number" id="dna-thc" placeholder="Ej: 20" step="0.1" min="0" max="35"></div>
+            <div class="dna-field"><label>CBD estimado (%)</label><input type="number" id="dna-cbd" placeholder="Ej: 1" step="0.1" min="0" max="25"></div>
+            <div class="dna-field"><label>Tiempo de floración (días)</label><input type="number" id="dna-floracion" placeholder="Ej: 63"></div>
+            <div class="dna-field"><label>Altura esperada</label><input type="text" id="dna-altura" placeholder="Ej: 80-120 cm"></div>
+            <div class="dna-field"><label>Sensibilidad a humedad</label>
+              <select id="dna-sens-humedad">
+                <option value="">-- Seleccionar --</option>
+                <option>Baja</option>
+                <option>Media</option>
+                <option>Alta (propensa a hongos)</option>
+              </select>
+            </div>
+          </div>
+          <!-- Lista variedades registradas -->
+          <div style="margin-top:16px;border-top:0.5px solid var(--border);padding-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div class="dna-sublabel">Variedades guardadas</div>
+              <button onclick="guardarVariedadDNA()" style="width:auto;padding:5px 12px;font-size:11px">+ Guardar variedad</button>
+            </div>
+            <div id="lista-variedades-dna"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. SISTEMA PRODUCTIVO -->
+      <div class="dna-section" id="dna-sec-4">
+        <div class="dna-sec-header" onclick="toggleDNA(4)">
+          <div class="dna-sec-title"><span class="dna-sec-num">04</span> Sistema productivo</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-4"></span>
+            <span class="dna-chevron" id="dna-chev-4">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-4" style="display:none">
+          <div class="dna-grid2">
+            <div class="dna-field"><label>Tipo de sistema</label>
+              <select id="dna-sistema">
+                <option value="">-- Seleccionar --</option>
+                <option>Exterior</option>
+                <option>Invernadero</option>
+                <option>Indoor</option>
+                <option>Híbrido</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Ventilación</label>
+              <select id="dna-ventilacion">
+                <option value="">-- Seleccionar --</option>
+                <option>Natural</option>
+                <option>Forzada (extractores)</option>
+                <option>Aire acondicionado</option>
+                <option>Sistema HVAC</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Extracción (m³/h)</label>
+              <input type="number" id="dna-extraccion" placeholder="Ej: 1200" min="0" step="50">
+            </div>
+            <div class="dna-field"><label>Calefacción</label>
+              <select id="dna-calefaccion">
+                <option value="">-- Seleccionar --</option>
+                <option>No aplica</option>
+                <option>Eléctrica</option>
+                <option>Gas</option>
+                <option>Leña / biomasa</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Deshumidificación</label>
+              <select id="dna-deshumid">
+                <option value="">-- Seleccionar --</option>
+                <option>No aplica</option>
+                <option>Deshumidificador eléctrico</option>
+                <option>Ventilación forzada</option>
+                <option>Sistema centralizado</option>
+              </select>
+            </div>
+          </div>
+          <!-- Iluminación múltiple -->
+          <div style="margin-top:16px;border-top:0.5px solid var(--border);padding-top:14px">
+            <div class="dna-sublabel" style="margin-bottom:10px">Tipo de iluminación (seleccioná todas las que aplican)</div>
+            <div class="dna-sensor-grid">
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-il-solar"> <span>&#9728; Solar / Natural</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-il-led"> <span>&#128161; LED</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-il-hps"> <span>&#128308; HPS</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-il-cmh"> <span>&#128420; CMH / LEC</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-il-sodio"> <span>&#127893; Sodio alta presión</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-il-plasma"> <span>&#9889; Plasma</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. SUSTRATO / SUELO -->
+      <div class="dna-section" id="dna-sec-5">
+        <div class="dna-sec-header" onclick="toggleDNA(5)">
+          <div class="dna-sec-title"><span class="dna-sec-num">05</span> Sustrato / Suelo</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-5"></span>
+            <span class="dna-chevron" id="dna-chev-5">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-5" style="display:none">
+          <div class="dna-grid2">
+            <div class="dna-field"><label>Tipo de sustrato</label>
+              <select id="dna-sustrato" onchange="toggleMezcla(this.value)">
+                <option value="">-- Seleccionar --</option>
+                <option>Coco</option>
+                <option>Turba</option>
+                <option>Suelo vivo</option>
+                <option value="Mezcla personalizada">Mezcla personalizada</option>
+                <option>Perlita</option>
+                <option>Lana de roca</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Capacidad retención agua</label>
+              <select id="dna-retencion">
+                <option value="">-- Seleccionar --</option>
+                <option>Baja (drenante)</option>
+                <option>Media</option>
+                <option>Alta (retentivo)</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>EC inicial del sustrato</label><input type="number" id="dna-ec-sustrato" placeholder="Ej: 0.5" step="0.1" min="0"></div>
+            <div class="dna-field"><label>pH inicial</label><input type="number" id="dna-ph-sustrato" placeholder="Ej: 6.0" step="0.1" min="4" max="9"></div>
+          </div>
+          <!-- Composición mezcla personalizada -->
+          <div id="dna-mezcla-box" style="display:none;margin-top:16px;border-top:0.5px solid var(--border);padding-top:14px">
+            <div class="dna-sublabel" style="margin-bottom:10px">Composición de la mezcla (tildá los componentes)</div>
+            <div class="dna-sensor-grid">
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-turba-rubia"> <span>&#127806; Turba rubia</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-turba-negra"> <span>&#129008; Turba negra</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-compost"> <span>&#9832; Compost</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-perlita"> <span>&#11093; Perlita</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-vermiculita"> <span>&#129664; Vermiculita</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-humus"> <span>&#127823; Humus de lombriz</span>
+              </label>
+              <label class="dna-sensor-item">
+                <input type="checkbox" id="dna-m-tierra"> <span>&#127758; Tierra negra</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. SISTEMA DE RIEGO -->
+      <div class="dna-section" id="dna-sec-6">
+        <div class="dna-sec-header" onclick="toggleDNA(6)">
+          <div class="dna-sec-title"><span class="dna-sec-num">06</span> Sistema de riego</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-6"></span>
+            <span class="dna-chevron" id="dna-chev-6">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-6" style="display:none">
+          <div class="dna-grid2">
+            <div class="dna-field"><label>Tipo de riego</label>
+              <select id="dna-tipo-riego">
+                <option value="">-- Seleccionar --</option>
+                <option>Goteo</option>
+                <option>Microtubos</option>
+                <option>Aspersión</option>
+                <option>Manual</option>
+                <option>Nebulización</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Caudal gotero (L/h)</label><input type="number" id="dna-caudal" placeholder="Ej: 8" step="0.5" min="0"></div>
+            <div class="dna-field"><label>Goteros por planta</label><input type="number" id="dna-goteros" placeholder="Ej: 2" min="1"></div>
+            <div class="dna-field"><label>Capacidad tanque (L)</label><input type="number" id="dna-tanque" placeholder="Ej: 1000" min="0"></div>
+            <div class="dna-field"><label>Tipo de bomba</label>
+              <select id="dna-bomba">
+                <option value="">-- Seleccionar --</option>
+                <option>Eléctrica sumergible</option>
+                <option>Eléctrica de superficie</option>
+                <option>Presión de red</option>
+                <option>Sin bomba (gravedad)</option>
+              </select>
+            </div>
+            <div class="dna-field"><label>Potencia de bomba (HP)</label>
+              <input type="number" id="dna-potencia-bomba" placeholder="Ej: 0.5" step="0.25" min="0">
+            </div>
+          </div>
+          <div class="dna-info-box">&#9432; Con estos datos el sistema calculará ml por riego, litros totales por lote y frecuencia óptima.</div>
+        </div>
+      </div>
+
+      <!-- 7. SENSORES INSTALADOS -->
+      <div class="dna-section" id="dna-sec-7">
+        <div class="dna-sec-header" onclick="toggleDNA(7)">
+          <div class="dna-sec-title"><span class="dna-sec-num">07</span> Sensores instalados</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-7"></span>
+            <span class="dna-chevron" id="dna-chev-7">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-7" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Seleccioná los sensores disponibles en este lote. El sistema adaptará qué datos esperar.</div>
+          <div class="dna-sensor-grid">
+            <label class="dna-sensor-item">
+              <input type="checkbox" id="dna-s-vwc"> <span>&#127991; Humedad suelo (VWC)</span>
+            </label>
+            <label class="dna-sensor-item">
+              <input type="checkbox" id="dna-s-ec"> <span>&#9889; EC suelo</span>
+            </label>
+            <label class="dna-sensor-item">
+              <input type="checkbox" id="dna-s-temp"> <span>&#127777; Temperatura suelo</span>
+            </label>
+            <label class="dna-sensor-item">
+              <input type="checkbox" id="dna-s-hr"> <span>&#128167; Humedad ambiente</span>
+            </label>
+            <label class="dna-sensor-item">
+              <input type="checkbox" id="dna-s-co2"> <span>&#127807; Sensor CO₂</span>
+            </label>
+            <label class="dna-sensor-item">
+              <input type="checkbox" id="dna-s-luz"> <span>&#9728; Sensor luz (PPFD)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. FASE ACTUAL -->
+      <div class="dna-section" id="dna-sec-9">
+        <div class="dna-sec-header" onclick="toggleDNA(9)">
+          <div class="dna-sec-title"><span class="dna-sec-num">09</span> Fase actual del cultivo</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-9"></span>
+            <span class="dna-chevron" id="dna-chev-9">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-9" style="display:none">
+          <div class="dna-fase-grid">
+            <label class="dna-fase-item" onclick="selFase(this,'clonacion')">
+              <input type="radio" name="dna-fase" value="clonacion" id="dna-fase-clonacion">
+              <span class="dna-fase-icon">&#127807;</span>
+              <span class="dna-fase-label">Clonación</span>
+            </label>
+            <label class="dna-fase-item" onclick="selFase(this,'vegetativo')">
+              <input type="radio" name="dna-fase" value="vegetativo" id="dna-fase-vegetativo">
+              <span class="dna-fase-icon">&#127823;</span>
+              <span class="dna-fase-label">Vegetativo</span>
+            </label>
+            <label class="dna-fase-item" onclick="selFase(this,'prefloracion')">
+              <input type="radio" name="dna-fase" value="prefloracion" id="dna-fase-prefloracion">
+              <span class="dna-fase-icon">&#127800;</span>
+              <span class="dna-fase-label">Prefloración</span>
+            </label>
+            <label class="dna-fase-item" onclick="selFase(this,'floracion')">
+              <input type="radio" name="dna-fase" value="floracion" id="dna-fase-floracion">
+              <span class="dna-fase-icon">&#127801;</span>
+              <span class="dna-fase-label">Floración</span>
+            </label>
+            <label class="dna-fase-item" onclick="selFase(this,'engorde')">
+              <input type="radio" name="dna-fase" value="engorde" id="dna-fase-engorde">
+              <span class="dna-fase-icon">&#11088;</span>
+              <span class="dna-fase-label">Engorde</span>
+            </label>
+            <label class="dna-fase-item" onclick="selFase(this,'maduracion')">
+              <input type="radio" name="dna-fase" value="maduracion" id="dna-fase-maduracion">
+              <span class="dna-fase-icon">&#127752;</span>
+              <span class="dna-fase-label">Maduración</span>
+            </label>
+          </div>
+          <div class="dna-field" style="margin-top:14px"><label>Días en fase actual</label><input type="number" id="dna-dias-fase" placeholder="Ej: 14" min="0"></div>
+        </div>
+      </div>
+
+      <!-- 10. OBJETIVO PRODUCTIVO + MODELO AGRONÓMICO -->
+      <div class="dna-section" id="dna-sec-10">
+        <div class="dna-sec-header" onclick="toggleDNA(10)">
+          <div class="dna-sec-title"><span class="dna-sec-num">10</span> Objetivo productivo y modelo agronómico</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dna-sec-check" id="dna-check-10"></span>
+            <span class="dna-chevron" id="dna-chev-10">&#8964;</span>
+          </div>
+        </div>
+        <div class="dna-sec-body" id="dna-body-10" style="display:none">
+          <div style="margin-bottom:16px">
+            <div class="dna-sublabel" style="margin-bottom:10px">Objetivo principal del cultivo</div>
+            <div class="dna-obj-grid">
+              <label class="dna-obj-item" onclick="selObjetivo(this,'produccion')">
+                <input type="radio" name="dna-objetivo" value="produccion" id="dna-obj-prod">
+                <span class="dna-obj-icon">&#127919;</span>
+                <span>Producción máxima</span>
+              </label>
+              <label class="dna-obj-item" onclick="selObjetivo(this,'calidad')">
+                <input type="radio" name="dna-objetivo" value="calidad" id="dna-obj-cal">
+                <span class="dna-obj-icon">&#11088;</span>
+                <span>Calidad máxima</span>
+              </label>
+              <label class="dna-obj-item" onclick="selObjetivo(this,'extraccion')">
+                <input type="radio" name="dna-objetivo" value="extraccion" id="dna-obj-ext">
+                <span class="dna-obj-icon">&#128138;</span>
+                <span>Extracción</span>
+              </label>
+              <label class="dna-obj-item" onclick="selObjetivo(this,'semilla')">
+                <input type="radio" name="dna-objetivo" value="semilla" id="dna-obj-sem">
+                <span class="dna-obj-icon">&#127807;</span>
+                <span>Semilla</span>
+              </label>
+              <label class="dna-obj-item" onclick="selObjetivo(this,'fibra')">
+                <input type="radio" name="dna-objetivo" value="fibra" id="dna-obj-fib">
+                <span class="dna-obj-icon">&#129523;</span>
+                <span>Fibra</span>
+              </label>
+            </div>
+          </div>
+          <div style="border-top:0.5px solid var(--border);padding-top:16px">
+            <div class="dna-sublabel" style="margin-bottom:4px">Modelo agronómico del lote</div>
+            <div style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:12px">Define cómo el motor IA interpreta los datos de riego, nutrición y clima</div>
+            <div class="dna-modelo-grid">
+              <label class="dna-modelo-item" onclick="selModelo(this,'vegetativo')">
+                <input type="radio" name="dna-modelo" value="vegetativo" id="dna-mod-veg">
+                <div class="dna-modelo-icon">&#9650;</div>
+                <div class="dna-modelo-nombre">Vegetativo fuerte</div>
+                <div class="dna-modelo-desc">Prioriza crecimiento y masa foliar. VWC alto, EC bajo.</div>
+              </label>
+              <label class="dna-modelo-item" onclick="selModelo(this,'generativo')">
+                <input type="radio" name="dna-modelo" value="generativo" id="dna-mod-gen">
+                <div class="dna-modelo-icon">&#11036;</div>
+                <div class="dna-modelo-nombre">Generativo</div>
+                <div class="dna-modelo-desc">Estimula floración y fruto. VWC moderado, EC alto.</div>
+              </label>
+              <label class="dna-modelo-item" onclick="selModelo(this,'balanceado')">
+                <input type="radio" name="dna-modelo" value="balanceado" id="dna-mod-bal">
+                <div class="dna-modelo-icon">&#9646;</div>
+                <div class="dna-modelo-nombre">Balanceado</div>
+                <div class="dna-modelo-desc">Equilibrio entre crecimiento y producción.</div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón guardar final -->
+      <div style="margin-top:24px;display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="guardarDNA()" style="width:auto;padding:12px 28px;font-size:13px;background:rgba(126,207,106,.12);border:0.5px solid var(--green2);color:var(--green)">&#10003; Guardar perfil del lote</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- VISTA: BITÁCORA VISUAL IA                              -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="vista" id="vista-bitacora">
+
+      <!-- Sub-tabs -->
+      <div class="btabs">
+        <button class="btab active" onclick="bvTab('carga')" id="btab-carga">&#43; Carga rápida</button>
+        <button class="btab" onclick="bvTab('timeline')" id="btab-timeline">&#128337; Timeline</button>
+        <button class="btab" onclick="bvTab('tablero')" id="btab-tablero">&#9881; Tablero IA</button>
+      </div>
+
+      <!-- ── TAB: CARGA RÁPIDA ── -->
+      <div id="bv-panel-carga">
+
+        <div class="card" style="margin-bottom:12px">
+          <!-- Upload zona -->
+          <div class="bv-upload-zone" onclick="document.getElementById('bv-file-input').click()">
+            <div id="bv-upload-preview-area">
+              <div class="bv-upload-icon">&#128247;</div>
+              <div class="bv-upload-label">Tocá para agregar fotos o videos</div>
+              <div class="bv-upload-sub">JPG · PNG · MP4 · MOV · máx 20MB</div>
+            </div>
+            <div class="bv-preview-strip" id="bv-preview-strip"></div>
+          </div>
+          <input type="file" id="bv-file-input" accept="image/*,video/*" multiple style="display:none" onchange="bvAgregarMedia(this)">
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <!-- Ubicación -->
+          <div class="card-title" style="margin-bottom:12px">Ubicación del evento</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="dna-field">
+              <label>Lote</label>
+              <select id="bv-lote-sel">
+                <option value="">-- Seleccionar lote --</option>
+              </select>
+            </div>
+            <div class="dna-field">
+              <label>Sector</label>
+              <input type="text" id="bv-sector" placeholder="Ej: Sector B">
+            </div>
+          </div>
+          <div class="dna-field">
+            <label>Sub-sector / Cama / Hilera / Bloque</label>
+            <input type="text" id="bv-subsector" placeholder="Ej: Hilera 3 · Cama 7">
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <!-- Tipo de evento -->
+          <div class="card-title" style="margin-bottom:10px">Tipo de evento</div>
+          <div class="bv-tipo-grid" id="bv-tipo-grid">
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'seguimiento_general')"><span class="bv-tipo-icon">&#128200;</span>Seguimiento</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'anomalia_visual')"><span class="bv-tipo-icon">&#128680;</span>Anomalía</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'pre_riego')"><span class="bv-tipo-icon">&#128167;</span>Pre-riego</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'post_riego')"><span class="bv-tipo-icon">&#128166;</span>Post-riego</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'poda')"><span class="bv-tipo-icon">&#9986;</span>Poda</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'nutricion')"><span class="bv-tipo-icon">&#9881;</span>Nutrición</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'plaga')"><span class="bv-tipo-icon">&#128027;</span>Plaga</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'patogeno')"><span class="bv-tipo-icon">&#129440;</span>Patógeno</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'estres_termico')"><span class="bv-tipo-icon">&#127777;</span>Estrés T°</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'floracion')"><span class="bv-tipo-icon">&#127801;</span>Floración</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'cosecha')"><span class="bv-tipo-icon">&#127807;</span>Cosecha</button>
+            <button class="bv-tipo-btn" onclick="bvSelTipo(this,'observacion_libre')"><span class="bv-tipo-icon">&#128221;</span>Libre</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <!-- Severidad + descripción -->
+          <div class="card-title" style="margin-bottom:10px">Severidad</div>
+          <div class="bv-sev-row" id="bv-sev-row">
+            <button class="bv-sev-btn" data-sev="baja"    onclick="bvSelSev(this)">🟢 Baja</button>
+            <button class="bv-sev-btn" data-sev="media"   onclick="bvSelSev(this)">🟡 Media</button>
+            <button class="bv-sev-btn" data-sev="alta"    onclick="bvSelSev(this)">🟠 Alta</button>
+            <button class="bv-sev-btn" data-sev="critica" onclick="bvSelSev(this)">🔴 Crítica</button>
+          </div>
+          <div class="dna-field" style="margin-top:14px">
+            <label>Descripción del evento</label>
+            <textarea id="bv-descripcion" placeholder="Describí lo que observaste: síntomas, ubicación exacta, cantidad de plantas afectadas..." style="min-height:80px"></textarea>
+          </div>
+        </div>
+
+        <!-- Variables agronómicas (colapsable) -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleBvMetricas()">
+            <div class="card-title">Variables agronómicas (opcional)</div>
+            <span id="bv-met-chev" style="color:var(--dim);font-size:14px">&#8964;</span>
+          </div>
+          <div id="bv-metricas-panel" style="display:none;margin-top:14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+              <div class="dna-field"><label>VWC (%)</label><input type="number" id="bv-m-vwc" placeholder="Ej: 28.5" step="0.1"></div>
+              <div class="dna-field"><label>EC (mS/cm)</label><input type="number" id="bv-m-ec" placeholder="Ej: 2.1" step="0.1"></div>
+              <div class="dna-field"><label>pH</label><input type="number" id="bv-m-ph" placeholder="Ej: 6.0" step="0.1"></div>
+              <div class="dna-field"><label>Temp. amb. (°C)</label><input type="number" id="bv-m-temp" placeholder="Ej: 25.4" step="0.1"></div>
+              <div class="dna-field"><label>HR (%)</label><input type="number" id="bv-m-hr" placeholder="Ej: 65" step="1"></div>
+              <div class="dna-field"><label>VPD (kPa)</label><input type="number" id="bv-m-vpd" placeholder="Ej: 1.2" step="0.01"></div>
+              <div class="dna-field"><label>Vol. riego (L)</label><input type="number" id="bv-m-vol" placeholder="Ej: 3.5" step="0.1"></div>
+              <div class="dna-field"><label>Drenaje (%)</label><input type="number" id="bv-m-drenaje" placeholder="Ej: 20" step="1"></div>
+              <div class="dna-field"><label>PPFD</label><input type="number" id="bv-m-ppfd" placeholder="Ej: 680" step="10"></div>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="bvGuardarRegistro()" style="font-size:14px;padding:14px;background:rgba(126,207,106,.12);border:0.5px solid var(--green2);color:var(--green)">
+          &#128247; REGISTRAR OBSERVACIÓN
+        </button>
+      </div>
+
+      <!-- ── TAB: TIMELINE ── -->
+      <div id="bv-panel-timeline" style="display:none">
+        <!-- Filtros -->
+        <div class="bv-filtros">
+          <select id="bv-f-lote" onchange="bvRenderTimeline()">
+            <option value="">Todos los lotes</option>
+          </select>
+          <select id="bv-f-tipo" onchange="bvRenderTimeline()">
+            <option value="">Todos los tipos</option>
+            <option value="anomalia_visual">Anomalía visual</option>
+            <option value="plaga">Plaga</option>
+            <option value="patogeno">Patógeno</option>
+            <option value="nutricion">Nutrición</option>
+            <option value="seguimiento_general">Seguimiento</option>
+            <option value="pre_riego">Pre-riego</option>
+            <option value="post_riego">Post-riego</option>
+            <option value="floracion">Floración</option>
+            <option value="cosecha">Cosecha</option>
+          </select>
+          <select id="bv-f-sev" onchange="bvRenderTimeline()">
+            <option value="">Toda severidad</option>
+            <option value="critica">🔴 Crítica</option>
+            <option value="alta">🟠 Alta</option>
+            <option value="media">🟡 Media</option>
+            <option value="baja">🟢 Baja</option>
+          </select>
+          <select id="bv-f-estado" onchange="bvRenderTimeline()">
+            <option value="">Todos los estados</option>
+            <option value="abierto">Abierto</option>
+            <option value="en_seguimiento">En seguimiento</option>
+            <option value="resuelto">Resuelto</option>
+          </select>
+        </div>
+        <div id="bv-timeline-cont" class="bv-timeline">
+          <div class="empty-state">&#128247;<br><br>Sin registros aún.<br><span style="color:var(--muted)">Cargá tu primera observación desde la pestaña "Carga rápida".</span></div>
+        </div>
+      </div>
+
+      <!-- ── TAB: TABLERO IA ── -->
+      <div id="bv-panel-tablero" style="display:none">
+        <div class="bv-tablero-kpis">
+          <div class="bv-kpi" style="border-left:3px solid #dc2626">
+            <div class="bv-kpi-val" id="bv-count-criticos" style="color:#dc2626">0</div>
+            <div class="bv-kpi-label">🔴 Críticos</div>
+          </div>
+          <div class="bv-kpi" style="border-left:3px solid #f97316">
+            <div class="bv-kpi-val" id="bv-count-abiertos" style="color:#f97316">0</div>
+            <div class="bv-kpi-label">⚠ Abiertos</div>
+          </div>
+          <div class="bv-kpi">
+            <div class="bv-kpi-val" id="bv-count-total">0</div>
+            <div class="bv-kpi-label">&#128202; Total registros</div>
+          </div>
+          <div class="bv-kpi" style="border-left:3px solid #22c55e">
+            <div class="bv-kpi-val" id="bv-count-resueltos" style="color:#22c55e">0</div>
+            <div class="bv-kpi-label">✅ Resueltos</div>
+          </div>
+        </div>
+
+        <!-- Alertas activas -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-header">
+            <span class="card-title">Alertas activas</span>
+          </div>
+          <div id="bv-alertas-cont">
+            <div class="empty-state" style="border:none;padding:20px">Sin alertas activas.</div>
+          </div>
+        </div>
+
+        <!-- Distribución por tipo -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Distribución por tipo de evento</span>
+          </div>
+          <div id="bv-dist-tipo" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Modal detalle evento -->
+    <div class="bv-modal-overlay" id="bv-modal" style="display:none" onclick="bvCerrarModal(event)">
+      <div class="bv-modal" onclick="event.stopPropagation()">
+        <div class="bv-modal-header">
+          <div>
+            <div style="font-size:11px;font-family:var(--mono);color:var(--green);margin-bottom:4px">DETALLE DE EVENTO</div>
+            <div style="font-size:16px;font-weight:700" id="bvm-titulo"></div>
+            <div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:3px" id="bvm-meta"></div>
+          </div>
+          <button class="bv-modal-close" onclick="bvCerrarModal()">✕ Cerrar</button>
+        </div>
+        <div id="bvm-fotos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"></div>
+        <div id="bvm-body"></div>
+        <!-- Validación / seguimiento -->
+        <div style="border-top:0.5px solid var(--border);padding-top:16px;margin-top:16px">
+          <div class="card-title" style="margin-bottom:10px">Validación y seguimiento</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="bvm-val-btns"></div>
+          <textarea id="bvm-nota-val" placeholder="Diagnóstico final / acción ejecutada / resultado observado..." style="min-height:70px;width:100%;margin-bottom:8px"></textarea>
+          <button onclick="bvGuardarValidacion()" style="width:auto;padding:9px 20px;font-size:12px">Guardar validación</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- VISTA: GENÉTICA (legacy, redirige a DNA ENGINE)        -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="vista" id="vista-genetica" style="display:none"></div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- VISTA: NUTRICIÓN                                       -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="vista" id="vista-nutricion">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h3 style="margin-bottom:0">Recetas de fertirriego</h3>
+        <button onclick="agregarReceta()" style="width:auto;padding:8px 16px;font-size:12px">+ Nueva receta</button>
+      </div>
+      <div id="lista-recetas">
+        <div class="empty-state">
+          &#9881;<br><br>
+          Aún no hay recetas guardadas.<br>
+          <span style="color:var(--muted)">Creá recetas con dosis de fertilizante por etapa de cultivo.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- VISTA: DIAGNÓSTICO IA                                  -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="vista" id="vista-diagnostico-ia">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <span class="card-title">&#9679; Diagnóstico agronómico por imagen</span>
+          <span class="diag-dot"></span>
+        </div>
+        <p style="margin-bottom:16px">Subí una foto del cultivo y la IA analizará síntomas visuales, posibles deficiencias o problemas de riego.</p>
+
+        <div style="border:1px dashed var(--border);border-radius:var(--radius);padding:40px;text-align:center;margin-bottom:16px;cursor:pointer" onclick="subirImagenDiag()">
+          <div style="font-size:36px;margin-bottom:10px">&#128247;</div>
+          <div style="font-size:13px;color:var(--muted)">Hacé clic para subir una imagen del cultivo</div>
+          <div style="font-size:10px;color:var(--dim);margin-top:6px;font-family:var(--mono)">JPG / PNG · máx 10MB</div>
+        </div>
+        <input type="file" id="input-img-diag" accept="image/*" style="display:none" onchange="procesarImagenDiag(this)">
+
+        <div id="resultado-diag" style="display:none">
+          <div class="diag-text" id="resultado-diag-texto"></div>
+          <div class="diag-btns" style="margin-top:10px">
+            <button class="btn-aprobar" onclick="accionDiag('aprobar')">&#10003; Aprobar diagnóstico</button>
+            <button class="btn-rechazar" onclick="accionDiag('rechazar')">&#10005; Descartar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Historial de diagnósticos</div>
+        <div id="historial-diag">
+          <div class="empty-state" style="border:none;padding:20px">
+            Sin diagnósticos previos registrados.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ─── CONFIG SUPABASE ──────────────────────────────────────── */
+const SURL = 'https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY = 'sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+
+/* ─── ESTADO ───────────────────────────────────────────────── */
+let cultivoActual = null, loteActual = null
+let variedades = JSON.parse(localStorage.getItem('cropos_variedades') || '[]')
+let recetas    = JSON.parse(localStorage.getItem('cropos_recetas') || '[]')
+let diagHistorial = JSON.parse(localStorage.getItem('cropos_diag') || '[]')
+
+/* ─── RELOJ ────────────────────────────────────────────────── */
+function actualizarReloj() {
+  const t = new Date().toLocaleString('es-UY', {
+    timeZone: 'America/Montevideo',
+    weekday: 'long', day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  })
+  const el = document.getElementById('sidebar-clock')
+  if (el) el.textContent = t
+}
+actualizarReloj()
+setInterval(actualizarReloj, 30000)
+
+/* ─── SIDEBAR MÓVIL ────────────────────────────────────────── */
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open')
+  document.getElementById('sidebar-overlay').classList.toggle('open')
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open')
+  document.getElementById('sidebar-overlay').classList.remove('open')
+}
+
+/* ─── NAVEGACIÓN VISTAS ────────────────────────────────────── */
+const titulosVista = {
+  'dashboard':      'Dashboard General',
+  'lote-dna':       'Lote DNA Engine · Perfil estructural',
+  'bitacora':       'Bitácora Visual IA · Observación agronómica',
+  'nutricion':      'Nutrición · Recetas Fertirriego',
+  'diagnostico-ia': 'Diagnóstico IA'
+}
+
+function mostrarVista(id) {
+  document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'))
+  const el = document.getElementById('vista-' + id)
+  if (el) el.classList.add('activa')
+
+  document.querySelectorAll('.sidebar-nav button, .sidebar-nav a').forEach(b => b.classList.remove('active'))
+  const btn = document.querySelector(`[onclick="mostrarVista('${id}')"]`)
+  if (btn) btn.classList.add('active')
+
+  document.getElementById('topbar-titulo').textContent = titulosVista[id] || 'Dashboard'
+  document.getElementById('topbar-sub').textContent = loteActual ? loteActual.nombre : 'Sistema de gestión de cultivo'
+
+  closeSidebar()
+
+  if (id === 'lote-dna') cargarDNA()
+  if (id === 'bitacora') { bvCargarLotesCarga(); bvTab('carga') }
+  if (id === 'nutricion') renderRecetas()
+  if (id === 'diagnostico-ia') renderHistorialDiag()
+}
+
+/* ─── IR A MÓDULO (externo) ────────────────────────────────── */
+function irModulo(mod) {
+  if (!loteActual) {
+    alert('Primero seleccioná un lote desde el Dashboard.')
+    return
+  }
+  const urls = {
+    riego:    '/riego.html',
+    clima:    '/clima.html',
+    visual:   '/foto-metricas.html',
+    tareas:   '/tareas.html'
+  }
+  if (urls[mod]) {
+    location.href = urls[mod] + '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre)
+  }
+}
+
+function irATareas() {
+  irModulo('tareas')
+}
+
+/* ─── CARGA CULTIVOS ───────────────────────────────────────── */
+async function cargarCultivos() {
+  try {
+    const res = await fetch(SURL + '/rest/v1/cultivos?activo=eq.true&order=id', {
+      headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY }
+    })
+    const cultivos = await res.json()
+    const cont = document.getElementById('lista-cultivos')
+    cont.innerHTML = cultivos.map(c => `
+      <div class="cultivo-card" onclick="abrirCultivo(${c.id},'${c.nombre.replace(/'/g,"\\'")}','${(c.ubicacion||'').replace(/'/g,"\\'")}')">
+        <div>
+          <div class="cultivo-card-nombre">${c.nombre}</div>
+          <div class="cultivo-card-sub">${c.ubicacion || ''}</div>
+        </div>
+        <div class="cultivo-card-arrow">&#8250;</div>
+      </div>`
+    ).join('') + `<div class="cultivo-add" onclick="agregarCultivo()">+ Agregar cultivo</div>`
+  } catch(e) { console.log('cultivos', e) }
+}
+
+/* ─── ABRIR CULTIVO ────────────────────────────────────────── */
+async function abrirCultivo(id, nombre, ubicacion) {
+  cultivoActual = { id, nombre, ubicacion }
+  document.getElementById('titulo-cultivo-panel').textContent = nombre + (ubicacion ? ' · ' + ubicacion : '')
+  try {
+    const res = await fetch(SURL + '/rest/v1/lotes?cultivo_id=eq.' + id + '&activo=eq.true&order=id', {
+      headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY }
+    })
+    const lotes = await res.json()
+    document.getElementById('lista-lotes').innerHTML = lotes.map(l => `
+      <div class="cultivo-card" onclick="abrirLote(${l.id},'${l.nombre.replace(/'/g,"\\'")}','${(l.tipo||'').replace(/'/g,"\\'")}')">
+        <div>
+          <div class="cultivo-card-nombre">${l.nombre}</div>
+          <div class="cultivo-card-sub">${l.tipo || ''}</div>
+        </div>
+        <div class="cultivo-card-arrow">&#8250;</div>
+      </div>`
+    ).join('') + `<div class="cultivo-add" onclick="agregarLote()">+ Agregar lote</div>`
+  } catch(e) { console.log('lotes', e) }
+  document.getElementById('panel-cultivos').style.display = 'none'
+  document.getElementById('panel-lotes').style.display = 'block'
+  document.getElementById('panel-lote-data').style.display = 'none'
+}
+
+/* ─── ABRIR LOTE ───────────────────────────────────────────── */
+async function abrirLote(id, nombre, tipo) {
+  loteActual = { id, nombre, tipo }
+  document.getElementById('topbar-titulo').textContent = nombre
+  document.getElementById('topbar-sub').textContent = (cultivoActual?.nombre || '') + ' · ' + (tipo || '')
+
+  // Links módulos
+  document.getElementById('btn-plan').href     = '/planificacion.html?lote_id=' + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-import').href   = '/import.html?lote_id='        + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-historial').href= '/historial-riegos.html?lote_id=' + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-tareas').href   = '/tareas.html?lote_id='         + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-clima').href    = '/clima.html?lote_id='           + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-visual').href   = '/foto-metricas.html?lote_id='   + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-clima-lote').href = '/clima.html?lote_id=' + id + '&lote=' + encodeURIComponent(nombre)
+
+  document.getElementById('panel-cultivos').style.display = 'none'
+  document.getElementById('panel-lotes').style.display    = 'none'
+  document.getElementById('panel-lote-data').style.display = 'block'
+
+  cargarKpisLote(id, nombre)
+}
+
+/* ─── VOLVER ───────────────────────────────────────────────── */
+function volverCultivos() {
+  document.getElementById('panel-cultivos').style.display = 'block'
+  document.getElementById('panel-lotes').style.display    = 'none'
+  document.getElementById('panel-lote-data').style.display = 'none'
+  document.getElementById('topbar-titulo').textContent = 'Dashboard General'
+  document.getElementById('topbar-sub').textContent = 'Seleccioná un cultivo y lote'
+}
+function volverLotes() {
+  document.getElementById('panel-lotes').style.display    = 'block'
+  document.getElementById('panel-lote-data').style.display = 'none'
+}
+
+/* ─── FORMATO FECHA ────────────────────────────────────────── */
+function formatFecha(f) {
+  if (!f) return '-'
+  return new Date(f).toLocaleString('es-UY', {
+    timeZone: 'America/Montevideo', day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  })
+}
+
+/* ─── KPIS LOTE ────────────────────────────────────────────── */
+async function cargarKpisLote(loteId, nombre) {
+  // reset
+  ;['kpi-manana','kpi-tarde','kpi-proximo','kpi-tareas',
+    'kpi-temp','kpi-hr','kpi-vpd',
+    'kpi-temp-man','kpi-hr-man','kpi-vpd-man',
+    'kpi-temp-tar','kpi-hr-tar','kpi-vpd-tar'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.textContent = '--'
+  })
+
+  // Mediciones VWC
+  const hace48h = new Date(Date.now() - 48 * 3600000).toISOString()
+  try {
+    const resMeds = await fetch(
+      SURL + '/rest/v1/mediciones?lote_id=eq.' + loteId +
+      '&fecha=gte.' + hace48h + '&select=vwc,ec,temperatura,fecha&order=fecha.desc&limit=200',
+      { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } }
+    )
+    const meds = await resMeds.json()
+
+    if (Array.isArray(meds) && meds.length) {
+      const hoy24h = new Date(Date.now() - 24 * 3600000).toISOString()
+      const prom = arr => arr.length ? (arr.reduce((s, m) => s + parseFloat(m.vwc), 0) / arr.length).toFixed(1) : null
+
+      const manana = meds.filter(m => {
+        if (!m.vwc || parseFloat(m.vwc) <= 0) return false
+        if (new Date(m.fecha) <= new Date(hoy24h)) return false
+        const h = parseInt(new Date(m.fecha).toLocaleString('es-UY', { timeZone: 'America/Montevideo', hour: '2-digit', hour12: false }))
+        return h < 12
+      })
+      const tarde = meds.filter(m => {
+        if (!m.vwc || parseFloat(m.vwc) <= 0) return false
+        if (new Date(m.fecha) <= new Date(hoy24h)) return false
+        const h = parseInt(new Date(m.fecha).toLocaleString('es-UY', { timeZone: 'America/Montevideo', hour: '2-digit', hour12: false }))
+        return h >= 12
+      })
+
+      const vMan = prom(manana), vTar = prom(tarde)
+      document.getElementById('kpi-manana').textContent = vMan ? vMan + '%' : '--'
+      document.getElementById('kpi-manana-n').textContent = manana.length + ' med.' + (manana[0] ? ' · ' + formatFecha(manana[0].fecha) : '')
+      document.getElementById('kpi-tarde').textContent = vTar ? vTar + '%' : '--'
+      document.getElementById('kpi-tarde-n').textContent = tarde.length + ' med.' + (tarde[0] ? ' · ' + formatFecha(tarde[0].fecha) : '')
+
+      const vActual = parseFloat(vTar || vMan || 0)
+      const alerta  = document.getElementById('alerta-lote')
+      const kpiP    = document.getElementById('kpi-proximo')
+      const kpiPn   = document.getElementById('kpi-proximo-n')
+
+      if (vActual > 0 && vActual < 20) {
+        alerta.style.display = 'block'
+        alerta.style.background = '#1a0a0a'
+        alerta.style.borderLeft = '3px solid #dc2626'
+        alerta.innerHTML = '⚠️ VWC crítico: ' + vActual + '% — Regar urgente'
+        kpiP.textContent = 'URGENTE'; kpiP.style.color = '#dc2626'
+        kpiPn.textContent = 'VWC ' + vActual + '%'
+        document.getElementById('btn-alertas').style.display = 'flex'
+        document.getElementById('alertas-texto').textContent = '1 alerta crítica'
+      } else if (vActual > 0 && vActual < 22) {
+        alerta.style.display = 'block'
+        alerta.style.background = '#1a1200'
+        alerta.style.borderLeft = '3px solid #f0b429'
+        alerta.innerHTML = '⚠️ VWC bajo: ' + vActual + '% — Preparar riego'
+        kpiP.textContent = 'HOY'; kpiP.style.color = '#f0b429'
+        kpiPn.textContent = 'VWC ' + vActual + '%'
+      } else if (vActual >= 28) {
+        alerta.style.display = 'none'
+        kpiP.textContent = 'OK'; kpiP.style.color = '#22c55e'
+        kpiPn.textContent = 'VWC ' + vActual + '%'
+      } else if (vActual > 0) {
+        alerta.style.display = 'none'
+        kpiP.textContent = vActual + '%'
+        kpiPn.textContent = 'monitorear'
       }
 
-      // Ultimo riego matutino y tarde del dia
-      try {
-        const hoy=new Date().toISOString().slice(0,10)
-        const rR=await fetch(SURL+'/rest/v1/historial_riegos?lote_id=eq.'+loteId+'&fecha=gte.'+hoy+'T00:00:00&order=fecha.desc&limit=10&select=turno,volumen_l,ml_por_planta,fecha',
-          {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-        const riegos=await rR.json()
+      // Generar mini gráfico de barras VWC
+      renderChartVWC(meds.filter(m => m.vwc && parseFloat(m.vwc) > 0).slice(0, 30).reverse())
 
-        const riegoManana=riegos.find(r=>r.turno==='manana')
-        const riegoTarde=riegos.find(r=>r.turno==='tarde'||r.turno==='noche')
+      // Diagnóstico automático
+      generarDiagnosticoAuto(vActual, nombre)
 
-        const formatRiego=r=>{
-          if(!r) return 'Sin riego registrado'
-          const vol=r.volumen_l||(r.ml_por_planta?'~'+(r.ml_por_planta/1000).toFixed(1)+'L/pl':'—')
-          const fechaR=new Date(r.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
-          return '💧 '+vol+'L · '+fechaR
+      // Últimas mediciones
+      document.getElementById('ultimas-mediciones').innerHTML = meds.slice(0, 6).map(m =>
+        `<div class="medicion-row">
+          <div class="medicion-fecha">${formatFecha(m.fecha)}</div>
+          <div class="medicion-vals">
+            <span>VWC <b style="color:#f0b429">${m.vwc || '--'}%</b></span>
+            ${m.ec ? '<span>EC ' + m.ec + '</span>' : ''}
+            ${m.temperatura ? '<span>' + m.temperatura + '°C</span>' : ''}
+          </div>
+        </div>`
+      ).join('')
+    }
+  } catch(e) { console.log('meds', e) }
+
+  // Ultimo riego
+  try {
+    const hoy = new Date().toISOString().slice(0, 10)
+    const rR = await fetch(
+      SURL + '/rest/v1/historial_riegos?lote_id=eq.' + loteId +
+      '&fecha=gte.' + hoy + 'T00:00:00&order=fecha.desc&limit=10&select=turno,volumen_l,ml_por_planta,fecha',
+      { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } }
+    )
+    const riegos = await rR.json()
+    const riegoManana = riegos.find(r => r.turno === 'manana')
+    const riegoTarde  = riegos.find(r => r.turno === 'tarde' || r.turno === 'noche')
+    const fmtR = r => {
+      if (!r) return 'Sin riego registrado'
+      const vol = r.volumen_l ? r.volumen_l + 'L' : (r.ml_por_planta ? r.ml_por_planta + 'ml/pl' : '--')
+      return vol + ' · ' + new Date(r.fecha).toLocaleString('es-UY', {
+        timeZone: 'America/Montevideo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      })
+    }
+    const rmEl = document.getElementById('kpi-riego-manana')
+    const rtEl = document.getElementById('kpi-riego-tarde')
+    if (rmEl) { rmEl.textContent = fmtR(riegoManana); rmEl.style.color = riegoManana ? '#22c55e' : 'var(--dim)' }
+    if (rtEl) { rtEl.textContent = fmtR(riegoTarde);  rtEl.style.color = riegoTarde  ? '#22c55e' : 'var(--dim)' }
+  } catch(e) { console.log('riegos', e) }
+
+  // Clima
+  try {
+    const hoyClima = new Date(Date.now() - 24 * 3600000).toISOString()
+    const rC = await fetch(
+      SURL + '/rest/v1/mediciones_clima?lote_id=eq.' + loteId + '&fecha=gte.' + hoyClima + '&order=fecha.desc&limit=50',
+      { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } }
+    )
+    const clima = await rC.json()
+    if (clima && clima.length) {
+      const man = clima.filter(d => d.turno === 'manana')
+      const tar = clima.filter(d => d.turno === 'tarde' || d.turno === 'noche')
+      const promG = (arr, key) => arr.length ? parseFloat((arr.reduce((s, d) => s + parseFloat(d[key] || 0), 0) / arr.length).toFixed(1)) : null
+      const setClima = (suf, arr) => {
+        const temp = promG(arr, 'temperatura'), hr = promG(arr, 'humedad'), vpd = promG(arr, 'vpd')
+        const ids = suf === '' ? ['kpi-temp','kpi-hr','kpi-vpd'] : ['kpi-temp-'+suf,'kpi-hr-'+suf,'kpi-vpd-'+suf]
+        if (temp !== null) document.getElementById(ids[0]).textContent = temp + '°C'
+        if (hr   !== null) document.getElementById(ids[1]).textContent = hr + '%'
+        if (vpd  !== null) {
+          const el = document.getElementById(ids[2])
+          el.textContent = vpd + ' kPa'
+          el.style.color = vpd < 0.4 || vpd > 2.0 ? '#dc2626' : vpd < 1.0 || vpd > 1.5 ? '#f0b429' : '#22c55e'
         }
-
-        document.getElementById('kpi-riego-manana').textContent=formatRiego(riegoManana)
-        document.getElementById('kpi-riego-manana').style.color=riegoManana?'#22c55e':'#2d5a3d'
-        document.getElementById('kpi-riego-tarde').textContent=formatRiego(riegoTarde)
-        document.getElementById('kpi-riego-tarde').style.color=riegoTarde?'#22c55e':'#2d5a3d'
-      } catch(e){console.log('riegos kpi',e)}
-
-      // Clima del dia
-      try {
-        const hoyClima=new Date(Date.now()-24*3600000).toISOString()
-        const rC=await fetch(SURL+'/rest/v1/mediciones_clima?lote_id=eq.'+loteId+'&fecha=gte.'+hoyClima+'&order=fecha.desc&limit=10',
-          {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-        const clima=await rC.json()
-        if(clima&&clima.length){
-          const promC=key=>parseFloat((clima.reduce((s,d)=>s+parseFloat(d[key]||0),0)/clima.length).toFixed(1))
-          const temp=promC('temperatura'), hr=promC('humedad'), vpd=parseFloat(promC('vpd').toFixed(3))
-          document.getElementById('kpi-temp').textContent=temp+'°C'
-          document.getElementById('kpi-hr').textContent=hr+'%'
-          document.getElementById('kpi-vpd').textContent=vpd+' kPa'
-          document.getElementById('kpi-temp-n').textContent=clima.length+' med. hoy'
-          document.getElementById('kpi-hr-n').textContent='HR promedio'
-
-          // Color VPD
-          const kVPD=document.getElementById('kpi-vpd')
-          const kVPDn=document.getElementById('kpi-vpd-n')
-          if(vpd<0.4||vpd>2.0){kVPD.style.color='#dc2626';kVPDn.textContent='crítico'}
-          else if(vpd<1.0||vpd>1.5){kVPD.style.color='#f0b429';kVPDn.textContent='alerta'}
-          else{kVPD.style.color='#22c55e';kVPDn.textContent='óptimo'}
-
-          // Color temperatura
-          const kTemp=document.getElementById('kpi-temp')
-          if(temp>38){kTemp.style.color='#dc2626'}
-          else if(temp>32){kTemp.style.color='#f0b429'}
-          else{kTemp.style.color='#f0b429'}
-
-          // Color HR
-          const kHR=document.getElementById('kpi-hr')
-          if(hr>75||hr<35){kHR.style.color='#dc2626'}
-          else if(hr>65){kHR.style.color='#f0b429'}
-          else{kHR.style.color='#22c55e'}
-
-          // Diagnostico cruzado clima + suelo
-          const vwcActual=parseFloat(document.getElementById('kpi-tarde')?.textContent||document.getElementById('kpi-manana')?.textContent||0)
-          const diagDiv=document.getElementById('diagnostico-cruzado')
-          const msgs=[], acciones=[]
-
-          // VPD alto + VWC bajo = doble estrés
-          if(vpd>1.5&&vwcActual>0&&vwcActual<22){
-            msgs.push('🔴 VPD alto + VWC bajo — doble estrés hídrico')
-            acciones.push('Aumentar volumen de riego','Mojar pasillos','Cerrar laterales')
-          }
-          // HR alta + riesgo hongos
-          if(hr>70&&vwcActual>28){
-            msgs.push('🔴 HR alta + sustrato húmedo — riesgo Botrytis')
-            acciones.push('NO foliar','Ventilación máxima','Reducir volumen de riego')
-          }
-          // Temperatura alta + VWC bajo
-          if(temp>32&&vwcActual>0&&vwcActual<20){
-            msgs.push('🔴 Estrés térmico + VWC crítico')
-            acciones.push('Regar urgente','Malla sombra','Abrir laterales')
-          }
-          // Todo ok
-          if(msgs.length===0&&vpd>=1.0&&vpd<=1.5&&hr<70&&temp<32){
-            msgs.push('🟢 Ambiente óptimo para floración')
-          }
-
-          if(msgs.length){
-            diagDiv.style.display='block'
-            const critico=msgs.some(m=>m.includes('🔴'))
-            diagDiv.style.background=critico?'#1a0a0a':'#0a1a10'
-            diagDiv.style.borderLeft='3px solid '+(critico?'#dc2626':'#22c55e')
-            diagDiv.innerHTML=
-              '<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Diagnóstico clima + suelo</div>'+
-              msgs.map(m=>'<div style="margin-bottom:4px">'+m+'</div>').join('')+
-              (acciones.length?'<div style="margin-top:6px;font-size:12px;color:#f0b429">→ '+acciones.join(' · ')+'</div>':'')
-          }
-        }
-      } catch(e){console.log('clima kpi',e)}
-
-      // Proxima tarea — siempre se ejecuta
-      try{
-        const hoy=new Date().toISOString().slice(0,10)
-        const rT=await fetch(SURL+'/rest/v1/tareas?lote_id=eq.'+loteId+'&completada=eq.false&fecha=gte.'+hoy+'&order=fecha,turno&limit=1&select=titulo,fecha,turno',
-          {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-        const pt=await rT.json()
-        const kT=document.getElementById('kpi-tareas')
-        const kTn=document.getElementById('kpi-tareas-n')
-        if(pt&&pt.length){
-          const t=pt[0]
-          const diff=Math.round((new Date(t.fecha+'T12:00')-new Date(hoy+'T12:00'))/(1000*60*60*24))
-          const tl={manana:'Mañana',tarde:'Tarde',noche:'Noche'}[t.turno]||t.turno
-          if(diff===0){kT.textContent='HOY';kT.style.color='#f0b429';kTn.textContent=tl+' · '+t.titulo.slice(0,22)}
-          else if(diff===1){kT.textContent='Mañana';kT.style.color='#22c55e';kTn.textContent=tl+' · '+t.titulo.slice(0,22)}
-          else{kT.textContent='En '+diff+' días';kT.style.color='#4a7a5a';kTn.textContent=new Date(t.fecha+'T12:00').toLocaleDateString('es-UY',{day:'2-digit',month:'2-digit'})+' · '+t.titulo.slice(0,22)}
-        } else {
-          kT.textContent='Al día';kT.style.color='#2d5a3d';kTn.textContent='sin tareas'
-        }
-      } catch(e){console.log('tareas',e)}
+      }
+      setClima('', clima); setClima('man', man); setClima('tar', tar)
     }
+  } catch(e) { console.log('clima', e) }
 
-    async function agregarCultivo(){
-      const nombre=prompt('Nombre del cultivo:'); if(!nombre) return
-      const ubicacion=prompt('Ubicacion:')
-      await fetch(SURL+'/rest/v1/cultivos',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({nombre,ubicacion,activo:true})})
-      cargarCultivos()
+  // Próxima tarea
+  try {
+    // Fecha local Uruguay (UTC-3) para no perder un día por timezone
+    const ahoraUY = new Date(Date.now() - 3 * 60 * 60 * 1000)
+    const hoy = ahoraUY.toISOString().slice(0, 10)
+
+    // completada=neq.true captura false Y null (tareas sin valor asignado)
+    const rT = await fetch(
+      SURL + '/rest/v1/tareas?lote_id=eq.' + loteId +
+      '&completada=neq.true&fecha=gte.' + hoy +
+      '&order=fecha.asc,turno.asc&limit=5&select=titulo,fecha,turno,completada',
+      { headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY } }
+    )
+    const pt = await rT.json()
+    const kT  = document.getElementById('kpi-tareas')
+    const kTn = document.getElementById('kpi-tareas-n')
+
+    // Filtramos del lado cliente también, por las dudas
+    const pendientes = Array.isArray(pt) ? pt.filter(t => t.completada !== true) : []
+
+    if (pendientes.length) {
+      const t    = pendientes[0]
+      // Comparar fechas como strings YYYY-MM-DD para evitar problemas de timezone
+      const fechaTarea = t.fecha ? t.fecha.slice(0, 10) : hoy
+      const diffMs = new Date(fechaTarea + 'T12:00:00') - new Date(hoy + 'T12:00:00')
+      const diff   = Math.round(diffMs / (1000 * 60 * 60 * 24))
+      const tl     = { manana: 'Mañana', mañana: 'Mañana', tarde: 'Tarde', noche: 'Noche' }[t.turno] || (t.turno || '')
+      if (diff <= 0)      { kT.textContent = 'HOY';         kT.style.color = '#f0b429'; kTn.textContent = (tl ? tl + ' · ' : '') + t.titulo.slice(0,22) }
+      else if (diff === 1){ kT.textContent = 'Mañana';      kT.style.color = '#22c55e'; kTn.textContent = (tl ? tl + ' · ' : '') + t.titulo.slice(0,22) }
+      else                { kT.textContent = 'En ' + diff + 'd'; kT.style.color = 'var(--muted)'; kTn.textContent = fechaTarea.slice(5).replace('-','/') + ' · ' + t.titulo.slice(0,22) }
+    } else {
+      kT.textContent = 'Al día'; kT.style.color = 'var(--dim)'; kTn.textContent = 'sin tareas pendientes'
     }
+  } catch(e) { console.log('tareas', e) }
 
-    async function agregarLote(){
-      const nombre=prompt('Nombre del lote:'); if(!nombre) return
-      const tipo=prompt('Tipo (camellon / maceta):')||'camellon'
-      await fetch(SURL+'/rest/v1/lotes',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({nombre,tipo,cultivo_id:cultivoActual.id,ubicacion:cultivoActual.ubicacion,activo:true})})
-      abrirCultivo(cultivoActual.id,cultivoActual.nombre,cultivoActual.ubicacion)
+  // Mini lista lotes para panel diag
+  renderMiniLotes()
+}
+
+/* ─── MINI GRÁFICO VWC ─────────────────────────────────────── */
+function renderChartVWC(meds) {
+  if (!meds.length) return
+  const cont = document.getElementById('chart-bars')
+  const placeholder = document.getElementById('chart-placeholder')
+  if (!cont) return
+  placeholder.style.display = 'none'
+  cont.style.display = 'flex'
+  const maxV = Math.max(...meds.map(m => parseFloat(m.vwc)))
+  cont.innerHTML = meds.map(m => {
+    const v = parseFloat(m.vwc)
+    const h = Math.max(10, (v / Math.max(maxV, 1)) * 100)
+    const color = v < 20 ? '#dc2626' : v < 22 ? '#f0b429' : '#7ecf6a'
+    return `<div style="flex:1;background:${color};border-radius:3px 3px 0 0;height:${h}%;opacity:0.8;min-width:6px;transition:height .3s" title="VWC ${v}%"></div>`
+  }).join('')
+}
+
+/* ─── CONTEXTO DNA PARA IA ─────────────────────────────────── */
+function obtenerContextoDNA() {
+  const raw = localStorage.getItem(dnaKey())
+  if (!raw) return null
+  return JSON.parse(raw)
+}
+
+function resumenDNAParaIA(dna) {
+  if (!dna) return ''
+  const partes = []
+  if (dna.variedad)    partes.push('Variedad: ' + dna.variedad + (dna.dominancia ? ' (' + dna.dominancia + ')' : ''))
+  if (dna.fase)        partes.push('Fase: ' + dna.fase + (dna.dias_fase ? ' · Día ' + dna.dias_fase : ''))
+  if (dna.modelo)      partes.push('Modelo agronómico: ' + dna.modelo)
+  if (dna.sustrato)    partes.push('Sustrato: ' + dna.sustrato)
+  if (dna.tipo_riego)  partes.push('Riego: ' + dna.tipo_riego + (dna.caudal ? ' · ' + dna.caudal + ' L/h' : ''))
+  if (dna.plantas)     partes.push('Plantas: ' + dna.plantas)
+  if (dna.sistema)     partes.push('Sistema: ' + dna.sistema)
+  if (dna.objetivo)    partes.push('Objetivo: ' + dna.objetivo)
+  if (dna.floracion)   partes.push('Floración esperada: ' + dna.floracion + ' días')
+  if (dna.sens_humedad) partes.push('Sensibilidad HR: ' + dna.sens_humedad)
+  return partes.join(' | ')
+}
+
+/* ─── DIAGNÓSTICO AUTOMÁTICO CON DNA ──────────────────────── */
+function generarDiagnosticoAuto(vwc, lote) {
+  const el = document.getElementById('diag-texto')
+  if (!el) return
+  const dna = obtenerContextoDNA()
+  const ctx = resumenDNAParaIA(dna)
+
+  // Ajuste de rangos según modelo agronómico del DNA
+  let vwcMinOk = 25, vwcMaxOk = 35, vwcCritico = 20
+  if (dna) {
+    if (dna.modelo === 'vegetativo') { vwcMinOk = 28; vwcMaxOk = 40; vwcCritico = 22 }
+    if (dna.modelo === 'generativo') { vwcMinOk = 20; vwcMaxOk = 30; vwcCritico = 16 }
+  }
+
+  let txt = ''
+  const faseTxt = dna?.fase ? ' en fase <b>' + dna.fase + '</b>' : ''
+  const modeloTxt = dna?.modelo ? ' (modelo <b>' + dna.modelo + '</b>)' : ''
+  const variedadTxt = dna?.variedad ? ' · ' + dna.variedad : ''
+
+  if (vwc <= 0) {
+    txt = 'Sin datos de VWC para <b>' + lote + '</b>' + variedadTxt + '. Importá mediciones CSV para activar el diagnóstico agronómico.'
+  } else if (vwc < vwcCritico) {
+    txt = '⚠️ <b>Alerta crítica</b> — VWC ' + vwc + '%' + faseTxt + modeloTxt + '. Riego inmediato recomendado.'
+    if (dna?.tipo_riego) txt += ' Sistema ' + dna.tipo_riego + ': activar ciclo extra.'
+    if (dna?.sens_humedad === 'Alta (propensa a hongos)') txt += ' ⚠️ Variedad sensible — al recuperar VWC, controlar HR para evitar Botrytis.'
+  } else if (vwc < vwcMinOk) {
+    txt = '⚠️ VWC bajo (' + vwc + '%)' + faseTxt + modeloTxt + '. Adelantar próximo riego.'
+    if (dna?.ec_sustrato) txt += ' EC sustrato inicial ' + dna.ec_sustrato + ' — revisar bloqueo salino.'
+    if (dna?.modelo === 'generativo') txt += ' En modelo generativo este rango es aceptable para estimular floración.'
+  } else if (vwc <= vwcMaxOk) {
+    txt = '✅ VWC en rango óptimo (' + vwc + '%)' + faseTxt + modeloTxt + '. Plan actual correcto.'
+    if (dna?.variedad) txt += ' <b>' + dna.variedad + '</b>: mantener frecuencia de riego vigente.'
+    if (dna?.floracion && dna?.dias_fase) {
+      const restante = parseInt(dna.floracion) - parseInt(dna.dias_fase)
+      if (restante > 0) txt += ' Faltan ~' + restante + ' días para cosecha estimada.'
     }
+  } else {
+    txt = '💧 VWC elevado (' + vwc + '%)' + faseTxt + modeloTxt + '. Reducir volumen o frecuencia de riego.'
+    if (dna?.sustrato === 'Coco') txt += ' En coco, VWC >35% puede limitar oxigenación radicular — verificar drenaje.'
+    if (dna?.modelo === 'vegetativo') txt += ' En modelo vegetativo es esperable, pero controlar EC para evitar dilución.'
+  }
 
-    cargarCultivos()
+  // Contexto DNA al pie
+  if (ctx) txt += '<div style="margin-top:10px;font-size:10px;color:var(--dim);font-family:var(--mono);border-top:0.5px solid var(--border);padding-top:8px">🧬 DNA: ' + ctx + '</div>'
+  el.innerHTML = txt
+}
 
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW',e))
+/* ─── MINI LOTES PANEL ─────────────────────────────────────── */
+async function renderMiniLotes() {
+  if (!cultivoActual) return
+  try {
+    const res = await fetch(SURL + '/rest/v1/lotes?cultivo_id=eq.' + cultivoActual.id + '&activo=eq.true&order=id', {
+      headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY }
+    })
+    const lotes = await res.json()
+    const colors = ['#7ecf6a','#f0b429','#818cf8','#f97316','#22c55e']
+    document.getElementById('mini-lotes-diag').innerHTML = lotes.map((l, i) =>
+      `<div class="lote-item">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="lote-dot" style="background:${colors[i % colors.length]}"></span>
+          <span>${l.nombre}</span>
+        </div>
+        <span class="lote-badge">${l.tipo || ''}</span>
+      </div>`
+    ).join('')
+  } catch(e) {}
+}
+
+/* ─── AGREGAR CULTIVO / LOTE ───────────────────────────────── */
+async function agregarCultivo() {
+  const nombre = prompt('Nombre del cultivo:'); if (!nombre) return
+  const ubicacion = prompt('Ubicación:') || ''
+  await fetch(SURL + '/rest/v1/cultivos', {
+    method: 'POST',
+    headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ nombre, ubicacion, activo: true })
+  })
+  cargarCultivos()
+}
+
+async function agregarLote() {
+  const nombre = prompt('Nombre del lote:'); if (!nombre) return
+  const tipo = prompt('Tipo (camellon / maceta):') || 'camellon'
+  await fetch(SURL + '/rest/v1/lotes', {
+    method: 'POST',
+    headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ nombre, tipo, cultivo_id: cultivoActual.id, ubicacion: cultivoActual.ubicacion, activo: true })
+  })
+  abrirCultivo(cultivoActual.id, cultivoActual.nombre, cultivoActual.ubicacion)
+}
+
+/* ─── LOTE DNA ENGINE ──────────────────────────────────────── */
+
+// Toggle mezcla personalizada
+function toggleMezcla(val) {
+  const box = document.getElementById('dna-mezcla-box')
+  if (box) box.style.display = val === 'Mezcla personalizada' ? 'block' : 'none'
+}
+
+// Acordeón secciones
+function toggleDNA(n) {
+  const body = document.getElementById('dna-body-' + n)
+  const chev = document.getElementById('dna-chev-' + n)
+  if (!body) return
+  const abierto = body.style.display !== 'none'
+  body.style.display = abierto ? 'none' : 'block'
+  if (chev) chev.classList.toggle('open', !abierto)
+}
+
+function selFase(el, val) {
+  document.querySelectorAll('.dna-fase-item').forEach(i => i.classList.remove('selected'))
+  el.classList.add('selected')
+}
+
+function selObjetivo(el, val) {
+  document.querySelectorAll('.dna-obj-item').forEach(i => i.classList.remove('selected'))
+  el.classList.add('selected')
+}
+
+function selModelo(el, val) {
+  document.querySelectorAll('.dna-modelo-item').forEach(i => i.classList.remove('selected'))
+  el.classList.add('selected')
+}
+
+// Clave de almacenamiento por lote
+function dnaKey() { return 'cropos_dna_' + (loteActual ? loteActual.id : 'global') }
+
+// Guardar todo el DNA
+function guardarDNA() {
+  const dna = {
+    // Sec 1 - Identificación
+    nombre_lote: v('dna-nombre-lote'), codigo: v('dna-codigo'),
+    ubicacion: v('dna-ubicacion'), superficie: v('dna-superficie'),
+    fecha_inicio: v('dna-fecha-inicio'), responsable: v('dna-responsable'),
+    // Sec 2 - Estructura
+    plantas: v('dna-plantas'), tipo_cultivo: v('dna-tipo-cultivo'),
+    dist_plantas: v('dna-dist-plantas'), dist_lineas: v('dna-dist-lineas'),
+    vol_maceta: v('dna-vol-maceta'), densidad: v('dna-densidad'),
+    // Sec 3 - Genética
+    variedad: v('dna-variedad'), breeder: v('dna-breeder'),
+    dominancia: v('dna-dominancia'), thc: v('dna-thc'), cbd: v('dna-cbd'),
+    floracion: v('dna-floracion'), altura: v('dna-altura'), sens_humedad: v('dna-sens-humedad'),
+    // Sec 4 - Sistema productivo
+    sistema: v('dna-sistema'), extraccion: v('dna-extraccion'),
+    ventilacion: v('dna-ventilacion'), calefaccion: v('dna-calefaccion'), deshumid: v('dna-deshumid'),
+    iluminacion: {
+      solar: cb('dna-il-solar'), led: cb('dna-il-led'), hps: cb('dna-il-hps'),
+      cmh: cb('dna-il-cmh'), sodio: cb('dna-il-sodio'), plasma: cb('dna-il-plasma')
+    },
+    // Sec 5 - Sustrato
+    sustrato: v('dna-sustrato'), retencion: v('dna-retencion'),
+    ec_sustrato: v('dna-ec-sustrato'), ph_sustrato: v('dna-ph-sustrato'),
+    mezcla: {
+      turba_rubia: cb('dna-m-turba-rubia'), turba_negra: cb('dna-m-turba-negra'),
+      compost: cb('dna-m-compost'), perlita: cb('dna-m-perlita'),
+      vermiculita: cb('dna-m-vermiculita'), humus: cb('dna-m-humus'), tierra: cb('dna-m-tierra')
+    },
+    // Sec 6 - Riego
+    tipo_riego: v('dna-tipo-riego'), caudal: v('dna-caudal'),
+    goteros: v('dna-goteros'), tanque: v('dna-tanque'),
+    bomba: v('dna-bomba'), potencia_bomba: v('dna-potencia-bomba'),
+    // Sec 7 - Sensores
+    sensores: {
+      vwc: cb('dna-s-vwc'), ec: cb('dna-s-ec'), temp: cb('dna-s-temp'),
+      hr: cb('dna-s-hr'), co2: cb('dna-s-co2'), luz: cb('dna-s-luz')
+    },
+    // Sec 8 - Fase (antes sec 9)
+    fase: (document.querySelector('input[name="dna-fase"]:checked') || {}).value || '',
+    dias_fase: v('dna-dias-fase'),
+    // Sec 9 - Objetivo y modelo (antes sec 10)
+    objetivo: (document.querySelector('input[name="dna-objetivo"]:checked') || {}).value || '',
+    modelo: (document.querySelector('input[name="dna-modelo"]:checked') || {}).value || '',
+    // Meta
+    guardado: new Date().toISOString(),
+    lote_id: loteActual ? loteActual.id : null
+  }
+  localStorage.setItem(dnaKey(), JSON.stringify(dna))
+  actualizarProgresoDNA(dna)
+  mostrarToast('✅ Perfil DNA guardado correctamente')
+}
+
+// Helpers
+function v(id) { const el = document.getElementById(id); return el ? el.value : '' }
+function cb(id) { const el = document.getElementById(id); return el ? el.checked : false }
+
+// Cargar DNA guardado
+function cargarDNA() {
+  const raw = localStorage.getItem(dnaKey())
+  if (!raw) { actualizarProgresoDNA({}); return }
+  const dna = JSON.parse(raw)
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val }
+  const setcb = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val }
+
+  // Sec 1
+  set('dna-nombre-lote', dna.nombre_lote); set('dna-codigo', dna.codigo)
+  set('dna-ubicacion', dna.ubicacion); set('dna-superficie', dna.superficie)
+  set('dna-fecha-inicio', dna.fecha_inicio); set('dna-responsable', dna.responsable)
+  // Sec 2
+  set('dna-plantas', dna.plantas); set('dna-tipo-cultivo', dna.tipo_cultivo)
+  set('dna-dist-plantas', dna.dist_plantas); set('dna-dist-lineas', dna.dist_lineas)
+  set('dna-vol-maceta', dna.vol_maceta); set('dna-densidad', dna.densidad)
+  // Sec 3
+  set('dna-variedad', dna.variedad); set('dna-breeder', dna.breeder)
+  set('dna-dominancia', dna.dominancia); set('dna-thc', dna.thc); set('dna-cbd', dna.cbd)
+  set('dna-floracion', dna.floracion); set('dna-altura', dna.altura); set('dna-sens-humedad', dna.sens_humedad)
+  // Sec 4
+  set('dna-sistema', dna.sistema); set('dna-extraccion', dna.extraccion)
+  set('dna-ventilacion', dna.ventilacion); set('dna-calefaccion', dna.calefaccion); set('dna-deshumid', dna.deshumid)
+  if (dna.iluminacion) {
+    setcb('dna-il-solar', dna.iluminacion.solar); setcb('dna-il-led', dna.iluminacion.led)
+    setcb('dna-il-hps', dna.iluminacion.hps); setcb('dna-il-cmh', dna.iluminacion.cmh)
+    setcb('dna-il-sodio', dna.iluminacion.sodio); setcb('dna-il-plasma', dna.iluminacion.plasma)
+  }
+  // Sec 5
+  set('dna-sustrato', dna.sustrato); set('dna-retencion', dna.retencion)
+  set('dna-ec-sustrato', dna.ec_sustrato); set('dna-ph-sustrato', dna.ph_sustrato)
+  if (dna.sustrato === 'Mezcla personalizada') toggleMezcla('Mezcla personalizada')
+  if (dna.mezcla) {
+    setcb('dna-m-turba-rubia', dna.mezcla.turba_rubia); setcb('dna-m-turba-negra', dna.mezcla.turba_negra)
+    setcb('dna-m-compost', dna.mezcla.compost); setcb('dna-m-perlita', dna.mezcla.perlita)
+    setcb('dna-m-vermiculita', dna.mezcla.vermiculita); setcb('dna-m-humus', dna.mezcla.humus)
+    setcb('dna-m-tierra', dna.mezcla.tierra)
+  }
+  // Sec 6
+  set('dna-tipo-riego', dna.tipo_riego); set('dna-caudal', dna.caudal)
+  set('dna-goteros', dna.goteros); set('dna-tanque', dna.tanque)
+  set('dna-bomba', dna.bomba); set('dna-potencia-bomba', dna.potencia_bomba)
+  // Sec 7
+  if (dna.sensores) {
+    setcb('dna-s-vwc', dna.sensores.vwc); setcb('dna-s-ec', dna.sensores.ec)
+    setcb('dna-s-temp', dna.sensores.temp); setcb('dna-s-hr', dna.sensores.hr)
+    setcb('dna-s-co2', dna.sensores.co2); setcb('dna-s-luz', dna.sensores.luz)
+  }
+  // Sec 8 - Fase
+  set('dna-dias-fase', dna.dias_fase)
+  if (dna.fase) {
+    const r = document.getElementById('dna-fase-' + dna.fase)
+    if (r) { r.checked = true; r.closest('.dna-fase-item').classList.add('selected') }
+  }
+  // Sec 10 - Objetivo y modelo
+  if (dna.objetivo) {
+    const r = document.querySelector(`input[name="dna-objetivo"][value="${dna.objetivo}"]`)
+    if (r) { r.checked = true; r.closest('.dna-obj-item').classList.add('selected') }
+  }
+  if (dna.modelo) {
+    const r = document.querySelector(`input[name="dna-modelo"][value="${dna.modelo}"]`)
+    if (r) { r.checked = true; r.closest('.dna-modelo-item').classList.add('selected') }
+  }
+  actualizarProgresoDNA(dna)
+  renderVariedadesDNA()
+}
+
+// Progreso visual (9 secciones — sec 8 clima eliminada)
+function actualizarProgresoDNA(dna) {
+  const checks = [
+    !!(dna.nombre_lote || dna.codigo),                                        // 1 Identificación
+    !!(dna.plantas || dna.tipo_cultivo),                                      // 2 Plantación
+    !!(dna.variedad),                                                          // 3 Genética
+    !!(dna.sistema || (dna.iluminacion && Object.values(dna.iluminacion||{}).some(v=>v))), // 4 Sistema
+    !!(dna.sustrato),                                                          // 5 Sustrato
+    !!(dna.tipo_riego || dna.bomba),                                          // 6 Riego
+    !!(dna.sensores && Object.values(dna.sensores).some(v => v)),             // 7 Sensores
+    !!(dna.fase),                                                              // 8 Fase
+    !!(dna.objetivo || dna.modelo)                                            // 9 Objetivo
+  ]
+  const completas = checks.filter(Boolean).length
+  const badge = document.getElementById('dna-progreso-badge')
+  const bar   = document.getElementById('dna-progress-bar')
+  if (badge) badge.textContent = completas + '/9 secciones'
+  if (bar)   { bar.style.opacity = '.3'; bar.style.width = Math.round(completas / 9 * 100) + '%' }
+  // Tick por sección (mapeo: checks[0..6] → sec 1-7, checks[7] → sec 9, checks[8] → sec 10)
+  const secMap = [1,2,3,4,5,6,7,9,10]
+  checks.forEach((ok, i) => {
+    const el = document.getElementById('dna-check-' + secMap[i])
+    if (el) el.textContent = ok ? '✓' : ''
+  })
+  const nl = document.getElementById('dna-lote-nombre')
+  if (nl && loteActual) nl.textContent = loteActual.nombre + (dna.guardado ? ' · Guardado ' + formatFecha(dna.guardado) : '')
+}
+
+// Toast notificación
+function mostrarToast(msg) {
+  let t = document.getElementById('toast-global')
+  if (!t) {
+    t = document.createElement('div')
+    t.id = 'toast-global'
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0d2318;border:0.5px solid var(--green2);color:var(--green);padding:12px 20px;border-radius:10px;font-size:13px;font-family:var(--mono);z-index:999;transition:opacity .3s;box-shadow:0 4px 20px rgba(126,207,106,.15)'
+    document.body.appendChild(t)
+  }
+  t.textContent = msg
+  t.style.opacity = '1'
+  setTimeout(() => { t.style.opacity = '0' }, 3000)
+}
+
+// Variedades dentro de DNA Engine
+function renderVariedadesDNA() {
+  const cont = document.getElementById('lista-variedades-dna')
+  if (!cont) return
+  if (!variedades.length) {
+    cont.innerHTML = '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);padding:8px 0">Sin variedades guardadas aún.</div>'
+    return
+  }
+  const colores = { indica: 'badge-indica', sativa: 'badge-sativa', hibrida: 'badge-hibrida', híbrida: 'badge-hibrida' }
+  cont.innerHTML = variedades.map((v, i) => `
+    <div class="variedad-card">
+      <div>
+        <div class="variedad-nombre">${v.nombre}</div>
+        <div class="variedad-sub">${v.banco || ''} · Floración: ${v.floracion || '--'} días · THC: ${v.thc || '--'}%</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="variedad-badge ${colores[v.tipo] || 'badge-hibrida'}">${v.tipo || 'híbrida'}</span>
+        <button onclick="eliminarVariedad(${i})" style="width:auto;padding:4px 8px;font-size:11px;background:transparent;border:0.5px solid var(--border);color:var(--dim)">✕</button>
+      </div>
+    </div>`).join('')
+}
+
+function guardarVariedadDNA() {
+  const nombre = document.getElementById('dna-variedad')?.value
+  if (!nombre) { alert('Completá el campo "Variedad" primero.'); return }
+  const tipo = document.getElementById('dna-dominancia')?.value?.toLowerCase() || 'hibrida'
+  const banco = document.getElementById('dna-breeder')?.value || ''
+  const floracion = document.getElementById('dna-floracion')?.value || ''
+  const thc = document.getElementById('dna-thc')?.value || ''
+  variedades.push({ nombre, tipo, banco, floracion, thc })
+  localStorage.setItem('cropos_variedades', JSON.stringify(variedades))
+  renderVariedadesDNA()
+  mostrarToast('✅ Variedad "' + nombre + '" guardada')
+}
+
+/* ─── GENÉTICA ─────────────────────────────────────────────── */
+function renderVariedades() {
+  const cont = document.getElementById('lista-variedades')
+  if (!variedades.length) {
+    cont.innerHTML = `<div class="empty-state">&#127807;<br><br>Aún no hay variedades registradas.<br><span style="color:var(--muted)">Agregá tus genéticas para hacer seguimiento por lote.</span></div>`
+    return
+  }
+  cont.innerHTML = variedades.map((v, i) => `
+    <div class="variedad-card">
+      <div>
+        <div class="variedad-nombre">${v.nombre}</div>
+        <div class="variedad-sub">${v.banco || ''} · Floración: ${v.floracion || '--'} días · THC: ${v.thc || '--'}%</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="variedad-badge badge-${v.tipo || 'hibrida'}">${v.tipo || 'híbrida'}</span>
+        <button onclick="eliminarVariedad(${i})" style="width:auto;padding:4px 8px;font-size:11px;background:transparent;border:0.5px solid var(--border);color:var(--dim)">✕</button>
+      </div>
+    </div>`
+  ).join('')
+}
+
+function agregarVariedad() {
+  const nombre = prompt('Nombre de la variedad:'); if (!nombre) return
+  const tipo = prompt('Tipo (indica / sativa / hibrida):') || 'hibrida'
+  const banco = prompt('Banco de semillas:') || ''
+  const floracion = prompt('Días de floración:') || ''
+  const thc = prompt('THC estimado (%):') || ''
+  variedades.push({ nombre, tipo, banco, floracion, thc })
+  localStorage.setItem('cropos_variedades', JSON.stringify(variedades))
+  renderVariedades()
+}
+
+function eliminarVariedad(i) {
+  if (!confirm('¿Eliminar esta variedad?')) return
+  variedades.splice(i, 1)
+  localStorage.setItem('cropos_variedades', JSON.stringify(variedades))
+  renderVariedades()
+}
+
+/* ─── NUTRICIÓN ────────────────────────────────────────────── */
+function renderRecetas() {
+  const cont = document.getElementById('lista-recetas')
+  if (!recetas.length) {
+    cont.innerHTML = `<div class="empty-state">&#9881;<br><br>Aún no hay recetas guardadas.<br><span style="color:var(--muted)">Creá recetas con dosis de fertilizante por etapa.</span></div>`
+    return
+  }
+  cont.innerHTML = recetas.map((r, i) => `
+    <div class="receta-card">
+      <div>
+        <div class="receta-nombre">${r.nombre}</div>
+        <div class="receta-sub">Etapa: ${r.etapa || '--'} · EC objetivo: ${r.ec || '--'} · pH: ${r.ph || '--'}</div>
+        ${r.notas ? '<div style="font-size:10px;color:var(--dim);margin-top:4px">' + r.notas + '</div>' : ''}
+      </div>
+      <button onclick="eliminarReceta(${i})" style="width:auto;padding:4px 8px;font-size:11px;background:transparent;border:0.5px solid var(--border);color:var(--dim)">✕</button>
+    </div>`
+  ).join('')
+}
+
+function agregarReceta() {
+  const nombre = prompt('Nombre de la receta:'); if (!nombre) return
+  const etapa  = prompt('Etapa (vegetativa / floración / engorde):') || ''
+  const ec     = prompt('EC objetivo:') || ''
+  const ph     = prompt('pH objetivo:') || ''
+  const notas  = prompt('Notas / componentes:') || ''
+  recetas.push({ nombre, etapa, ec, ph, notas })
+  localStorage.setItem('cropos_recetas', JSON.stringify(recetas))
+  renderRecetas()
+}
+
+function eliminarReceta(i) {
+  if (!confirm('¿Eliminar esta receta?')) return
+  recetas.splice(i, 1)
+  localStorage.setItem('cropos_recetas', JSON.stringify(recetas))
+  renderRecetas()
+}
+
+/* ─── DIAGNÓSTICO IA ───────────────────────────────────────── */
+function subirImagenDiag() {
+  document.getElementById('input-img-diag').click()
+}
+
+function procesarImagenDiag(input) {
+  if (!input.files || !input.files[0]) return
+  const div = document.getElementById('resultado-diag')
+  const txt = document.getElementById('resultado-diag-texto')
+  div.style.display = 'block'
+
+  const dna = obtenerContextoDNA()
+  const ctx = resumenDNAParaIA(dna)
+
+  let contextoMsg = ''
+  if (dna) {
+    contextoMsg = '<div style="margin-top:10px;background:rgba(126,207,106,.04);border:0.5px solid var(--border);border-left:2px solid var(--green3);border-radius:0 6px 6px 0;padding:10px 12px;font-size:10px;font-family:var(--mono);color:var(--dim)">'
+    + '🧬 <b style="color:var(--muted)">Contexto DNA cargado:</b><br>' + ctx
+    + '</div>'
+  } else {
+    contextoMsg = '<div style="margin-top:8px;font-size:10px;color:var(--dim);font-family:var(--mono)">⚠️ Sin perfil DNA cargado — completá el Lote DNA Engine para diagnósticos más precisos.</div>'
+  }
+
+  txt.innerHTML = '⏳ Analizando imagen con IA agronómica...'
+    + (dna ? '<br><span style="font-size:11px;color:var(--muted)">La IA interpretará la imagen considerando: '
+      + (dna.variedad || 'variedad sin especificar') + ', fase '
+      + (dna.fase || 'sin especificar') + ', sustrato '
+      + (dna.sustrato || 'sin especificar') + ', modelo '
+      + (dna.modelo || 'sin especificar') + '.</span>' : '')
+    + contextoMsg
+    + '<br><span style="font-size:10px;color:var(--dim);font-family:var(--mono)">Conectá el endpoint de diagnóstico IA para análisis automático de imagen.</span>'
+}
+
+function accionDiag(accion) {
+  const txt = document.getElementById('diag-texto') || document.getElementById('resultado-diag-texto')
+  if (accion === 'aprobar') {
+    const entrada = { fecha: new Date().toISOString(), lote: loteActual?.nombre || 'N/A', accion: 'aprobado', texto: txt?.innerText || '' }
+    diagHistorial.unshift(entrada)
+    localStorage.setItem('cropos_diag', JSON.stringify(diagHistorial.slice(0, 20)))
+    alert('✅ Diagnóstico aprobado y guardado.')
+  } else {
+    alert('✕ Diagnóstico rechazado.')
+  }
+}
+
+function renderHistorialDiag() {
+  const cont = document.getElementById('historial-diag')
+  if (!diagHistorial.length) {
+    cont.innerHTML = '<div class="empty-state" style="border:none;padding:20px">Sin diagnósticos previos registrados.</div>'
+    return
+  }
+  cont.innerHTML = diagHistorial.map(d => `
+    <div class="medicion-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <span class="medicion-fecha">${formatFecha(d.fecha)}</span>
+        <span style="font-size:9px;font-family:var(--mono);color:var(--green)">${d.accion}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">${d.lote} — ${(d.texto||'').slice(0,80)}...</div>
+    </div>`
+  ).join('')
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* BITÁCORA VISUAL IA                                          */
+/* ═══════════════════════════════════════════════════════════ */
+
+const BV_KEY = 'cropos_bitacora'
+let bvRegistros = JSON.parse(localStorage.getItem(BV_KEY) || '[]')
+let bvTipoActual = '', bvSevActual = '', bvMediaB64 = []
+let bvEventoActivo = null // para modal
+
+// ── Iconos por tipo
+const BV_ICONOS = {
+  seguimiento_general:'📈', anomalia_visual:'🚨', pre_riego:'💧', post_riego:'💦',
+  poda:'✂️', defoliacion:'🍃', nutricion:'⚙️', plaga:'🐛', patogeno:'🧫',
+  estres_termico:'🌡️', exceso_riego:'🌊', falta_riego:'🏜️', floracion:'🌸',
+  maduracion:'⭐', cosecha:'🌿', postcosecha:'📦', observacion_libre:'📝'
+}
+const BV_LABELS = {
+  seguimiento_general:'Seguimiento general', anomalia_visual:'Anomalía visual',
+  pre_riego:'Pre-riego', post_riego:'Post-riego', poda:'Poda', defoliacion:'Defoliación',
+  nutricion:'Nutrición', plaga:'Plaga', patogeno:'Patógeno', estres_termico:'Estrés térmico',
+  exceso_riego:'Exceso de riego', falta_riego:'Falta de riego', floracion:'Floración',
+  maduracion:'Maduración', cosecha:'Cosecha', postcosecha:'Postcosecha', observacion_libre:'Observación libre'
+}
+
+/* ── Sub-tabs ─────────────────────────────────────────────── */
+function bvTab(id) {
+  ['carga','timeline','tablero'].forEach(t => {
+    document.getElementById('bv-panel-' + t).style.display = t === id ? 'block' : 'none'
+    document.getElementById('btab-' + t).classList.toggle('active', t === id)
+  })
+  if (id === 'timeline') { bvCargarLotesFiltro(); bvRenderTimeline() }
+  if (id === 'tablero')  bvRenderTablero()
+  if (id === 'carga')    bvCargarLotesCarga()
+}
+
+/* ── Cargar lotes en selects ──────────────────────────────── */
+async function bvCargarLotesCarga() {
+  const sel = document.getElementById('bv-lote-sel')
+  if (!sel || sel.options.length > 1) return
+  try {
+    const res = await fetch(SURL + '/rest/v1/lotes?activo=eq.true&order=nombre', { headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY} })
+    const lotes = await res.json()
+    lotes.forEach(l => { const o = new Option(l.nombre, l.id); sel.appendChild(o) })
+    if (loteActual) sel.value = loteActual.id
+  } catch(e) {}
+}
+
+async function bvCargarLotesFiltro() {
+  const sel = document.getElementById('bv-f-lote')
+  if (!sel || sel.options.length > 1) return
+  try {
+    const res = await fetch(SURL + '/rest/v1/lotes?activo=eq.true&order=nombre', { headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY} })
+    const lotes = await res.json()
+    lotes.forEach(l => { const o = new Option(l.nombre, l.id); sel.appendChild(o) })
+  } catch(e) {}
+}
+
+/* ── Selección tipo evento ────────────────────────────────── */
+function bvSelTipo(el, tipo) {
+  document.querySelectorAll('.bv-tipo-btn').forEach(b => b.classList.remove('selected'))
+  el.classList.add('selected')
+  bvTipoActual = tipo
+}
+
+/* ── Selección severidad ──────────────────────────────────── */
+function bvSelSev(el) {
+  document.querySelectorAll('.bv-sev-btn').forEach(b => b.classList.remove('selected'))
+  el.classList.add('selected')
+  bvSevActual = el.dataset.sev
+}
+
+/* ── Toggle métricas ──────────────────────────────────────── */
+function toggleBvMetricas() {
+  const panel = document.getElementById('bv-metricas-panel')
+  const chev  = document.getElementById('bv-met-chev')
+  const abierto = panel.style.display !== 'none'
+  panel.style.display = abierto ? 'none' : 'block'
+  chev.style.transform = abierto ? '' : 'rotate(180deg)'
+}
+
+/* ── Agregar media ────────────────────────────────────────── */
+function bvAgregarMedia(input) {
+  const strip = document.getElementById('bv-preview-strip')
+  const icon  = document.getElementById('bv-upload-preview-area')
+  if (!input.files.length) return
+  icon.style.display = 'none'
+
+  Array.from(input.files).forEach(file => {
+    if (bvMediaB64.length >= 6) return // máx 6 archivos
+    const reader = new FileReader()
+    reader.onload = e => {
+      const b64 = e.target.result
+      bvMediaB64.push({ tipo: file.type.startsWith('video') ? 'video' : 'foto', b64, nombre: file.name })
+      const item = document.createElement('div')
+      item.className = 'bv-preview-item'
+      const idx = bvMediaB64.length - 1
+      if (file.type.startsWith('image')) {
+        item.innerHTML = `<img src="${b64}" class="bv-preview-img"><button class="bv-preview-remove" onclick="bvRemoveMedia(${idx})">✕</button>`
+      } else {
+        item.innerHTML = `<div class="bv-preview-img" style="display:flex;align-items:center;justify-content:center;font-size:20px">🎥</div><button class="bv-preview-remove" onclick="bvRemoveMedia(${idx})">✕</button>`
+      }
+      strip.appendChild(item)
     }
-  </script>
+    reader.readAsDataURL(file)
+  })
+}
+
+function bvRemoveMedia(idx) {
+  bvMediaB64.splice(idx, 1)
+  // Re-render preview
+  const strip = document.getElementById('bv-preview-strip')
+  strip.innerHTML = ''
+  bvMediaB64.forEach((m, i) => {
+    const item = document.createElement('div')
+    item.className = 'bv-preview-item'
+    if (m.tipo === 'foto') {
+      item.innerHTML = `<img src="${m.b64}" class="bv-preview-img"><button class="bv-preview-remove" onclick="bvRemoveMedia(${i})">✕</button>`
+    } else {
+      item.innerHTML = `<div class="bv-preview-img" style="display:flex;align-items:center;justify-content:center;font-size:20px">🎥</div><button class="bv-preview-remove" onclick="bvRemoveMedia(${i})">✕</button>`
+    }
+    strip.appendChild(item)
+  })
+  if (!bvMediaB64.length) document.getElementById('bv-upload-preview-area').style.display = ''
+}
+
+/* ── Guardar registro ─────────────────────────────────────── */
+function bvGuardarRegistro() {
+  if (!bvTipoActual) { mostrarToast('⚠️ Seleccioná un tipo de evento'); return }
+
+  const loteSelEl  = document.getElementById('bv-lote-sel')
+  const loteNombre = loteSelEl?.options[loteSelEl.selectedIndex]?.text || (loteActual?.nombre || '')
+  const loteId     = loteSelEl?.value || (loteActual?.id || '')
+
+  // Obtener contexto DNA del lote
+  const dnaCtx = obtenerContextoDNA()
+
+  const reg = {
+    id:          'bv-' + Date.now(),
+    fecha:       new Date().toISOString(),
+    lote_id:     loteId,
+    lote_nombre: loteNombre,
+    sector:      document.getElementById('bv-sector')?.value || '',
+    sub_sector:  document.getElementById('bv-subsector')?.value || '',
+    tipo:        bvTipoActual,
+    severidad:   bvSevActual || 'baja',
+    descripcion: document.getElementById('bv-descripcion')?.value || '',
+    estado:      'abierto',
+    usuario:     'Técnico',
+    media:       bvMediaB64.map(m => ({ tipo: m.tipo, b64: m.b64 })),
+    metricas: {
+      vwc:    document.getElementById('bv-m-vwc')?.value || '',
+      ec:     document.getElementById('bv-m-ec')?.value || '',
+      ph:     document.getElementById('bv-m-ph')?.value || '',
+      temp:   document.getElementById('bv-m-temp')?.value || '',
+      hr:     document.getElementById('bv-m-hr')?.value || '',
+      vpd:    document.getElementById('bv-m-vpd')?.value || '',
+      vol:    document.getElementById('bv-m-vol')?.value || '',
+      drenaje:document.getElementById('bv-m-drenaje')?.value || '',
+      ppfd:   document.getElementById('bv-m-ppfd')?.value || ''
+    },
+    dna_contexto: dnaCtx ? {
+      variedad: dnaCtx.variedad, fase: dnaCtx.fase, modelo: dnaCtx.modelo,
+      sustrato: dnaCtx.sustrato, floracion: dnaCtx.floracion, sens_humedad: dnaCtx.sens_humedad
+    } : null,
+    analisis_ia:  bvGenerarAnalisisIA({ tipo: bvTipoActual, severidad: bvSevActual, metricas: {}, dna: dnaCtx }),
+    validacion:   null,
+    nota_val:     ''
+  }
+
+  bvRegistros.unshift(reg)
+  // Guardar (excluir b64 si supera 4MB para no romper localStorage)
+  try {
+    localStorage.setItem(BV_KEY, JSON.stringify(bvRegistros))
+  } catch(e) {
+    // Si falla por tamaño, guardar sin media
+    const sinMedia = bvRegistros.map(r => ({ ...r, media: r.media.map(m => ({ tipo: m.tipo, b64: '' })) }))
+    localStorage.setItem(BV_KEY, JSON.stringify(sinMedia))
+  }
+
+  // Reset formulario
+  bvMediaB64 = []
+  document.getElementById('bv-preview-strip').innerHTML = ''
+  document.getElementById('bv-upload-preview-area').style.display = ''
+  document.getElementById('bv-descripcion').value = ''
+  document.querySelectorAll('.bv-tipo-btn').forEach(b => b.classList.remove('selected'))
+  document.querySelectorAll('.bv-sev-btn').forEach(b => b.classList.remove('selected'))
+  bvTipoActual = ''; bvSevActual = ''
+
+  mostrarToast('✅ Observación registrada correctamente')
+  setTimeout(() => bvTab('timeline'), 800)
+}
+
+/* ── Análisis IA simulado (contexto agronómico) ───────────── */
+function bvGenerarAnalisisIA({ tipo, severidad, metricas, dna }) {
+  const clasif = {
+    anomalia_visual: 'anomalía_no_concluyente',
+    plaga:           'posible_plaga',
+    patogeno:        'posible_patógeno',
+    estres_termico:  'estrés_hídrico_o_térmico',
+    pre_riego:       'planta_sana',
+    post_riego:      'planta_sana',
+    nutricion:       'posible_carencia_nutricional',
+    seguimiento_general: 'planta_sana',
+    floracion:       'maduración_floral',
+    cosecha:         'senescencia_normal'
+  }[tipo] || 'anomalía_no_concluyente'
+
+  const prioridad = { baja:'monitorear', media:'revisar_en_dia', alta:'corregir_hoy', critica:'intervencion_urgente' }[severidad] || 'monitorear'
+
+  let hipotesis = 'Basado en el tipo de evento registrado y el contexto del lote.'
+  if (dna) {
+    if (dna.fase) hipotesis += ' Lote en fase ' + dna.fase + '.'
+    if (dna.variedad) hipotesis += ' Variedad ' + dna.variedad + '.'
+    if (dna.modelo) hipotesis += ' Modelo agronómico: ' + dna.modelo + '.'
+    if (dna.sens_humedad && (tipo === 'patogeno' || tipo === 'anomalia_visual')) {
+      hipotesis += ' ⚠️ Sensibilidad a HR registrada: ' + dna.sens_humedad + '.'
+    }
+  }
+
+  return {
+    clasificacion: clasif,
+    confianza: severidad === 'critica' ? 0.85 : severidad === 'alta' ? 0.72 : 0.60,
+    prioridad,
+    hipotesis,
+    requiere_tecnico: severidad === 'critica' || severidad === 'alta',
+    sugerencia: prioridad === 'intervencion_urgente'
+      ? 'Intervención urgente requerida. Aislar el área afectada y notificar al técnico responsable.'
+      : prioridad === 'corregir_hoy'
+      ? 'Revisar y corregir antes del próximo turno de riego.'
+      : 'Monitorear evolución en próximas 24-48h con seguimiento fotográfico.',
+    contexto_dna: dna ? ('Variedad: ' + (dna.variedad||'N/D') + ' · Fase: ' + (dna.fase||'N/D')) : 'Sin DNA cargado'
+  }
+}
+
+/* ── Render Timeline ──────────────────────────────────────── */
+function bvRenderTimeline() {
+  const cont  = document.getElementById('bv-timeline-cont')
+  const fLote = document.getElementById('bv-f-lote')?.value || ''
+  const fTipo = document.getElementById('bv-f-tipo')?.value || ''
+  const fSev  = document.getElementById('bv-f-sev')?.value  || ''
+  const fEst  = document.getElementById('bv-f-estado')?.value || ''
+
+  let regs = [...bvRegistros]
+  if (fLote) regs = regs.filter(r => r.lote_id === fLote)
+  if (fTipo) regs = regs.filter(r => r.tipo === fTipo)
+  if (fSev)  regs = regs.filter(r => r.severidad === fSev)
+  if (fEst)  regs = regs.filter(r => r.estado === fEst)
+
+  if (!regs.length) {
+    cont.innerHTML = '<div class="empty-state">&#128247;<br><br>Sin registros con estos filtros.</div>'
+    return
+  }
+
+  cont.innerHTML = regs.map(r => {
+    const icono  = BV_ICONOS[r.tipo] || '📋'
+    const label  = BV_LABELS[r.tipo] || r.tipo
+    const fecha  = formatFecha(r.fecha)
+    const thumb  = r.media?.[0]?.b64
+      ? `<img src="${r.media[0].b64}" class="bv-card-thumb">`
+      : `<div class="bv-card-thumb">${icono}</div>`
+    const metaStr = [r.lote_nombre, r.sector, r.sub_sector].filter(Boolean).join(' · ')
+    const ia = r.analisis_ia
+    return `<div class="bv-event-card sev-${r.severidad}" onclick="bvAbrirModal('${r.id}')">
+      ${thumb}
+      <div>
+        <div class="bv-card-title">${icono} ${label}</div>
+        <div class="bv-card-meta">${fecha}${metaStr ? ' · ' + metaStr : ''}</div>
+        <div class="bv-card-desc">${r.descripcion || '(sin descripción)'}</div>
+        ${ia ? `<div style="margin-top:6px;font-size:10px;font-family:var(--mono);color:var(--muted)">IA: ${ia.clasificacion} · ${ia.prioridad.replace(/_/g,' ')}</div>` : ''}
+      </div>
+      <span class="bv-card-badge badge-${r.estado}">${r.estado.replace(/_/g,' ')}</span>
+    </div>`
+  }).join('')
+}
+
+/* ── Render Tablero ───────────────────────────────────────── */
+function bvRenderTablero() {
+  const criticos  = bvRegistros.filter(r => r.severidad === 'critica').length
+  const abiertos  = bvRegistros.filter(r => r.estado === 'abierto').length
+  const resueltos = bvRegistros.filter(r => r.estado === 'resuelto').length
+  document.getElementById('bv-count-criticos').textContent = criticos
+  document.getElementById('bv-count-abiertos').textContent = abiertos
+  document.getElementById('bv-count-total').textContent    = bvRegistros.length
+  document.getElementById('bv-count-resueltos').textContent = resueltos
+
+  // Alertas activas
+  const alertasCont = document.getElementById('bv-alertas-cont')
+  const urgentes = bvRegistros.filter(r => (r.severidad === 'critica' || r.severidad === 'alta') && r.estado !== 'resuelto')
+  alertasCont.innerHTML = urgentes.length
+    ? urgentes.map(r => `<div class="bv-event-card sev-${r.severidad}" style="margin-bottom:6px;cursor:pointer" onclick="bvAbrirModal('${r.id}')">
+        <div class="bv-card-thumb" style="width:40px;height:40px;font-size:18px">${BV_ICONOS[r.tipo]||'📋'}</div>
+        <div>
+          <div class="bv-card-title" style="font-size:12px">${BV_LABELS[r.tipo]||r.tipo} — ${r.lote_nombre||'Lote'}</div>
+          <div class="bv-card-meta">${formatFecha(r.fecha)} · ${r.sector||''}</div>
+        </div>
+        <span class="bv-card-badge badge-abierto">${r.severidad}</span>
+      </div>`).join('')
+    : '<div class="empty-state" style="border:none;padding:16px">Sin alertas activas. ✅</div>'
+
+  // Distribución tipos
+  const tipos = {}
+  bvRegistros.forEach(r => { tipos[r.tipo] = (tipos[r.tipo] || 0) + 1 })
+  const max = Math.max(...Object.values(tipos), 1)
+  document.getElementById('bv-dist-tipo').innerHTML = Object.entries(tipos)
+    .sort((a,b) => b[1]-a[1])
+    .map(([tipo, cnt]) => {
+      const pct = Math.round(cnt / max * 100)
+      return `<div style="display:flex;align-items:center;gap:10px;font-size:12px">
+        <span style="width:140px;color:var(--muted);font-family:var(--mono);font-size:10px">${BV_LABELS[tipo]||tipo}</span>
+        <div style="flex:1;background:var(--bg2);border-radius:4px;height:8px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:var(--green);border-radius:4px;opacity:.7"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--dim);min-width:24px;text-align:right">${cnt}</span>
+      </div>`
+    }).join('')
+}
+
+/* ── Modal detalle ────────────────────────────────────────── */
+function bvAbrirModal(id) {
+  const r = bvRegistros.find(x => x.id === id)
+  if (!r) return
+  bvEventoActivo = r
+  const ia = r.analisis_ia
+
+  document.getElementById('bvm-titulo').textContent = (BV_LABELS[r.tipo]||r.tipo) + (r.sector ? ' · ' + r.sector : '')
+  document.getElementById('bvm-meta').textContent = formatFecha(r.fecha) + (r.lote_nombre ? ' · ' + r.lote_nombre : '') + (r.sub_sector ? ' · ' + r.sub_sector : '')
+
+  // Fotos
+  const fotosEl = document.getElementById('bvm-fotos')
+  fotosEl.innerHTML = (r.media||[]).map(m => m.tipo === 'foto' && m.b64
+    ? `<img src="${m.b64}" style="height:120px;border-radius:8px;object-fit:cover;border:0.5px solid var(--border)">`
+    : `<div style="height:120px;width:80px;background:var(--bg2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px">🎥</div>`
+  ).join('')
+
+  // Body
+  let body = ''
+  if (r.descripcion) body += `<div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">${r.descripcion}</div>`
+
+  // Métricas
+  const mets = Object.entries(r.metricas||{}).filter(([k,v]) => v)
+  if (mets.length) {
+    const labels = { vwc:'VWC%', ec:'EC', ph:'pH', temp:'T°C', hr:'HR%', vpd:'VPD', vol:'Vol.L', drenaje:'Drenaje%', ppfd:'PPFD' }
+    body += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">`
+    body += mets.map(([k,v]) => `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:6px;padding:6px 12px;font-family:var(--mono);font-size:11px"><span style="color:var(--dim)">${labels[k]||k}:</span> <b>${v}</b></div>`).join('')
+    body += `</div>`
+  }
+
+  // Análisis IA
+  if (ia) {
+    body += `<div style="background:rgba(126,207,106,.04);border:0.5px solid var(--border);border-left:2px solid var(--green2);border-radius:0 8px 8px 0;padding:14px;margin-bottom:14px">
+      <div style="font-size:9px;font-family:var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🧠 Análisis IA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;font-family:var(--mono);margin-bottom:10px">
+        <div><span style="color:var(--dim)">Clasificación:</span><br><b>${ia.clasificacion}</b></div>
+        <div><span style="color:var(--dim)">Confianza:</span><br><b>${Math.round(ia.confianza*100)}%</b></div>
+        <div><span style="color:var(--dim)">Prioridad:</span><br><b style="color:${ia.prioridad==='intervencion_urgente'?'#dc2626':ia.prioridad==='corregir_hoy'?'#f97316':'#22c55e'}">${ia.prioridad.replace(/_/g,' ')}</b></div>
+        <div><span style="color:var(--dim)">Técnico:</span><br><b>${ia.requiere_tecnico?'⚠ Sí':'No'}</b></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${ia.hipotesis}</div>
+      <div style="font-size:11px;color:var(--green2)">${ia.sugerencia}</div>
+      ${ia.contexto_dna ? `<div style="margin-top:8px;font-size:10px;color:var(--dim);font-family:var(--mono)">🧬 ${ia.contexto_dna}</div>` : ''}
+    </div>`
+  }
+
+  // Validación previa
+  if (r.validacion) {
+    body += `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px">✅ Validado: <b>${r.validacion}</b>${r.nota_val ? ' — ' + r.nota_val : ''}</div>`
+  }
+
+  document.getElementById('bvm-body').innerHTML = body
+
+  // Botones validación
+  const vals = ['confirmado','parcialmente_confirmado','descartado','en_seguimiento','resuelto']
+  document.getElementById('bvm-val-btns').innerHTML = vals.map(v =>
+    `<button onclick="bvSetValidacion('${v}')" class="bv-sev-btn" style="flex:none;font-size:10px;padding:6px 10px;${r.validacion===v?'border-color:var(--green);color:var(--green)':''}">${v.replace(/_/g,' ')}</button>`
+  ).join('')
+  document.getElementById('bvm-nota-val').value = r.nota_val || ''
+
+  document.getElementById('bv-modal').style.display = 'flex'
+}
+
+function bvSetValidacion(val) {
+  if (!bvEventoActivo) return
+  bvEventoActivo.validacion = val
+  document.getElementById('bvm-val-btns').querySelectorAll('button').forEach(b => {
+    b.style.borderColor = ''
+    b.style.color = ''
+    if (b.textContent.trim() === val.replace(/_/g,' ')) { b.style.borderColor = 'var(--green)'; b.style.color = 'var(--green)' }
+  })
+}
+
+function bvGuardarValidacion() {
+  if (!bvEventoActivo) return
+  const nota = document.getElementById('bvm-nota-val').value
+  bvEventoActivo.nota_val = nota
+  if (bvEventoActivo.validacion === 'resuelto') bvEventoActivo.estado = 'resuelto'
+  else if (bvEventoActivo.validacion === 'en_seguimiento') bvEventoActivo.estado = 'en_seguimiento'
+  try { localStorage.setItem(BV_KEY, JSON.stringify(bvRegistros)) } catch(e) {}
+  mostrarToast('✅ Validación guardada')
+  bvCerrarModal()
+  bvRenderTimeline()
+}
+
+function bvCerrarModal(e) {
+  if (e && e.target !== document.getElementById('bv-modal')) return
+  document.getElementById('bv-modal').style.display = 'none'
+  bvEventoActivo = null
+}
+
+/* ─── INIT ─────────────────────────────────────────────────── */
+cargarCultivos()
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW', e))
+}
+</script>
 </body>
 </html>
