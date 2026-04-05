@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retroalimentacion Visual</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">← Volver</button>
+    <button onclick="location.href='/'" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">🏠 Dashboard</button>
+  </div>
+
+  <h3 id="titulo-lote" style="margin-bottom:14px">Retroalimentación Visual</h3>
+
+  <!-- Formulario nuevo registro -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="font-size:11px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Nuevo registro</div>
+
+    <label>Turno</label>
+    <div style="display:flex;gap:8px;margin:6px 0 12px">
+      <button type="button" id="turno-man" onclick="setTurno('manana')"
+        style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:600;background:#1a5c32;color:#fff;border:none;cursor:pointer">🌅 Mañana</button>
+      <button type="button" id="turno-tar" onclick="setTurno('tarde')"
+        style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:600;background:#0a1a10;color:#2d5a3d;border:1px solid #1a3d2b;cursor:pointer">🌆 Tarde/Noche</button>
+    </div>
+
+    <label>Fase del cultivo</label>
+    <select id="fase" style="margin-top:4px;margin-bottom:12px">
+      <option value="vegetativo_temprano">Vegetativo temprano</option>
+      <option value="vegetativo_avanzado">Vegetativo avanzado</option>
+      <option value="floracion_temprana">Floración temprana</option>
+      <option value="floracion">Floración</option>
+      <option value="maduracion">Maduración</option>
+    </select>
+
+    <!-- 4 slots de foto -->
+    <label>Fotos del cultivo (hasta 4)</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;margin-bottom:12px">
+      <div id="slot-1" onclick="document.getElementById('foto-1').click()"
+        style="background:#060f0a;border:2px dashed #1a3d2b;border-radius:10px;height:120px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative">
+        <span style="font-size:28px;color:#1a3d2b">📷</span>
+        <input type="file" id="foto-1" accept="image/*" style="display:none" onchange="cargarFoto(1,this)">
+      </div>
+      <div id="slot-2" onclick="document.getElementById('foto-2').click()"
+        style="background:#060f0a;border:2px dashed #1a3d2b;border-radius:10px;height:120px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative">
+        <span style="font-size:28px;color:#1a3d2b">📷</span>
+        <input type="file" id="foto-2" accept="image/*" style="display:none" onchange="cargarFoto(2,this)">
+      </div>
+      <div id="slot-3" onclick="document.getElementById('foto-3').click()"
+        style="background:#060f0a;border:2px dashed #1a3d2b;border-radius:10px;height:120px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative">
+        <span style="font-size:28px;color:#1a3d2b">📷</span>
+        <input type="file" id="foto-3" accept="image/*" style="display:none" onchange="cargarFoto(3,this)">
+      </div>
+      <div id="slot-4" onclick="document.getElementById('foto-4').click()"
+        style="background:#060f0a;border:2px dashed #1a3d2b;border-radius:10px;height:120px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative">
+        <span style="font-size:28px;color:#1a3d2b">📷</span>
+        <input type="file" id="foto-4" accept="image/*" style="display:none" onchange="cargarFoto(4,this)">
+      </div>
+    </div>
+
+    <label>Observación</label>
+    <textarea id="observacion" placeholder="Estado general, notas del operario..." style="margin-top:4px;min-height:70px"></textarea>
+
+    <button onclick="analizarConIA()" id="btn-ia" style="display:none;margin-top:10px;background:#0a1a10;border:1px solid #1a5c32;color:#22c55e;border-radius:8px;padding:10px;font-size:13px;width:100%;font-weight:600;cursor:pointer">🤖 Analizar con IA antes de guardar</button>
+
+    <div id="resultado-ia" style="display:none;background:#0a1a10;border:1px solid #1a5c32;border-radius:12px;padding:14px;margin-top:10px">
+      <div style="font-size:11px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Diagnóstico IA</div>
+      <div id="ia-contenido"></div>
+    </div>
+
+    <div id="progreso" style="display:none;font-size:12px;color:#4a7a5a;text-align:center;margin-top:8px">Subiendo fotos...</div>
+    <button onclick="guardarRegistro()" class="btn-gold" style="margin-top:10px">💾 Guardar registro</button>
+  </div>
+
+  <!-- Historial -->
+  <h3 style="margin-bottom:10px">Historial cronológico</h3>
+  <div id="historial"></div>
+</div>
+
+<script>
+const SURL='https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY='sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+const BUCKET='retroalimentacion-visual'
+const params=new URLSearchParams(location.search)
+const loteId=params.get('lote_id')||''
+const loteNom=decodeURIComponent(params.get('lote')||'Lote')
+
+document.getElementById('titulo-lote').textContent=loteNom+' — Visual'
+
+let turnoActual='manana'
+const fotosData={}
+let diagnosticoIA=null
+
+function setTurno(t){
+  turnoActual=t
+  document.getElementById('turno-man').style.background=t==='manana'?'#1a5c32':'#0a1a10'
+  document.getElementById('turno-man').style.color=t==='manana'?'#fff':'#2d5a3d'
+  document.getElementById('turno-tar').style.background=t==='tarde'?'#1a5c32':'#0a1a10'
+  document.getElementById('turno-tar').style.color=t==='tarde'?'#fff':'#2d5a3d'
+}
+
+async function analizarConIA(){
+  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
+  const btn=document.getElementById('btn-ia')
+  btn.textContent='Analizando...'
+  btn.disabled=true
+  const form=new FormData()
+  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
+  form.append('fase',document.getElementById('fase').value)
+  form.append('observacion',document.getElementById('observacion').value||'')
+  try{
+    const r=await fetch('/analizar-visual',{method:'POST',body:form})
+    const data=await r.json()
+    btn.textContent='🤖 Analizar con IA antes de guardar'
+    btn.disabled=false
+    if(!data.ok){alert('Error: '+data.mensaje);return}
+    diagnosticoIA=data.diagnostico
+    const d=data.diagnostico
+    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
+    const col=colores[d.estado_general]||'#4a7a5a'
+    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
+    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
+    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
+    document.getElementById('ia-contenido').innerHTML=html
+    document.getElementById('resultado-ia').style.display='block'
+  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+}
+
+async function analizarConIA(){
+  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
+  const btn=document.getElementById('btn-ia')
+  btn.textContent='Analizando...'
+  btn.disabled=true
+  const form=new FormData()
+  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
+  form.append('fase',document.getElementById('fase').value)
+  form.append('observacion',document.getElementById('observacion').value||'')
+  try{
+    const r=await fetch('/analizar-visual',{method:'POST',body:form})
+    const data=await r.json()
+    btn.textContent='🤖 Analizar con IA antes de guardar'
+    btn.disabled=false
+    if(!data.ok){alert('Error: '+data.mensaje);return}
+    diagnosticoIA=data.diagnostico
+    const d=data.diagnostico
+    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
+    const col=colores[d.estado_general]||'#4a7a5a'
+    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
+    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
+    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
+    document.getElementById('ia-contenido').innerHTML=html
+    document.getElementById('resultado-ia').style.display='block'
+  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+}
+
+async function analizarConIA(){
+  if(!Object.keys(fotosData).length){alert('Agrega al menos una foto');return}
+  const btn=document.getElementById('btn-ia')
+  btn.textContent='Analizando...'
+  btn.disabled=true
+  const form=new FormData()
+  Object.entries(fotosData).forEach(([n,file])=>form.append('fotos',file))
+  form.append('fase',document.getElementById('fase').value)
+  form.append('observacion',document.getElementById('observacion').value||'')
+  try{
+    const r=await fetch('/analizar-visual',{method:'POST',body:form})
+    const data=await r.json()
+    btn.textContent='🤖 Analizar con IA antes de guardar'
+    btn.disabled=false
+    if(!data.ok){alert('Error: '+data.mensaje);return}
+    diagnosticoIA=data.diagnostico
+    const d=data.diagnostico
+    const colores={excelente:'#22c55e',bueno:'#22c55e',regular:'#f0b429',malo:'#f0b429',critico:'#dc2626'}
+    const col=colores[d.estado_general]||'#4a7a5a'
+    let html='<div style="margin-bottom:10px"><span style="font-size:18px;font-weight:700;color:'+col+'">'+d.estado_general.toUpperCase()+'</span> <span style="font-size:13px;color:#4a7a5a">· Vigor '+d.vigor+'</span></div>'
+    if(d.resumen) html+='<div style="font-size:13px;color:#a8c4b0;margin-bottom:10px;padding:8px;background:#060f0a;border-radius:8px">'+d.resumen+'</div>'
+    if(d.carencias&&d.carencias.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">CARENCIAS</div>'+d.carencias.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.excesos&&d.excesos.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">EXCESOS</div>'+d.excesos.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.plagas&&d.plagas.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#dc2626;margin-bottom:3px">PLAGAS</div>'+d.plagas.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.estres&&d.estres.length) html+='<div style="margin-bottom:6px"><div style="font-size:10px;color:#f0b429;margin-bottom:3px">ESTRES</div>'+d.estres.map(c=>'<div style="font-size:12px">• '+c+'</div>').join('')+'</div>'
+    if(d.acciones&&d.acciones.length) html+='<div style="border-top:1px solid #1a3d2b;padding-top:8px;margin-top:6px">'+d.acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>'
+    document.getElementById('ia-contenido').innerHTML=html
+    document.getElementById('resultado-ia').style.display='block'
+  }catch(e){btn.textContent='🤖 Analizar con IA antes de guardar';btn.disabled=false;alert('Error: '+e.message)}
+}
+
+function cargarFoto(n, input){
+  const file=input.files[0]; if(!file) return
+  fotosData[n]=file
+  const slot=document.getElementById('slot-'+n)
+  const reader=new FileReader()
+  reader.onload=e=>{
+    slot.innerHTML='<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px"><div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.6);border-radius:4px;padding:2px 6px;font-size:10px;color:#22c55e">✓</div>'
+    slot.style.border='2px solid #1a5c32'
+    document.getElementById('btn-ia').style.display='block'
+  }
+  reader.readAsDataURL(file)
+}
+
+async function subirFoto(file, nombre){
+  const ext=file.name.split('.').pop()
+  const path=loteId+'/'+nombre+'.'+ext
+  const r=await fetch(SURL+'/storage/v1/object/'+encodeURIComponent(BUCKET)+'/'+path,{
+    method:'POST',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':file.type},
+    body:file
+  })
+  if(!r.ok) throw new Error('Error subiendo foto')
+  return SURL+'/storage/v1/object/public/'+encodeURIComponent(BUCKET)+'/'+path
+}
+
+async function guardarRegistro(){
+  if(Object.keys(fotosData).length===0){alert('Agregá al menos una foto');return}
+  document.getElementById('progreso').style.display='block'
+
+  try {
+    const ts=Date.now()
+    const urls={}
+    for(const [n,file] of Object.entries(fotosData)){
+      const nombre='lote'+loteId+'_'+ts+'_foto'+n
+      urls['foto_'+n]=await subirFoto(file,nombre)
+    }
+
+    const payload={
+      lote_id:parseInt(loteId),
+      lote_nombre:loteNom,
+      turno:turnoActual,
+      fase:document.getElementById('fase').value,
+      observacion:document.getElementById('observacion').value||null,
+      fotos:urls,
+      diagnostico_ia:diagnosticoIA||null,
+      fecha:new Date().toISOString()
+    }
+
+    const r=await fetch(SURL+'/rest/v1/registros_visuales',{
+      method:'POST',
+      headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(payload)
+    })
+
+    if(r.ok){
+      document.getElementById('progreso').style.display='none'
+      alert('✅ Registro guardado')
+      // Reset
+      for(let i=1;i<=4;i++){
+        document.getElementById('slot-'+i).innerHTML='<span style="font-size:28px;color:#1a3d2b">📷</span><input type="file" id="foto-'+i+'" accept="image/*" style="display:none" onchange="cargarFoto('+i+',this)">'
+        document.getElementById('slot-'+i).style.border='2px dashed #1a3d2b'
+      }
+      document.getElementById('observacion').value=''
+      Object.keys(fotosData).forEach(k=>delete fotosData[k])
+      cargarHistorial()
+    } else {
+      document.getElementById('progreso').style.display='none'
+      alert('❌ Error al guardar')
+    }
+  } catch(e){
+    document.getElementById('progreso').style.display='none'
+    alert('Error: '+e.message)
+  }
+}
+
+async function cargarHistorial(){
+  const r=await fetch(SURL+'/rest/v1/registros_visuales?lote_id=eq.'+loteId+'&order=fecha.desc&limit=20',
+    {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  const data=await r.json()
+  const cont=document.getElementById('historial')
+  if(!data||!data.length){cont.innerHTML='<p style="color:#2d5a3d;font-size:13px">Sin registros visuales</p>';return}
+
+  const faseLabel={
+    vegetativo_temprano:'Veg. temprano',
+    vegetativo_avanzado:'Veg. avanzado',
+    floracion_temprana:'Flora. temprana',
+    floracion:'Floración',
+    maduracion:'Maduración'
+  }
+  const turnoIcon={manana:'🌅',tarde:'🌆',noche:'🌙'}
+
+  cont.innerHTML=data.map(d=>{
+    const fecha=new Date(d.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+    const fotos=d.fotos?Object.values(d.fotos):[]
+    return `<div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:14px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-weight:700;font-size:13px">${turnoIcon[d.turno]||''} ${fecha}</div>
+          <div style="font-size:11px;color:#2d5a3d;margin-top:2px">${faseLabel[d.fase]||d.fase}</div>
+        </div>
+      </div>
+      ${fotos.length?`<div style="display:grid;grid-template-columns:repeat(${Math.min(fotos.length,4)},1fr);gap:6px;margin-bottom:10px">
+        ${fotos.map(url=>`<img src="${url}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="verFoto('${url}')">`).join('')}
+      </div>`:''}
+      ${d.observacion?`<div style="font-size:13px;color:#a8c4b0;background:#060f0a;border-radius:8px;padding:8px">📝 ${d.observacion}</div>`:''}
+    </div>`
+  }).join('')
+}
+
+function verFoto(url){
+  const overlay=document.createElement('div')
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:999;display:flex;align-items:center;justify-content:center'
+  overlay.onclick=()=>document.body.removeChild(overlay)
+  overlay.innerHTML='<img src="'+url+'" style="max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px">'
+  document.body.appendChild(overlay)
+}
+
+cargarHistorial()
+</script>
+</body>
+</html>

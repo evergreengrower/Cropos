@@ -129,9 +129,17 @@
   <div id="riego-resumen" style="background:#060f0a;border-radius:10px;padding:12px;margin-bottom:12px"></div>
 
   <div id="riego-foto-btn" style="display:none;margin-bottom:12px">
-    <button onclick="irAFoto()" style="background:#1a1200;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:12px;font-size:13px;width:100%;font-weight:600">
+    <button onclick="irAFoto()" style="background:#1a1200;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:10px;font-size:13px;width:100%;font-weight:600;margin-bottom:8px">
       📸 Analizar foto para calcular volumen
     </button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="flex:1">
+        <label style="font-size:10px">O ingresá ml/planta manualmente</label>
+        <input type="number" id="ml-manual" placeholder="800" step="1"
+          oninput="aplicarMLManual()"
+          style="margin-top:4px">
+      </div>
+    </div>
   </div>
 
   <label>Fase y productos aplicados</label>
@@ -251,13 +259,18 @@ function renderAlmanaque(){
       const confirmado=plan.confirmado
       const mlPl=plan.ml_por_planta
       const tipo=plan.tipo==='fertirrigacion'?'Fert':plan.tipo==='agua_sola'?'Agua':'Flush'
-      return '<td><div class="celda tiene-plan'+(confirmado?' confirmado':'')+'">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">' +
-        '<span style="font-size:9px;color:#22c55e;font-weight:700">'+tipo+'</span>' +
-        '<button onclick="event.stopPropagation();abrirRiegoConPlan(\''+fecha+'\',\''+turno+'\')" style="background:'+(confirmado?'#f0b429':'#1a5c32')+';border:none;border-radius:4px;padding:2px 7px;font-size:10px;color:#0a1a10;cursor:pointer;font-weight:700">'+(confirmado?'✓ OK':'✓ Regar')+'</button>' +
-        '</div>' +
-        (mlPl?'<div style="font-size:11px;color:#f0b429;font-weight:600">'+mlPl+' ml/pl</div>':'<div style="font-size:9px;color:#f0b429">Sin vol →📸</div>') +
-        '<div style="font-size:9px;color:#4a7a5a;margin-top:2px;cursor:pointer" onclick="abrirModalPlan(\''+fecha+'\',\''+turno+'\')">editar</div>' +
+      const sinVolEjecutado=confirmado&&!mlPl
+      const bgColor=confirmado?(mlPl?'#f0b429':'#b45309'):'#1a5c32'
+      const btnLabel=confirmado?(mlPl?'✓ OK':'⚠ Sin vol'):'✓ Regar'
+      const volDiv=sinVolEjecutado?'<div style="font-size:9px;color:#f87171;font-weight:600;margin-top:2px">⚠ Completar volumen</div>':(mlPl?'<div style="font-size:11px;color:#f0b429;font-weight:600">'+mlPl+' ml/pl</div>':'<div style="font-size:9px;color:#4a7a5a">Sin vol →📸</div>')
+      return '<td><div class="celda tiene-plan'+(confirmado?(mlPl?' confirmado':' sin-vol-ejecutado'):'')+'" style="'+(sinVolEjecutado?'border:1px solid #f87171;background:#1a0a0a':'')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+        '<span style="font-size:9px;color:#22c55e;font-weight:700">'+tipo+'</span>'+
+        '<button onclick="event.stopPropagation();abrirRiegoConPlan(\''+fecha+'\',\''+turno+'\')" style="background:'+bgColor+';border:none;border-radius:4px;padding:2px 7px;font-size:10px;color:#0a1a10;cursor:pointer;font-weight:700">'+btnLabel+'</button>'+
+        '</div>'+
+        volDiv+
+        (plan.notas?'<div style="font-size:9px;color:#22c55e;margin-top:2px;font-weight:600">'+plan.notas+'</div>':'')+
+        '<div style="font-size:9px;color:#4a7a5a;margin-top:2px;cursor:pointer" onclick="abrirModalPlan(\''+fecha+'\',\''+turno+'\')">'+'editar</div>'+
         '</div></td>'
     }).join('')
     return '<tr class="'+(hoy?'hoy':'')+'"><td><div class="dia-label">'+DIAS[d.getDay()]+'</div><div class="dia-fecha">'+d.getDate()+'/'+(d.getMonth()+1)+'</div></td>'+celdas+'</tr>'
@@ -378,8 +391,35 @@ async function guardarPlan(){
 
 async function borrarPlan(){
   if(!celdaActual) return
-  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-  cerrarModalPlan(); cargarPlanes()
+  if(!confirm('¿Borrar este plan? También se borrarán los registros de riego asociados.')) return
+
+  // Buscar el id del plan
+  const rPlan=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno+'&select=id',{
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+  })
+  const planes=await rPlan.json()
+  if(!planes.length){cerrarModalPlan();cargarPlanes();return}
+  const planId=planes[0].id
+
+  // Primero borrar historial_riegos asociados
+  await fetch(SURL+'/rest/v1/historial_riegos?plan_id=eq.'+planId,{
+    method:'DELETE',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+  })
+
+  // Luego borrar el plan
+  const r=await fetch(SURL+'/rest/v1/planes_riego?id=eq.'+planId,{
+    method:'DELETE',
+    headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
+  })
+
+  if(r.ok){
+    cerrarModalPlan()
+    cargarPlanes()
+  } else {
+    const err=await r.text()
+    alert('Error al borrar: '+err)
+  }
 }
 
 // ── Modal riego (operario) ────────────────────────────────────────────────
@@ -433,6 +473,72 @@ function abrirModalRiego(plan, fecha, turno, conIA){
   document.getElementById('modal-riego').style.display='flex'
 }
 function cerrarModalRiego(){document.getElementById('modal-riego').style.display='none';planActual=null}
+
+function aplicarMLManual(){
+  const ml = parseFloat(document.getElementById('ml-manual').value)
+  if(!ml||!planActual) return
+  // Recalcular volumen
+  const plts = planActual.plts || plantasLote
+  const volL = (ml * plts) / 1000
+  planActual.mlPl = ml
+  planActual.plts = plts
+  planActual.volL = volL
+
+  // Actualizar resumen en el modal
+  let res = document.getElementById('riego-resumen').innerHTML
+  // Reconstruir resumen con nuevos valores
+  let html = '<div style="margin-bottom:8px"><span style="font-size:28px;font-weight:700;color:#f0b429">'+ml+'</span> <span style="color:#4a7a5a">ml/planta × '+plts+' plantas</span></div>'
+  html += '<div style="background:#0a1a10;border-radius:8px;padding:8px;text-align:center;margin-bottom:10px">'
+  html += '<div style="font-size:10px;color:#4a7a5a;margin-bottom:2px">VOLUMEN TOTAL</div>'
+  html += '<div style="font-size:28px;font-weight:700;color:#22c55e">'+volL.toFixed(1)+' L</div></div>'
+
+  // Mantener fertilizantes si existen
+  const prods = planActual.prods || {}
+  if(Object.keys(prods).length>0){
+    html += '<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;margin-bottom:4px">Fertilizantes</div>'
+    Object.entries(prods).forEach(([nombre,dosis])=>{
+      const mlProd = Math.round(parseFloat(dosis)*volL)
+      html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #0a1a10;font-size:13px"><span><b>'+nombre+'</b> <span style="color:#4a7a5a">'+dosis+'</span></span><span style="color:#f0b429;font-weight:700">'+mlProd+' ml</span></div>'
+    })
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;font-weight:700"><span>Agua total</span><span style="color:#22c55e">'+volL.toFixed(1)+' L</span></div>'
+  }
+
+  document.getElementById('riego-resumen').innerHTML = html
+  actualizarRiegoMls()
+}
+
+function aplicarMLManual(){
+  const ml = parseFloat(document.getElementById('ml-manual').value)
+  if(!ml||!planActual) return
+  // Recalcular volumen
+  const plts = planActual.plts || plantasLote
+  const volL = (ml * plts) / 1000
+  planActual.mlPl = ml
+  planActual.plts = plts
+  planActual.volL = volL
+
+  // Actualizar resumen en el modal
+  let res = document.getElementById('riego-resumen').innerHTML
+  // Reconstruir resumen con nuevos valores
+  let html = '<div style="margin-bottom:8px"><span style="font-size:28px;font-weight:700;color:#f0b429">'+ml+'</span> <span style="color:#4a7a5a">ml/planta × '+plts+' plantas</span></div>'
+  html += '<div style="background:#0a1a10;border-radius:8px;padding:8px;text-align:center;margin-bottom:10px">'
+  html += '<div style="font-size:10px;color:#4a7a5a;margin-bottom:2px">VOLUMEN TOTAL</div>'
+  html += '<div style="font-size:28px;font-weight:700;color:#22c55e">'+volL.toFixed(1)+' L</div></div>'
+
+  // Mantener fertilizantes si existen
+  const prods = planActual.prods || {}
+  if(Object.keys(prods).length>0){
+    html += '<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;margin-bottom:4px">Fertilizantes</div>'
+    Object.entries(prods).forEach(([nombre,dosis])=>{
+      const mlProd = Math.round(parseFloat(dosis)*volL)
+      html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #0a1a10;font-size:13px"><span><b>'+nombre+'</b> <span style="color:#4a7a5a">'+dosis+'</span></span><span style="color:#f0b429;font-weight:700">'+mlProd+' ml</span></div>'
+    })
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;font-weight:700"><span>Agua total</span><span style="color:#22c55e">'+volL.toFixed(1)+' L</span></div>'
+  }
+
+  document.getElementById('riego-resumen').innerHTML = html
+  actualizarRiegoMls()
+}
 
 function irAFoto(){
   const turno = planActual?.turno || planActual?.nombre || getTurnoActual()
@@ -498,7 +604,7 @@ async function confirmarRiego(){
     pct_athena:      pct,
     productos:       Object.keys(productosConc).length?productosConc:null,
     productos_ml:    Object.keys(productosML).length?productosML:null,
-    notas:           document.getElementById('r-notas').value||null,
+    notas:           null,
     plan_id:         planActual.id||null
   }
 
@@ -525,11 +631,18 @@ async function confirmarRiego(){
         })
       })
     } else if(planActual.id){
-      await fetch(SURL+'/rest/v1/planes_riego?id=eq.'+planActual.id,{
+      const patchRes = await fetch(SURL+'/rest/v1/planes_riego?id=eq.'+planActual.id,{
         method:'PATCH',
-        headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json'},
-        body:JSON.stringify({confirmado:true})
+        headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify({
+          confirmado:true,
+          ml_por_planta: planActual.mlPl||null,
+          volumen_l: planActual.volL||null,
+          notas: planActual.mlPl ? (planActual.mlPl+' ml/pl'+(Object.keys(productosConc).length?' · '+Object.entries(productosConc).map(([k,v])=>k+' '+v).join(' · '):'')) : null
+        })
       })
+      const patchData = await patchRes.json()
+      console.log('PATCH resultado:', JSON.stringify(patchData))
     }
     cerrarModalRiego()
     // Redirigir limpio para recargar almanaque sin params de IA

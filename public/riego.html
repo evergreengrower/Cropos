@@ -47,6 +47,12 @@
       <div id="vol-total" style="font-size:24px;font-weight:700;color:#22c55e">—</div>
     </div>
 
+    <!-- Resumen mezcla en tiempo real -->
+    <div id="resumen-mezcla" style="display:none;background:#0a1a10;border:1px solid #1a5c32;border-radius:10px;padding:12px;margin-top:8px">
+      <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🧪 Mezcla a preparar</div>
+      <div id="resumen-mezcla-content"></div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div><label>EC</label><input id="ec" type="number" step="0.01" placeholder="2.3"></div>
       <div><label>pH</label><input id="ph" type="number" step="0.1" placeholder="6.0"></div>
@@ -117,13 +123,38 @@ function calcularVolumen() {
   const ml   = parseFloat(document.getElementById('ml-planta').value) || 0
   const plts = parseFloat(document.getElementById('plantas').value)   || 0
   const box  = document.getElementById('vol-box')
+  const volL = (ml * plts) / 1000
   if (ml > 0 && plts > 0) {
-    document.getElementById('vol-total').textContent = ((ml * plts) / 1000).toFixed(1) + ' L'
+    document.getElementById('vol-total').textContent = volL.toFixed(1) + ' L'
     box.style.display = 'block'
   } else {
     box.style.display = 'none'
   }
   actualizarMls()
+  mostrarResumenMezcla(ml, plts, volL)
+}
+
+function mostrarResumenMezcla(ml, plts, volL) {
+  const box = document.getElementById('resumen-mezcla')
+  const content = document.getElementById('resumen-mezcla-content')
+  if (!ml || !plts || !volL) { box.style.display = 'none'; return }
+  const pct = parseInt(document.getElementById('pct').value)
+  const checks = [...document.querySelectorAll('#lista-productos input[type=checkbox]:checked')]
+  if (!checks.length) { box.style.display = 'none'; return }
+  let html = '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3d2b;margin-bottom:6px"><span style="color:#e8f0eb;font-size:13px">💧 Agua total</span><span style="color:#22c55e;font-weight:700;font-size:15px">'+volL.toFixed(1)+' L</span></div>'
+  checks.forEach(chk => {
+    const id = parseInt(chk.dataset.id)
+    const f  = fertis.find(x => x.id === id)
+    if (!f) return
+    const dosis = f.marca === 'Athena'
+      ? parseFloat((f.dosis_max * pct / 70).toFixed(2))
+      : parseFloat(document.querySelector('input[type=number][data-id="'+id+'"]')?.value || f.dosis_max)
+    const mlTotal = Math.round(dosis * volL)
+    const dosisLabel = f.marca === 'Athena' ? dosis+' ml/L ('+pct+'% Athena)' : dosis+' ml/L'
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #060f0a;font-size:13px"><span><b>'+f.nombre+'</b> <span style="color:#4a7a5a;font-size:11px">'+dosisLabel+'</span></span><span style="color:#f0b429;font-weight:700">'+mlTotal+' ml</span></div>'
+  })
+  content.innerHTML = html
+  box.style.display = 'block'
 }
 
 function setTab(t) {
@@ -315,6 +346,19 @@ document.getElementById('form-riego').addEventListener('submit', async e => {
   e.preventDefault()
   const pct  = parseInt(document.getElementById('pct').value)
   const mlPl = parseFloat(document.getElementById('ml-planta').value) || null
+
+  // Validación: volumen obligatorio
+  if (!mlPl || mlPl <= 0) {
+    const inp = document.getElementById('ml-planta')
+    inp.style.border = '2px solid #f87171'
+    inp.style.background = '#1a0a0a'
+    const msg = document.getElementById('mensaje')
+    msg.textContent = '⚠ Ingresá los ml por planta antes de guardar'
+    msg.style.color = '#f87171'
+    msg.style.display = 'block'
+    inp.focus()
+    return
+  }
   const plts = parseFloat(document.getElementById('plantas').value)   || null
   const volL = mlPl && plts ? parseFloat(((mlPl * plts) / 1000).toFixed(1)) : null
   const checks = [...document.querySelectorAll('#lista-productos input[type=checkbox]:checked')]
@@ -328,6 +372,20 @@ document.getElementById('form-riego').addEventListener('submit', async e => {
       : parseFloat(document.querySelector('input[type=number][data-id="' + id + '"]')?.value || f.dosis_max)
     productos[f.nombre] = dosis + ' ml/L'
   })
+  // Generar string descriptivo para planificación
+  const pct2 = parseInt(document.getElementById('pct').value)
+  const checks2 = [...document.querySelectorAll('#lista-productos input[type=checkbox]:checked')]
+  const fertStrings = checks2.map(chk => {
+    const id = parseInt(chk.dataset.id)
+    const f  = fertis.find(x => x.id === id)
+    if (!f) return null
+    const dosis = f.marca === 'Athena'
+      ? parseFloat((f.dosis_max * pct2 / 70).toFixed(2))
+      : parseFloat(document.querySelector('input[type=number][data-id="'+id+'"]')?.value || f.dosis_max)
+    return f.marca === 'Athena' ? pct2+'% Athena' : f.nombre+' '+dosis+'ml/L'
+  }).filter(Boolean)
+  const descripcionRiego = (mlPl ? mlPl+' ml/pl' : '') + (fertStrings.length ? ' · '+fertStrings.join(' · ') : '')
+
   const payload = {
     lote: loteNom || '', lote_id: loteId ? parseInt(loteId) : null,
     hora_inicio: document.getElementById('hora').value || null,
@@ -345,6 +403,16 @@ document.getElementById('form-riego').addEventListener('submit', async e => {
   })
   const msg = document.getElementById('mensaje')
   if (r.ok) {
+    // Actualizar ml_por_planta en planes_riego si hay plan del día
+    if (mlPl > 0 && loteId) {
+      const hoy   = new Date().toISOString().slice(0, 10)
+      const turno = getTurno()
+      await fetch(SURL + '/rest/v1/planes_riego?lote_id=eq.' + loteId + '&fecha_inicio=eq.' + hoy + '&nombre=eq.' + turno + '&activo=eq.true', {
+        method: 'PATCH',
+        headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ ml_por_planta: mlPl })
+      })
+    }
     msg.textContent = '✅ Riego registrado'
     msg.style.color = '#22c55e'
     document.getElementById('form-riego').reset()

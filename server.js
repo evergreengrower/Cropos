@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config({ override: false })
 
 const express = require('express')
 const path = require('path')
@@ -160,33 +160,6 @@ Analizá esta imagen de la pantalla del sensor BlueLab Pulse y extraé los valor
 
 Esta es la pantalla de historial de la app BlueLab Pulse. Muestra filas de mediciones. Cada fila tiene 3 columnas: COLUMNA IZQUIERDA = EC (numero con superindice EC), COLUMNA CENTRAL = VWC Humedad (numero con superindice % o asterisco), COLUMNA DERECHA = Temperatura (numero con superindice C). Lee cada fila de arriba hacia abajo. Extrae SOLO los numeros de la COLUMNA CENTRAL (VWC). Ignora la ultima fila si esta cortada. Suma todos los valores de VWC que pudiste leer completamente y divide por la cantidad de filas completas. Devuelve tambien cuantas filas leiste.
 
-Luego, basándote en estos protocolos reales del cultivo Carmelo:
-
-FASE ACTUAL: ${fase}
-TARGET PRE-RIEGO VWC: ${target.preRiego}%
-TARGET POST-RIEGO VWC: ${target.postRiego}%
-
-PROTOCOLO DE CORRECCIÓN (${fase}):
-- Post-riego objetivo: ${target.postRiego}%
-- Si VWC actual >= target pre-riego: NO REGAR
-- Si VWC < pre-riego: calcular volumen de corrección
-
-TABLA DE CORRECCIÓN GENERATIVA (floración):
-27% → no tocar si promedio estable
-26% → +400 ml por planta
-25% → +600 ml por planta
-24% → +800 ml por planta
-22-23% → +1000 ml por planta
-< 22% → +1200 ml por planta
-
-TABLA DE CORRECCIÓN VEGETATIVA AVANZADA:
->= 27% → NO REGAR
-26% → 1500 ml
-24-25% → 1500 ml
-22-23% → +800 ml extra
-20-21% → +1000 ml extra
-< 18% → +1500 ml extra
-
 Respondé SOLO en este formato JSON exacto, sin texto adicional:
 {
   "lecturas": {
@@ -194,16 +167,6 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
     "vwc_promedio": 0.0,
     "temp_promedio": 0.0,
     "cantidad_lecturas": 0
-  },
-  "diagnostico": {
-    "estado_vwc": "ok|bajo|critico",
-    "diferencia_target": 0.0,
-    "accion": "no_regar|regar|correccion_urgente"
-  },
-  "recomendacion": {
-    "regar": true,
-    "volumen_ml_por_planta": 0,
-    "motivo": "texto explicativo breve"
   }
 }`
           }
@@ -231,6 +194,32 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
         notas:       'Importado desde foto BlueLab · Análisis IA',
         fecha:       new Date().toISOString()
       }])
+    }
+
+    // Lógica determinista de recomendación según fase
+    const vwc = analisis.lecturas?.vwc_promedio || 0
+
+    let regar = false
+    let volumen = 0
+    let motivo = ''
+
+    if (fase === 'floracion') {
+      if (vwc >= 27)      { regar = false; volumen = 0;   motivo = 'VWC '+vwc+'% — No regar (generativa)' }
+      else if (vwc >= 25) { regar = true;  volumen = 400; motivo = 'VWC '+vwc+'% — Regar 400ml (generativa ~26%)' }
+      else if (vwc >= 23) { regar = true;  volumen = 550; motivo = 'VWC '+vwc+'% — Regar 550ml (generativa ~24%)' }
+      else if (vwc >= 21) { regar = true;  volumen = 700; motivo = 'VWC '+vwc+'% — Regar 700ml (generativa ~22%)' }
+      else                { regar = true;  volumen = 800; motivo = 'VWC '+vwc+'% — Regar 800ml (generativa ~20%)' }
+    } else {
+      const t = targets[fase] || targets.floracion
+      if (vwc >= t.preRiego) { regar = false; volumen = 0; motivo = 'VWC '+vwc+'% sobre target '+t.preRiego+'%' }
+      else                   { regar = true;  volumen = 800; motivo = 'VWC '+vwc+'% bajo target '+t.preRiego+'%' }
+    }
+
+    analisis.recomendacion = { regar, volumen_ml_por_planta: volumen, motivo }
+    analisis.diagnostico = {
+      estado_vwc: vwc < 20 ? 'critico' : vwc < 24 ? 'bajo' : 'ok',
+      diferencia_target: parseFloat((vwc - (targets[fase]?.preRiego || 20)).toFixed(1)),
+      accion: regar ? (vwc < 20 ? 'correccion_urgente' : 'regar') : 'no_regar'
     }
 
     res.json({ ok: true, analisis })
@@ -287,29 +276,194 @@ Respondé SOLO en este JSON sin texto adicional:
     const avp = svp * (hr / 100)
     const vpd = parseFloat((svp - avp).toFixed(3))
 
-    // Diagnóstico
+    // Diagnostico agronomico especializado
     const rangos = { floracion:{min:1.0,max:1.5}, vegetativo:{min:0.8,max:1.2}, maduracion:{min:1.5,max:2.0} }
     const rango  = rangos[fase] || rangos.floracion
     const alertas=[], acciones=[]
 
-    if(vpd<0.4){alertas.push('🔴 VPD muy bajo — riesgo hongos');acciones.push('Abrir laterales','NO foliar')}
-    else if(vpd<rango.min){alertas.push('🟡 VPD bajo — ambiente húmedo');acciones.push('Ventilación moderada')}
-    else if(vpd<=rango.max){alertas.push('🟢 VPD óptimo')}
-    else if(vpd<=2.0){alertas.push('🟡 VPD alto — estrés leve');acciones.push('Mojar pasillos')}
-    else{alertas.push('🔴 VPD crítico — estrés severo');acciones.push('Mojar pasillos urgente','Revisar riego')}
+    // VPD
+    if(vpd<0.4){
+      alertas.push('🔴 VPD crítico ('+vpd+' kPa) — Ambiente saturado. Las plantas no transpiran. Riesgo inmediato de hongos y pudrición radicular.')
+      acciones.push('Abrir laterales al máximo','Ventiladores al 100%','NO foliar','Revisar drenaje del sustrato')
+    } else if(vpd<rango.min){
+      alertas.push('🟡 VPD bajo ('+vpd+' kPa) — Transpiración reducida. El ambiente está húmedo para esta fase. Las plantas absorben nutrientes lentamente.')
+      acciones.push('Aumentar ventilación','Abrir laterales parcialmente','Evitar foliar')
+    } else if(vpd<=rango.max){
+      alertas.push('✅ VPD óptimo ('+vpd+' kPa) — Transpiración activa en rango. Las plantas absorben nutrientes correctamente. Sin acción requerida.')
+    } else if(vpd<=2.0){
+      alertas.push('🟡 VPD alto ('+vpd+' kPa) — Las plantas transpiran más de lo que absorben. Riesgo de estrés hídrico y quema de puntas si se mantiene.')
+      acciones.push('Mojar pasillos','Cerrar laterales si hay viento seco','Aumentar volumen próximo riego')
+    } else {
+      alertas.push('🔴 VPD crítico ('+vpd+' kPa) — Estrés hídrico severo. Fotosíntesis comprometida. Terpenos en riesgo. Actuar de inmediato.')
+      acciones.push('Mojar pasillos urgente','Riego de emergencia si VWC < 20%','Malla sombra si hay sol directo','Cerrar laterales')
+    }
 
-    if(temp>38){alertas.push('🔴 Temperatura crítica');acciones.push('Malla sombra URGENTE','Ventiladores max')}
-    else if(temp>32){alertas.push('🟡 Temperatura alta');acciones.push('Abrir laterales','Ventiladores')}
-    else if(temp<15){alertas.push('🔴 Temperatura baja');acciones.push('Cerrar laterales')}
+    // Temperatura
+    if(temp>38){
+      alertas.push('🔴 Temperatura crítica ('+temp+'°C) — Daño celular irreversible posible. Enzimas comprometidas. Cogollos en riesgo.')
+      acciones.push('Malla sombra URGENTE','Ventiladores al máximo','Abrir todos los laterales','Mojar techo si es posible')
+    } else if(temp>35){
+      alertas.push('🔴 Temperatura muy alta ('+temp+'°C) — Estrés térmico severo. Fotosíntesis reducida al mínimo. Terpenos volátiles.')
+      acciones.push('Malla sombra','Ventiladores al máximo','Abrir laterales')
+    } else if(temp>32){
+      alertas.push('🟡 Temperatura alta ('+temp+'°C) — Estrés térmico activo. Si se mantiene más de 2hs puede afectar calidad de cogollos.')
+      acciones.push('Abrir laterales','Activar ventiladores','Mojar pasillos')
+    } else if(temp<15){
+      alertas.push('🔴 Temperatura baja ('+temp+'°C) — Metabolismo ralentizado. Riesgo de shock radicular en próximo riego.')
+      acciones.push('Cerrar laterales','Revisar calefacción','No regar hasta que supere 18°C')
+    } else if(temp<18){
+      alertas.push('🟡 Temperatura baja ('+temp+'°C) — Crecimiento lento. Absorción de nutrientes reducida.')
+      acciones.push('Cerrar laterales nocturnos','Monitorear cada 2 horas')
+    }
 
-    if(hr>75){alertas.push('🔴 HR muy alta — riesgo Botrytis');acciones.push('NO foliar','Ventilación máxima')}
-    else if(hr>65){alertas.push('🟡 HR elevada');acciones.push('Aumentar ventilación')}
-    else if(hr<35){alertas.push('🟡 HR baja');acciones.push('Mojar pasillos')}
+    // Humedad relativa
+    if(hr>75){
+      alertas.push('🔴 HR muy alta ('+hr+'%) — Riesgo de Botrytis activo. En floración avanzada cualquier condensación en cogollos es crítica.')
+      acciones.push('NO foliar bajo ningún concepto','Ventilación nocturna obligatoria','Revisar cogollos densos','Defoliar si hay zonas sin circulación de aire')
+    } else if(hr>65 && fase==='floracion'){
+      alertas.push('🟡 HR elevada para floración ('+hr+'%) — Zona de riesgo. Los cogollos acumulan humedad interna.')
+      acciones.push('Aumentar ventilación','NO foliar','Revisar cogollos cada 2 días')
+    } else if(hr>70){
+      alertas.push('🟡 HR elevada ('+hr+'%) — Ambiente húmedo. Ventilación insuficiente.')
+      acciones.push('Aumentar ventilación','Evitar foliar')
+    } else if(hr<35){
+      alertas.push('🟡 HR baja ('+hr+'%) — Ambiente muy seco. Riesgo de quema de puntas y estrés por transpiración excesiva.')
+      acciones.push('Mojar pasillos','Revisar VPD para ajustar ventilación')
+    } else if(hr<25){
+      alertas.push('🔴 HR crítica ('+hr+'%) — Desecación activa. Las plantas pierden agua más rápido de lo que absorben.')
+      acciones.push('Mojar pasillos urgente','Cerrar laterales','Aumentar frecuencia de riego')
+    }
 
     res.json({ ok: true, temp, hr, vpd, diagnostico: { alertas, acciones } })
 
   } catch(err) {
     console.error('[Clima]', err)
+    res.json({ ok: false, mensaje: err.message })
+  }
+})
+
+// ── Endpoint análisis visual con Claude ───────────────────────────────────
+app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
+  if (!req.files || !req.files.length) return res.json({ ok: false, mensaje: 'No se recibieron fotos' })
+
+  const fase = req.body.fase || 'floracion'
+  const obs  = req.body.observacion || ''
+
+  try {
+    // Preparar imágenes
+    const imagenes = await Promise.all(req.files.map(async file => {
+      const buf = await require('sharp')(file.buffer)
+        .resize(800, 800, { fit: 'inside' })
+        .jpeg({ quality: 75 })
+        .toBuffer()
+      return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: buf.toString('base64') } }
+    }))
+
+    const content = [
+      ...imagenes,
+      {
+        type: 'text',
+        text: `Sos un agrónomo especializado en cannabis medicinal en invernadero.
+Analizá estas ${imagenes.length} foto(s) de plantas en fase: ${fase}.
+${obs ? 'Nota del operario: ' + obs : ''}
+
+Evaluá y respondé SOLO en este JSON sin texto adicional:
+{
+  "estado_general": "excelente|bueno|regular|malo|critico",
+  "vigor": "alto|normal|bajo",
+  "color": "descripcion breve del color de hojas",
+  "fenologia": "descripcion del estado fenologico observado",
+  "carencias": ["lista de carencias probables o vacio"],
+  "excesos": ["lista de excesos o toxicidades probables o vacio"],
+  "plagas": ["signos de plaga o enfermedad o vacio"],
+  "estres": ["tipos de estres observados o vacio"],
+  "acciones": ["lista de acciones concretas recomendadas"],
+  "resumen": "texto breve de 2-3 lineas con el diagnostico general"
+}`
+      }
+    ]
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content }]
+    })
+
+    const texto = response.content[0].text.trim()
+    let diagnostico
+    try {
+      diagnostico = JSON.parse(texto.replace(/```json|```/g, '').trim())
+    } catch {
+      return res.json({ ok: false, mensaje: 'Error parseando diagnóstico', raw: texto })
+    }
+
+    res.json({ ok: true, diagnostico })
+
+  } catch(err) {
+    console.error('[Visual IA]', err)
+    res.json({ ok: false, mensaje: err.message })
+  }
+})
+
+// ── Endpoint análisis visual con Claude ───────────────────────────────────
+app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
+  if (!req.files || !req.files.length) return res.json({ ok: false, mensaje: 'No se recibieron fotos' })
+
+  const fase = req.body.fase || 'floracion'
+  const obs  = req.body.observacion || ''
+
+  try {
+    // Preparar imágenes
+    const imagenes = await Promise.all(req.files.map(async file => {
+      const buf = await require('sharp')(file.buffer)
+        .resize(800, 800, { fit: 'inside' })
+        .jpeg({ quality: 75 })
+        .toBuffer()
+      return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: buf.toString('base64') } }
+    }))
+
+    const content = [
+      ...imagenes,
+      {
+        type: 'text',
+        text: `Sos un agrónomo especializado en cannabis medicinal en invernadero.
+Analizá estas ${imagenes.length} foto(s) de plantas en fase: ${fase}.
+${obs ? 'Nota del operario: ' + obs : ''}
+
+Evaluá y respondé SOLO en este JSON sin texto adicional:
+{
+  "estado_general": "excelente|bueno|regular|malo|critico",
+  "vigor": "alto|normal|bajo",
+  "color": "descripcion breve del color de hojas",
+  "fenologia": "descripcion del estado fenologico observado",
+  "carencias": ["lista de carencias probables o vacio"],
+  "excesos": ["lista de excesos o toxicidades probables o vacio"],
+  "plagas": ["signos de plaga o enfermedad o vacio"],
+  "estres": ["tipos de estres observados o vacio"],
+  "acciones": ["lista de acciones concretas recomendadas"],
+  "resumen": "texto breve de 2-3 lineas con el diagnostico general"
+}`
+      }
+    ]
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content }]
+    })
+
+    const texto = response.content[0].text.trim()
+    let diagnostico
+    try {
+      diagnostico = JSON.parse(texto.replace(/```json|```/g, '').trim())
+    } catch {
+      return res.json({ ok: false, mensaje: 'Error parseando diagnóstico', raw: texto })
+    }
+
+    res.json({ ok: true, diagnostico })
+
+  } catch(err) {
+    console.error('[Visual IA]', err)
     res.json({ ok: false, mensaje: err.message })
   }
 })

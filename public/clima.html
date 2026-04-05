@@ -18,7 +18,7 @@
 
   <h3 id="titulo-lote" style="margin-bottom:14px">Clima</h3>
 
-  <!-- KPIs climaticos -->
+  <!-- KPIs -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
     <div class="kpi">
       <div class="kpi-label">Temperatura</div>
@@ -43,48 +43,82 @@
     <div id="diagnostico-texto"></div>
   </div>
 
-  <!-- Subir foto -->
-  <div class="card" style="margin-bottom:14px">
+  <!-- Formulario 4 mediciones -->
+  <div class="card">
     <label>Fase del cultivo</label>
-    <select id="fase" style="margin-top:4px">
+    <select id="fase" style="margin-top:4px" onchange="actualizarDiag()">
       <option value="floracion">Floración</option>
       <option value="vegetativo">Vegetativo</option>
       <option value="maduracion">Maduración</option>
     </select>
 
-    <label style="margin-top:8px">Turno</label>
-    <div style="display:flex;gap:8px;margin-top:4px">
+    <label style="margin-top:10px">Turno</label>
+    <div style="display:flex;gap:8px;margin-top:4px;margin-bottom:12px">
       <button type="button" id="turno-man" onclick="setTurno('manana')"
         style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:600;background:#1a5c32;color:#fff;border:none;cursor:pointer">🌅 Mañana</button>
       <button type="button" id="turno-tar" onclick="setTurno('tarde')"
         style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:600;background:#0a1a10;color:#2d5a3d;border:1px solid #1a3d2b;cursor:pointer">🌆 Tarde</button>
     </div>
 
-    <label style="margin-top:8px">Foto del termohigrómetro</label>
-    <input type="file" id="input-foto" accept="image/*"
-      style="margin-top:6px;color:#e8f0eb;font-size:14px"
-      onchange="previsualizarFoto(this)">
-    <img id="preview" style="display:none;width:100%;border-radius:10px;margin-top:8px;max-height:250px;object-fit:contain">
-    <button id="btn-analizar" onclick="analizarFoto()" style="display:none;margin-top:8px" class="btn-gold">
-      🔍 Analizar con IA
-    </button>
-  </div>
+    <!-- 4 sensores -->
+    <div style="font-size:11px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">4 mediciones del lote</div>
 
-  <!-- Resultado -->
-  <div id="resultado" style="display:none;background:#0a1a10;border:1px solid #1a5c32;border-radius:14px;padding:14px;margin-bottom:14px">
-    <div style="font-size:11px;color:#4a7a5a;text-transform:uppercase;margin-bottom:10px">Lectura detectada</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <div class="kpi"><div class="kpi-label">Temp</div><div class="kpi-val" id="r-temp" style="font-size:20px">—</div></div>
-      <div class="kpi"><div class="kpi-label">HR</div><div class="kpi-val" id="r-hr" style="font-size:20px">—</div></div>
-      <div class="kpi"><div class="kpi-val" id="r-vpd" style="font-size:20px">—</div><div class="kpi-label">VPD kPa</div></div>
+    <div id="sensores">
+      <!-- Sensor 1 -->
+      <div style="background:#060f0a;border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:#e8f0eb;margin-bottom:6px">Sensor 1</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+          <div><label>T° (°C)</label><input type="number" id="t1-temp" step="0.1" placeholder="28.5" oninput="calcularVPD(1)" style="margin-top:4px"></div>
+          <div><label>HR (%)</label><input type="number" id="t1-hr" step="1" min="0" max="100" placeholder="65" oninput="calcularVPD(1)" style="margin-top:4px"></div>
+          <div><label>VPD</label><div id="t1-vpd" style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:11px 12px;font-size:15px;color:#f0b429;font-weight:700;margin-top:4px;text-align:center">—</div></div>
+        </div>
+      </div>
+
+      <!-- Sensor 2 -->
+      <div style="background:#060f0a;border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:#e8f0eb;margin-bottom:6px">Sensor 2</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+          <div><label>T° (°C)</label><input type="number" id="t2-temp" step="0.1" placeholder="28.5" oninput="calcularVPD(2)" style="margin-top:4px"></div>
+          <div><label>HR (%)</label><input type="number" id="t2-hr" step="1" min="0" max="100" placeholder="65" oninput="calcularVPD(2)" style="margin-top:4px"></div>
+          <div><label>VPD</label><div id="t2-vpd" style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:11px 12px;font-size:15px;color:#f0b429;font-weight:700;margin-top:4px;text-align:center">—</div></div>
+        </div>
+      </div>
+
+      <!-- Sensor 3 -->
+      <div style="background:#060f0a;border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:#e8f0eb;margin-bottom:6px">Sensor 3</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+          <div><label>T° (°C)</label><input type="number" id="t3-temp" step="0.1" placeholder="28.5" oninput="calcularVPD(3)" style="margin-top:4px"></div>
+          <div><label>HR (%)</label><input type="number" id="t3-hr" step="1" min="0" max="100" placeholder="65" oninput="calcularVPD(3)" style="margin-top:4px"></div>
+          <div><label>VPD</label><div id="t3-vpd" style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:11px 12px;font-size:15px;color:#f0b429;font-weight:700;margin-top:4px;text-align:center">—</div></div>
+        </div>
+      </div>
+
+      <!-- Sensor 4 -->
+      <div style="background:#060f0a;border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:#e8f0eb;margin-bottom:6px">Sensor 4</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+          <div><label>T° (°C)</label><input type="number" id="t4-temp" step="0.1" placeholder="28.5" oninput="calcularVPD(4)" style="margin-top:4px"></div>
+          <div><label>HR (%)</label><input type="number" id="t4-hr" step="1" min="0" max="100" placeholder="65" oninput="calcularVPD(4)" style="margin-top:4px"></div>
+          <div><label>VPD</label><div id="t4-vpd" style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:11px 12px;font-size:15px;color:#f0b429;font-weight:700;margin-top:4px;text-align:center">—</div></div>
+        </div>
+      </div>
     </div>
-    <div id="r-diagnostico" style="font-size:13px;color:#a8c4b0;margin-bottom:10px"></div>
-    <button onclick="guardarLectura()" class="btn-gold">✅ Confirmar y guardar</button>
-  </div>
 
-  <div id="loading" style="display:none;text-align:center;padding:24px">
-    <div style="font-size:32px;margin-bottom:8px">🤖</div>
-    <div style="font-size:14px;color:#4a7a5a">Claude analizando imagen...</div>
+    <!-- Promedio en tiempo real -->
+    <div id="promedio-box" style="display:none;background:#0a1a10;border:1px solid #1a5c32;border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;margin-bottom:6px">Promedio lote</div>
+      <div style="display:flex;gap:16px;font-size:15px;font-weight:700">
+        <span>🌡️ <span id="prom-temp" style="color:#f0b429">—</span></span>
+        <span>💧 <span id="prom-hr" style="color:#22c55e">—</span></span>
+        <span>VPD <span id="prom-vpd" style="color:#60a5fa">—</span> kPa</span>
+      </div>
+    </div>
+
+    <label>Notas</label>
+    <textarea id="notas" placeholder="Observaciones del ambiente..." style="margin-top:4px;min-height:50px"></textarea>
+
+    <button onclick="guardarMediciones()" class="btn-gold" style="margin-top:10px">💾 Guardar mediciones</button>
   </div>
 
   <!-- Graficos -->
@@ -102,7 +136,7 @@
     <canvas id="grafico-vpd" height="180"></canvas>
   </div>
 
-  <!-- Tabla VPD referencia -->
+  <!-- Tabla referencia -->
   <div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:12px;padding:12px;margin-bottom:14px">
     <div style="font-size:11px;color:#4a7a5a;margin-bottom:8px">Tabla de referencia VPD — cannabis</div>
     <div id="vpd-ref" style="background:#060f0a;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px"></div>
@@ -110,7 +144,7 @@
   </div>
 
   <!-- Historial -->
-  <h3 style="margin-top:4px;margin-bottom:10px">Últimas mediciones</h3>
+  <h3 style="margin-bottom:10px">Últimas mediciones</h3>
   <div id="historial"></div>
 </div>
 
@@ -124,7 +158,6 @@ const loteNom=decodeURIComponent(params.get('lote')||'Lote')
 document.getElementById('titulo-lote').textContent=loteNom+' — Clima'
 
 let turnoActual='manana'
-let lecturaActual=null
 
 function setTurno(t){
   turnoActual=t
@@ -134,167 +167,110 @@ function setTurno(t){
   document.getElementById('turno-tar').style.color=t==='tarde'?'#fff':'#2d5a3d'
 }
 
-// VPD calculation
-function calcVPD(temp, hr){
+function calcVPD(temp,hr){
   const svp=0.6108*Math.exp(17.27*temp/(temp+237.3))
-  const avp=svp*(hr/100)
-  return parseFloat((svp-avp).toFixed(3))
+  return parseFloat((svp*(1-hr/100)).toFixed(3))
 }
 
-function diagnosticoClima(temp, hr, vpd, fase){
-  const alertas=[]
-  const acciones=[]
-
-  // VPD
-  const rangos={
-    floracion:{min:1.0,max:1.5},
-    vegetativo:{min:0.8,max:1.2},
-    maduracion:{min:1.5,max:2.0}
+function calcularVPD(n){
+  const temp=parseFloat(document.getElementById('t'+n+'-temp').value)
+  const hr=parseFloat(document.getElementById('t'+n+'-hr').value)
+  const el=document.getElementById('t'+n+'-vpd')
+  if(!isNaN(temp)&&!isNaN(hr)){
+    const vpd=calcVPD(temp,hr)
+    el.textContent=vpd+' kPa'
+    el.style.color=vpd<0.8||vpd>1.6?'#dc2626':vpd<1.0||vpd>1.5?'#f0b429':'#22c55e'
+  } else {
+    el.textContent='—'
   }
-  const rango=rangos[fase]||rangos.floracion
-
-  if(vpd<0.4){alertas.push('🔴 VPD muy bajo ('+vpd+' kPa) — riesgo de hongos');acciones.push('Abrir laterales','Aumentar ventilación','NO foliar')}
-  else if(vpd<rango.min){alertas.push('🟡 VPD bajo ('+vpd+' kPa) — ambiente húmedo');acciones.push('Ventilación moderada')}
-  else if(vpd<=rango.max){alertas.push('🟢 VPD óptimo ('+vpd+' kPa)')}
-  else if(vpd<=2.0){alertas.push('🟡 VPD alto ('+vpd+' kPa) — estrés leve');acciones.push('Mojar pasillos','Cerrar laterales si hay viento')}
-  else{alertas.push('🔴 VPD crítico ('+vpd+' kPa) — estrés severo');acciones.push('Mojar pasillos urgente','Revisar riego','Malla sombra si soleado')}
-
-  // Temperatura
-  if(temp>38){alertas.push('🔴 Temperatura crítica ('+temp+'°C)');acciones.push('Malla sombra URGENTE','Ventiladores al máximo','Abrir todos los laterales')}
-  else if(temp>32){alertas.push('🟡 Temperatura alta ('+temp+'°C)');acciones.push('Abrir laterales','Activar ventiladores')}
-  else if(temp<15){alertas.push('🔴 Temperatura baja ('+temp+'°C)');acciones.push('Cerrar laterales','Revisar calefacción')}
-
-  // Humedad
-  if(hr>75){alertas.push('🔴 HR muy alta ('+hr+'%) — riesgo Botrytis');acciones.push('NO foliar','Ventilación máxima','Revisar drenaje')}
-  else if(hr>65){alertas.push('🟡 HR elevada ('+hr+'%)');acciones.push('Aumentar ventilación')}
-  else if(hr<35){alertas.push('🟡 HR baja ('+hr+'%)');acciones.push('Mojar pasillos')}
-
-  return {alertas, acciones}
+  actualizarPromedio()
 }
 
-function mostrarDiagnostico(temp, hr, vpd, fase){
-  const {alertas, acciones}=diagnosticoClima(temp,hr,vpd,fase)
+function actualizarPromedio(){
+  const vals=[]
+  for(let i=1;i<=4;i++){
+    const temp=parseFloat(document.getElementById('t'+i+'-temp').value)
+    const hr=parseFloat(document.getElementById('t'+i+'-hr').value)
+    if(!isNaN(temp)&&!isNaN(hr)) vals.push({temp,hr,vpd:calcVPD(temp,hr)})
+  }
+  if(!vals.length){document.getElementById('promedio-box').style.display='none';return}
+  const pT=(vals.reduce((s,v)=>s+v.temp,0)/vals.length).toFixed(1)
+  const pH=(vals.reduce((s,v)=>s+v.hr,0)/vals.length).toFixed(1)
+  const pV=(vals.reduce((s,v)=>s+v.vpd,0)/vals.length).toFixed(3)
+  document.getElementById('prom-temp').textContent=pT+'°C'
+  document.getElementById('prom-hr').textContent=pH+'%'
+  document.getElementById('prom-vpd').textContent=pV
+  document.getElementById('promedio-box').style.display='block'
+  actualizarDiag(parseFloat(pT),parseFloat(pH),parseFloat(pV))
+}
+
+function actualizarDiag(temp,hr,vpd){
+  if(!temp||!hr||!vpd) return
+  const fase=document.getElementById('fase').value
+  const rangos={floracion:{min:1.0,max:1.5},vegetativo:{min:0.8,max:1.2},maduracion:{min:1.5,max:2.0}}
+  const r=rangos[fase]||rangos.floracion
+  const alertas=[],acciones=[]
+
+  if(vpd<0.4){alertas.push('🔴 VPD crítico ('+vpd+' kPa) — Ambiente saturado. Riesgo inmediato de hongos y pudrición.');acciones.push('Abrir laterales al máximo','Ventiladores al 100%','NO foliar')}
+  else if(vpd<r.min){alertas.push('🟡 VPD bajo ('+vpd+' kPa) — Transpiración reducida. Ambiente húmedo para esta fase.');acciones.push('Aumentar ventilación','Evitar foliar')}
+  else if(vpd<=r.max){alertas.push('✅ VPD óptimo ('+vpd+' kPa) — Transpiración activa. Las plantas absorben nutrientes correctamente.')}
+  else if(vpd<=2.0){alertas.push('🟡 VPD alto ('+vpd+' kPa) — Estrés hídrico leve. Las plantas transpiran más de lo que absorben.');acciones.push('Mojar pasillos','Aumentar volumen próximo riego')}
+  else{alertas.push('🔴 VPD crítico ('+vpd+' kPa) — Estrés severo. Fotosíntesis comprometida. Actuar de inmediato.');acciones.push('Mojar pasillos urgente','Revisar riego','Malla sombra')}
+
+  if(temp>35){alertas.push('🔴 Temperatura muy alta ('+temp+'°C) — Estrés térmico severo. Terpenos en riesgo.');acciones.push('Malla sombra','Ventiladores al máximo','Abrir laterales')}
+  else if(temp>32){alertas.push('🟡 Temperatura alta ('+temp+'°C) — Estrés activo. Si dura más de 2hs afecta calidad.');acciones.push('Abrir laterales','Activar ventiladores')}
+  else if(temp<15){alertas.push('🔴 Temperatura baja ('+temp+'°C) — Shock radicular posible.');acciones.push('Cerrar laterales','No regar hasta 18°C')}
+
+  if(hr>75){alertas.push('🔴 HR muy alta ('+hr+'%) — Riesgo Botrytis activo. Revisar cogollos.');acciones.push('NO foliar','Ventilación nocturna obligatoria')}
+  else if(hr>65&&fase==='floracion'){alertas.push('🟡 HR elevada para floración ('+hr+'%) — Zona de riesgo.');acciones.push('Aumentar ventilación','NO foliar')}
+  else if(hr<35){alertas.push('🟡 HR baja ('+hr+'%) — Ambiente seco. Riesgo de quema de puntas.');acciones.push('Mojar pasillos')}
+
   const div=document.getElementById('diagnostico')
-  const texto=document.getElementById('diagnostico-texto')
-
-  let html=alertas.map(a=>'<div style="font-size:13px;margin-bottom:4px">'+a+'</div>').join('')
-  if(acciones.length){
-    html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1a3d2b">'
-    html+='<div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;margin-bottom:6px">Acciones sugeridas</div>'
-    html+=acciones.map(a=>'<div style="font-size:13px;color:#f0b429;margin-bottom:3px">→ '+a+'</div>').join('')
-    html+='</div>'
-  }
-
-  texto.innerHTML=html
-  div.style.display='block'
-
-  // Color del borde según severidad
   const critico=alertas.some(a=>a.includes('🔴'))
   const alerta=alertas.some(a=>a.includes('🟡'))
+  div.style.display='block'
   div.style.background=critico?'#1a0a0a':alerta?'#1a1200':'#0a1a10'
   div.style.borderLeft='3px solid '+(critico?'#dc2626':alerta?'#f0b429':'#22c55e')
+  document.getElementById('diagnostico-texto').innerHTML=
+    alertas.map(a=>'<div style="margin-bottom:6px">'+a+'</div>').join('')+
+    (acciones.length?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid #1a3d2b"><div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;margin-bottom:6px">Acciones sugeridas</div>'+acciones.map(a=>'<div style="color:#f0b429;font-size:13px;margin-bottom:3px">→ '+a+'</div>').join('')+'</div>':'')
 }
 
-function previsualizarFoto(input){
-  const file=input.files[0];if(!file) return
-  const reader=new FileReader()
-  reader.onload=e=>{
-    document.getElementById('preview').src=e.target.result
-    document.getElementById('preview').style.display='block'
-    document.getElementById('btn-analizar').style.display='block'
-    document.getElementById('resultado').style.display='none'
+async function guardarMediciones(){
+  const registros=[]
+  for(let i=1;i<=4;i++){
+    const temp=parseFloat(document.getElementById('t'+i+'-temp').value)
+    const hr=parseFloat(document.getElementById('t'+i+'-hr').value)
+    if(!isNaN(temp)&&!isNaN(hr)){
+      registros.push({
+        lote_id:parseInt(loteId),
+        turno:turnoActual,
+        temperatura:temp,
+        humedad:hr,
+        vpd:calcVPD(temp,hr),
+        origen:'manual',
+        notas:document.getElementById('notas').value||null,
+        fecha:new Date().toISOString()
+      })
+    }
   }
-  reader.readAsDataURL(file)
-}
+  if(!registros.length){alert('Ingresá al menos una medición');return}
 
-async function analizarFoto(){
-  const foto=document.getElementById('input-foto').files[0]
-  if(!foto){alert('Seleccioná una imagen primero');return}
-  document.getElementById('loading').style.display='block'
-  document.getElementById('resultado').style.display='none'
-  document.getElementById('btn-analizar').disabled=true
-
-  const form=new FormData()
-  form.append('foto',foto)
-  form.append('lote_id',loteId)
-  form.append('lote',loteNom)
-  form.append('tipo','clima')
-  form.append('fase',document.getElementById('fase').value)
-  form.append('turno',turnoActual)
-
-  try{
-    const res=await fetch('/analizar-clima',{method:'POST',body:form})
-    const data=await res.json()
-    document.getElementById('loading').style.display='none'
-    document.getElementById('btn-analizar').disabled=false
-    if(!data.ok){alert('Error: '+data.mensaje);return}
-    lecturaActual=data
-    mostrarResultado(data)
-  }catch(e){
-    document.getElementById('loading').style.display='none'
-    document.getElementById('btn-analizar').disabled=false
-    alert('Error de conexión: '+e.message)
-  }
-}
-
-function mostrarResultado(data){
-  const {temp,hr,vpd,diagnostico}=data
-  document.getElementById('r-temp').textContent=temp+'°C'
-  document.getElementById('r-hr').textContent=hr+'%'
-  document.getElementById('r-vpd').textContent=vpd+' kPa'
-  document.getElementById('r-diagnostico').innerHTML=diagnostico.alertas.map(a=>'<div>'+a+'</div>').join('')+
-    (diagnostico.acciones.length?'<div style="margin-top:6px">'+diagnostico.acciones.map(a=>'<span style="color:#f0b429">→ '+a+'</span>').join(' · ')+'</div>':'')
-  document.getElementById('resultado').style.display='block'
-}
-
-async function guardarLectura(){
-  if(!lecturaActual) return
-  const {temp,hr,vpd}=lecturaActual
   const r=await fetch(SURL+'/rest/v1/mediciones_clima',{
     method:'POST',
     headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body:JSON.stringify({
-      lote_id:parseInt(loteId),
-      turno:turnoActual,
-      temperatura:temp,
-      humedad:hr,
-      vpd:vpd,
-      origen:'foto_ia',
-      fecha:new Date().toISOString()
-    })
+    body:JSON.stringify(registros)
   })
   if(r.ok){
-    alert('✅ Lectura guardada')
-    document.getElementById('resultado').style.display='none'
-    document.getElementById('preview').style.display='none'
-    document.getElementById('btn-analizar').style.display='none'
-    document.getElementById('input-foto').value=''
-    lecturaActual=null
-    cargarDatos()
-
-    // Actualizar referencia VPD cuando cambia la fase
-    document.getElementById('fase').addEventListener('change', ()=>{
-      if(lecturaActual) actualizarRefVPD(lecturaActual.temp, lecturaActual.hr, lecturaActual.vpd)
-    })
-
-    function actualizarRefVPD(temp, hr, vpd){
-      const rangos={floracion:{min:1.0,max:1.5,label:'Mid/Late Flower'},vegetativo:{min:0.8,max:1.2,label:'Late Veg/Early Flower'},maduracion:{min:1.5,max:2.0,label:'Late Flower'}}
-      const fase=document.getElementById('fase').value
-      const r=rangos[fase]||rangos.floracion
-      const v=parseFloat(vpd)
-      let zona,color
-      if(v<0.4){zona='Danger Zone';color='#dc2626'}
-      else if(v<r.min){zona='Zona baja para '+r.label;color='#f0b429'}
-      else if(v<=r.max){zona='✅ Óptimo — '+r.label;color='#22c55e'}
-      else if(v<=2.0){zona='Alta para '+r.label;color='#f0b429'}
-      else{zona='Danger Zone — Over 1.6+';color='#dc2626'}
-      document.getElementById('vpd-ref').innerHTML=
-        '<div style="display:flex;justify-content:space-between;align-items:center">' +
-        '<div><span style="font-size:18px;font-weight:700;color:'+color+'">'+vpd+' kPa</span>' +
-        '<span style="color:#4a7a5a;font-size:12px"> · '+temp+'°C · '+hr+'% HR</span></div>' +
-        '<div style="background:'+color+';color:#0a1a10;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700">'+zona+'</div>' +
-        '</div>'
+    alert('✅ '+registros.length+' mediciones guardadas')
+    for(let i=1;i<=4;i++){
+      document.getElementById('t'+i+'-temp').value=''
+      document.getElementById('t'+i+'-hr').value=''
+      document.getElementById('t'+i+'-vpd').textContent='—'
     }
+    document.getElementById('notas').value=''
+    document.getElementById('promedio-box').style.display='none'
+    cargarDatos()
   } else {
     alert('❌ Error al guardar')
   }
@@ -305,109 +281,50 @@ async function cargarDatos(){
   const r=await fetch(SURL+'/rest/v1/mediciones_clima?lote_id=eq.'+loteId+'&fecha=gte.'+hace7d+'&order=fecha.desc&limit=100',
     {headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
   const data=await r.json()
-  if(!data.length) return
+  if(!data||!data.length) return
 
-  // KPIs del día
   const hoy=new Date(Date.now()-24*3600000).toISOString()
   const hoyData=data.filter(d=>new Date(d.fecha)>new Date(hoy))
   if(hoyData.length){
-    const prom=arr=>key=>(arr.reduce((s,d)=>s+parseFloat(d[key]||0),0)/arr.length)
-    const p=prom(hoyData)
-    const temp=p('temperatura').toFixed(1)
-    const hr=p('humedad').toFixed(1)
-    const vpd=p('vpd').toFixed(3)
+    const prom=key=>parseFloat((hoyData.reduce((s,d)=>s+parseFloat(d[key]||0),0)/hoyData.length).toFixed(1))
+    const temp=prom('temperatura'),hr=prom('humedad'),vpd=parseFloat(prom('vpd').toFixed(3))
     document.getElementById('kpi-temp').textContent=temp+'°C'
     document.getElementById('kpi-hr').textContent=hr+'%'
-    document.getElementById('kpi-vpd').textContent=vpd
-    document.getElementById('kpi-temp-n').textContent=hoyData.length+' mediciones hoy'
+    document.getElementById('kpi-vpd').textContent=vpd+' kPa'
+    document.getElementById('kpi-temp-n').textContent=hoyData.length+' med. hoy'
     document.getElementById('kpi-hr-n').textContent='HR promedio'
-
-    // Color VPD
-    const v=parseFloat(vpd)
-    const vpdBox=document.getElementById('kpi-vpd-box')
-    const vpdEl=document.getElementById('kpi-vpd')
-    const vpdN=document.getElementById('kpi-vpd-n')
-    if(v<0.4||v>2.0){vpdEl.style.color='#dc2626';vpdN.textContent='crítico'}
-    else if(v<0.8||v>1.5){vpdEl.style.color='#f0b429';vpdN.textContent='alerta'}
-    else{vpdEl.style.color='#22c55e';vpdN.textContent='óptimo'}
-
-    mostrarDiagnostico(parseFloat(temp),parseFloat(hr),parseFloat(vpd),document.getElementById('fase').value)
+    const kV=document.getElementById('kpi-vpd'),kVn=document.getElementById('kpi-vpd-n')
+    if(vpd<0.4||vpd>2.0){kV.style.color='#dc2626';kVn.textContent='crítico'}
+    else if(vpd<1.0||vpd>1.5){kV.style.color='#f0b429';kVn.textContent='alerta'}
+    else{kV.style.color='#22c55e';kVn.textContent='óptimo'}
+    actualizarDiag(temp,hr,vpd)
   }
 
-  // Gráficos
-  const labels=data.slice(0,14).reverse().map(d=>new Date(d.fecha).toLocaleDateString('es-UY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Montevideo'}))
+  // Graficos
+  const inv=data.slice(0,14).reverse()
+  const labels=inv.map(d=>new Date(d.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))
   const opts={responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a7a5a',font:{size:9}},grid:{color:'#0a1a10'}},y:{ticks:{color:'#4a7a5a',font:{size:9}},grid:{color:'#1a3d2b'}}}}
 
-  new Chart(document.getElementById('grafico-temp'),{type:'line',data:{labels,datasets:[{data:data.slice(0,14).reverse().map(d=>d.temperatura),borderColor:'#f0b429',backgroundColor:'rgba(240,180,41,0.1)',tension:0.3,pointRadius:3,fill:true}]},options:{...opts,scales:{...opts.scales,y:{...opts.scales.y,min:15,max:45}}}})
+  new Chart(document.getElementById('grafico-temp'),{type:'line',data:{labels,datasets:[{data:inv.map(d=>d.temperatura),borderColor:'#f0b429',backgroundColor:'rgba(240,180,41,0.1)',tension:0.3,pointRadius:3,fill:true}]},options:{...opts,scales:{...opts.scales,y:{...opts.scales.y,min:10,max:45}}}})
+  new Chart(document.getElementById('grafico-hr'),{type:'line',data:{labels,datasets:[{data:inv.map(d=>d.humedad),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.1)',tension:0.3,pointRadius:3,fill:true}]},options:{...opts,scales:{...opts.scales,y:{...opts.scales.y,min:20,max:100}}}})
 
-  new Chart(document.getElementById('grafico-hr'),{type:'line',data:{labels,datasets:[{data:data.slice(0,14).reverse().map(d=>d.humedad),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.1)',tension:0.3,pointRadius:3,fill:true}]},options:{...opts,scales:{...opts.scales,y:{...opts.scales.y,min:20,max:100}}}})
-
-  const faseVal = document.getElementById('fase').value
-  const rangosVPD = {floracion:{min:1.0,max:1.5},vegetativo:{min:0.8,max:1.2},maduracion:{min:1.5,max:2.0}}
-  const rVPD = rangosVPD[faseVal]||rangosVPD.floracion
-
-  new Chart(document.getElementById('grafico-vpd'),{
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        // Zona critica baja
-        {data:labels.map(()=>0.4),borderColor:'transparent',backgroundColor:'rgba(220,38,38,0.15)',fill:{target:{value:0},above:'rgba(220,38,38,0.15)'},pointRadius:0,tension:0},
-        // Zona alerta baja
-        {data:labels.map(()=>rVPD.min),borderColor:'rgba(240,180,41,0.3)',backgroundColor:'rgba(240,180,41,0.1)',fill:{target:{value:0.4},above:'rgba(240,180,41,0.1)'},pointRadius:0,tension:0,borderDash:[4,4]},
-        // Zona optima
-        {data:labels.map(()=>rVPD.max),borderColor:'rgba(34,197,94,0.4)',backgroundColor:'rgba(34,197,94,0.12)',fill:{target:{value:rVPD.min},above:'rgba(34,197,94,0.12)'},pointRadius:0,tension:0,borderDash:[4,4]},
-        // Zona alerta alta
-        {data:labels.map(()=>2.0),borderColor:'rgba(240,180,41,0.3)',backgroundColor:'rgba(240,180,41,0.1)',fill:{target:{value:rVPD.max},above:'rgba(240,180,41,0.1)'},pointRadius:0,tension:0,borderDash:[4,4]},
-        // Zona critica alta
-        {data:labels.map(()=>3.0),borderColor:'transparent',backgroundColor:'rgba(220,38,38,0.15)',fill:{target:{value:2.0},above:'rgba(220,38,38,0.15)'},pointRadius:0,tension:0},
-        // Linea VPD real
-        {data:data.slice(0,14).reverse().map(d=>d.vpd),borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,0.2)',tension:0.3,pointRadius:4,pointBackgroundColor:'#60a5fa',fill:false,borderWidth:2,label:'VPD real',order:0}
-      ]
-    },
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{display:false},
-        annotation:{},
-        tooltip:{
-          filter:item=>item.datasetIndex===5,
-          callbacks:{label:ctx=>'VPD: '+ctx.parsed.y+' kPa'}
-        }
-      },
-      scales:{
-        x:{ticks:{color:'#4a7a5a',font:{size:9}},grid:{color:'#0a1a10'}},
-        y:{
-          min:0,max:3,
-          ticks:{
-            color:'#4a7a5a',
-            font:{size:9},
-            callback:v=>{
-              if(v===rVPD.min) return 'opt.min '+v
-              if(v===rVPD.max) return 'opt.max '+v
-              if(v===0.4) return 'hongos'
-              if(v===2.0) return 'crítico'
-              return v
-            }
-          },
-          grid:{color:'#1a3d2b'}
-        }
-      }
-    }
-  })
+  const fase=document.getElementById('fase').value
+  const rangosVPD={floracion:{min:1.0,max:1.5},vegetativo:{min:0.8,max:1.2},maduracion:{min:1.5,max:2.0}}
+  const rVPD=rangosVPD[fase]||rangosVPD.floracion
+  new Chart(document.getElementById('grafico-vpd'),{type:'line',data:{labels,datasets:[
+    {data:labels.map(()=>0.4),borderColor:'transparent',backgroundColor:'rgba(220,38,38,0.12)',fill:{target:{value:0},above:'rgba(220,38,38,0.12)'},pointRadius:0},
+    {data:labels.map(()=>rVPD.min),borderColor:'rgba(240,180,41,0.3)',backgroundColor:'rgba(240,180,41,0.08)',fill:{target:{value:0.4},above:'rgba(240,180,41,0.08)'},pointRadius:0,borderDash:[4,4]},
+    {data:labels.map(()=>rVPD.max),borderColor:'rgba(34,197,94,0.4)',backgroundColor:'rgba(34,197,94,0.1)',fill:{target:{value:rVPD.min},above:'rgba(34,197,94,0.1)'},pointRadius:0,borderDash:[4,4]},
+    {data:labels.map(()=>2.0),borderColor:'rgba(240,180,41,0.3)',backgroundColor:'rgba(240,180,41,0.08)',fill:{target:{value:rVPD.max},above:'rgba(240,180,41,0.08)'},pointRadius:0,borderDash:[4,4]},
+    {data:labels.map(()=>3.0),borderColor:'transparent',backgroundColor:'rgba(220,38,38,0.12)',fill:{target:{value:2.0},above:'rgba(220,38,38,0.12)'},pointRadius:0},
+    {data:inv.map(d=>d.vpd),borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,0.15)',tension:0.3,pointRadius:4,pointBackgroundColor:'#60a5fa',fill:false,borderWidth:2,order:0}
+  ]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{filter:i=>i.datasetIndex===5}},scales:{x:{ticks:{color:'#4a7a5a',font:{size:9}},grid:{color:'#0a1a10'}},y:{min:0,max:3,ticks:{color:'#4a7a5a',font:{size:9},callback:v=>{if(v===rVPD.min)return 'min '+v;if(v===rVPD.max)return 'max '+v;if(v===0.4)return 'hongos';if(v===2.0)return 'crítico';return v}},grid:{color:'#1a3d2b'}}}}})
 
   // Historial
   document.getElementById('historial').innerHTML=data.slice(0,8).map(d=>{
     const fecha=new Date(d.fecha).toLocaleString('es-UY',{timeZone:'America/Montevideo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
     const tl={manana:'🌅',tarde:'🌆',noche:'🌙'}[d.turno]||''
-    return `<div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:11px;color:#2d5a3d">${fecha} ${tl}</div></div>
-      <div style="display:flex;gap:10px;font-size:13px">
-        <span>🌡️ <b style="color:#f0b429">${d.temperatura}°C</b></span>
-        <span>💧 <b>${d.humedad}%</b></span>
-        <span>VPD <b style="color:#60a5fa">${d.vpd}</b></span>
-      </div>
-    </div>`
+    return '<div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;color:#2d5a3d">'+fecha+' '+tl+'</div><div style="display:flex;gap:10px;font-size:13px"><span>🌡️ <b style="color:#f0b429">'+d.temperatura+'°C</b></span><span>💧 <b>'+d.humedad+'%</b></span><span>VPD <b style="color:#60a5fa">'+d.vpd+'</b></span></div></div>'
   }).join('')
 }
 
