@@ -2323,4 +2323,61 @@ function bvAbrirModal(id) {
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${ia.hipotesis}</div>
       <div style="font-size:11px;color:var(--green2)">${ia.sugerencia}</div>
       ${ia.contexto_dna ? `<div style="margin-top:8px;font-size:10px;color:var(--dim);font-family:var(--mono)">🧬 ${ia.contexto_dna}</div>` : ''}
+    </div>`
+  }
+
+  // Validación previa
+  if (r.validacion) {
+    body += `<div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px">✅ Validado: <b>${r.validacion}</b>${r.nota_val ? ' — ' + r.nota_val : ''}</div>`
+  }
+
+  document.getElementById('bvm-body').innerHTML = body
+
+  // Botones validación
+  const vals = ['confirmado','parcialmente_confirmado','descartado','en_seguimiento','resuelto']
+  document.getElementById('bvm-val-btns').innerHTML = vals.map(v =>
+    `<button onclick="bvSetValidacion('${v}')" class="bv-sev-btn" style="flex:none;font-size:10px;padding:6px 10px;${r.validacion===v?'border-color:var(--green);color:var(--green)':''}">${v.replace(/_/g,' ')}</button>`
+  ).join('')
+  document.getElementById('bvm-nota-val').value = r.nota_val || ''
+
+  document.getElementById('bv-modal').style.display = 'flex'
+}
+
+function bvSetValidacion(val) {
+  if (!bvEventoActivo) return
+  bvEventoActivo.validacion = val
+  document.getElementById('bvm-val-btns').querySelectorAll('button').forEach(b => {
+    b.style.borderColor = ''
+    b.style.color = ''
+    if (b.textContent.trim() === val.replace(/_/g,' ')) { b.style.borderColor = 'var(--green)'; b.style.color = 'var(--green)' }
+  })
+}
+
+function bvGuardarValidacion() {
+  if (!bvEventoActivo) return
+  const nota = document.getElementById('bvm-nota-val').value
+  bvEventoActivo.nota_val = nota
+  if (bvEventoActivo.validacion === 'resuelto') bvEventoActivo.estado = 'resuelto'
+  else if (bvEventoActivo.validacion === 'en_seguimiento') bvEventoActivo.estado = 'en_seguimiento'
+  try { localStorage.setItem(BV_KEY, JSON.stringify(bvRegistros)) } catch(e) {}
+  mostrarToast('✅ Validación guardada')
+  bvCerrarModal()
+  bvRenderTimeline()
+}
+
+function bvCerrarModal(e) {
+  if (e && e.target !== document.getElementById('bv-modal')) return
+  document.getElementById('bv-modal').style.display = 'none'
+  bvEventoActivo = null
+}
+
+/* ─── INIT ─────────────────────────────────────────────────── */
+cargarCultivos()
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW', e))
+}
+</script>
+</body>
+</html>
    
