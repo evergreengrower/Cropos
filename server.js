@@ -473,7 +473,7 @@ const crypto = require('crypto')
 
 const TUYA_CLIENT_ID     = 'cpffcwyffdgt5a5wtng7'
 const TUYA_CLIENT_SECRET = '76dfd300403b4683bb2a115e1488c3ef'
-const TUYA_BASE_URL      = 'https://openapi.tuyaus.com'
+const TUYA_BASE_URL      = 'https://openapi.tuyaeu.com'
 
 let tuyaToken = null
 let tuyaTokenExpiry = 0
