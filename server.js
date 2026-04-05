@@ -471,9 +471,9 @@ Evaluá y respondé SOLO en este JSON sin texto adicional:
 // ── Endpoint Smartlife / Tuya sensor ─────────────────────────────────────────
 const crypto = require('crypto')
 
-const TUYA_CLIENT_ID     = 'mjk97yxkcsjkav7kyjgr'
-const TUYA_CLIENT_SECRET = 'a18de324999847099a950e42244990c9'
-const TUYA_BASE_URL      = 'https://openapi.tuyaeu.com'
+const TUYA_CLIENT_ID     = 'cpffcwyffdgt5a5wtng7'
+const TUYA_CLIENT_SECRET = '76dfd300403b4683bb2a115e1488c3ef'
+const TUYA_BASE_URL      = 'https://openapi.tuyaus.com'
 
 let tuyaToken = null
 let tuyaTokenExpiry = 0
