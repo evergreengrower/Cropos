@@ -525,20 +525,28 @@ app.get('/smartlife-sensor', async (req, res) => {
     if (!data.success) return res.json({ ok: false, error: data.msg || 'Error Tuya API', raw: data })
 
     const status = data.result
-    const temp = status.find(s => s.code === 'va_temperature')?.value
-    const hr   = status.find(s => s.code === 'va_humidity')?.value
 
-    if (temp == null || hr == null) {
-      return res.json({ ok: false, error: 'Sensores no encontrados en el dispositivo', raw: status })
+    // Buscar por distintos códigos posibles
+    const tempEntry = status.find(s => s.code === 'va_temperature' || s.code === 'temp_current' || s.code === 'temperature')
+    const hrEntry   = status.find(s => s.code === 'va_humidity'    || s.code === 'humidity_value' || s.code === 'humidity')
+
+    if (!tempEntry || !hrEntry) {
+      return res.json({ ok: false, error: 'Sensores no encontrados', raw: status })
     }
 
-    const tempC = temp / 10
-    const hrPct = hr / 10
-    const svp   = 0.6108 * Math.exp(17.27 * tempC / (tempC + 237.3))
-    const avp   = svp * (hrPct / 100)
-    const vpd   = parseFloat((svp - avp).toFixed(3))
+    const tempRaw = tempEntry.value
+    const hrRaw   = hrEntry.value
 
-    res.json({ ok: true, temperatura: tempC, humedad: hrPct, vpd })
+    // Detectar divisor automáticamente
+    // Si el valor raw es mayor a 100 asumimos que está en décimas
+    const tempC = tempRaw > 100 ? tempRaw / 10 : tempRaw
+    const hrPct = hrRaw   > 100 ? hrRaw   / 10 : hrRaw
+
+    const svp = 0.6108 * Math.exp(17.27 * tempC / (tempC + 237.3))
+    const avp = svp * (hrPct / 100)
+    const vpd = parseFloat((svp - avp).toFixed(3))
+
+    res.json({ ok: true, temperatura: tempC, humedad: hrPct, vpd, _raw: { tempCode: tempEntry.code, tempRaw, hrCode: hrEntry.code, hrRaw } })
   } catch(err) {
     console.error('[Tuya]', err)
     res.json({ ok: false, error: err.message })
