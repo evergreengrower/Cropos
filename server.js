@@ -467,3 +467,66 @@ Evaluá y respondé SOLO en este JSON sin texto adicional:
     res.json({ ok: false, mensaje: err.message })
   }
 })
+
+// ── Endpoint Smartlife / Tuya sensor ─────────────────────────────────────────
+const crypto = require('crypto')
+
+const TUYA_CLIENT_ID     = 'mjk97yxkcsjkav7kyjgr'
+const TUYA_CLIENT_SECRET = 'a18de324999847099a950e42244990c9'
+const TUYA_BASE_URL      = 'https://openapi.tuyaeu.com'
+
+let tuyaToken = null
+let tuyaTokenExpiry = 0
+
+async function getTuyaToken() {
+  if (tuyaToken && Date.now() < tuyaTokenExpiry) return tuyaToken
+  const t    = Date.now().toString()
+  const str  = TUYA_CLIENT_ID + t
+  const sign = crypto.createHmac('sha256', TUYA_CLIENT_SECRET).update(str).digest('hex').toUpperCase()
+  const r    = await fetch(TUYA_BASE_URL + '/v1.0/token?grant_type=1', {
+    headers: { 'client_id': TUYA_CLIENT_ID, 'sign': sign, 'sign_method': 'HMAC-SHA256', 't': t, 'Content-Type': 'application/json' }
+  })
+  const data = await r.json()
+  if (!data.success) throw new Error('Tuya auth error: ' + JSON.stringify(data))
+  tuyaToken       = data.result.access_token
+  tuyaTokenExpiry = Date.now() + (data.result.expire_time - 60) * 1000
+  return tuyaToken
+}
+
+async function getTuyaDeviceStatus(deviceId) {
+  const token = await getTuyaToken()
+  const t     = Date.now().toString()
+  const str   = TUYA_CLIENT_ID + token + t
+  const sign  = crypto.createHmac('sha256', TUYA_CLIENT_SECRET).update(str).digest('hex').toUpperCase()
+  const r     = await fetch(TUYA_BASE_URL + '/v1.0/devices/' + deviceId + '/status', {
+    headers: { 'client_id': TUYA_CLIENT_ID, 'access_token': token, 'sign': sign, 'sign_method': 'HMAC-SHA256', 't': t, 'Content-Type': 'application/json' }
+  })
+  return r.json()
+}
+
+app.get('/smartlife-sensor', async (req, res) => {
+  const deviceId = req.query.device_id || 'eb65b1c57e5cdf703ejvmj'
+  try {
+    const data = await getTuyaDeviceStatus(deviceId)
+    if (!data.success) return res.json({ ok: false, error: data.msg || 'Error Tuya API', raw: data })
+
+    const status = data.result
+    const temp = status.find(s => s.code === 'va_temperature')?.value
+    const hr   = status.find(s => s.code === 'va_humidity')?.value
+
+    if (temp == null || hr == null) {
+      return res.json({ ok: false, error: 'Sensores no encontrados en el dispositivo', raw: status })
+    }
+
+    const tempC = temp / 10
+    const hrPct = hr / 10
+    const svp   = 0.6108 * Math.exp(17.27 * tempC / (tempC + 237.3))
+    const avp   = svp * (hrPct / 100)
+    const vpd   = parseFloat((svp - avp).toFixed(3))
+
+    res.json({ ok: true, temperatura: tempC, humedad: hrPct, vpd })
+  } catch(err) {
+    console.error('[Tuya]', err)
+    res.json({ ok: false, error: err.message })
+  }
+})
