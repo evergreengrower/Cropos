@@ -1160,9 +1160,9 @@ async function actualizarSmartlife() {
     const r = await fetch('/smartlife-sensor?device_id=' + encodeURIComponent(deviceId));
     if (r.ok) {
       const data = await r.json();
-      if (data.temp !== undefined) {
-        tempEl.textContent = data.temp.toFixed(1);
-        hrEl.textContent = data.hr.toFixed(0);
+      if (data.temperatura !== undefined) {
+        tempEl.textContent = data.temperatura.toFixed(1);
+        hrEl.textContent = data.humedad.toFixed(0);
         statusEl.textContent = '● EN VIVO';
         statusEl.style.color = '#22c55e';
       } else {
