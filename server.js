@@ -546,7 +546,7 @@ app.get('/smartlife-sensor', async (req, res) => {
     const avp = svp * (hrPct / 100)
     const vpd = parseFloat((svp - avp).toFixed(3))
 
-    res.json({ ok: true, temperatura: tempC, humedad: hrPct, vpd, _raw: { tempCode: tempEntry.code, tempRaw, hrCode: hrEntry.code, hrRaw } })
+    res.json({ ok: true, temperatura: tempC, humedad: hrPct, vpd })
   } catch(err) {
     console.error('[Tuya]', err)
     res.json({ ok: false, error: err.message })
