@@ -1147,11 +1147,11 @@ function configurarSmartlife() {
 }
 
 async function actualizarSmartlife() {
-  const deviceId = localStorage.getItem('smartlife_device_id');
+  const deviceId = localStorage.getItem('smartlife_device_id') || 'eb65b1c57e5cdf703ejvmj';
   const statusEl = document.getElementById('smartlife-status');
   const tempEl = document.getElementById('sensor-temp-cultivo');
   const hrEl = document.getElementById('sensor-hr-cultivo');
-  if (!deviceId || !statusEl) return;
+  if (!statusEl) return;
 
   statusEl.textContent = 'Conectando...';
   statusEl.style.color = '#f0b429';
