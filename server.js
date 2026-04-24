@@ -18,8 +18,8 @@ app.use('/style.css', (req, res, next) => {
   next()
 })
 
+app.use(express.json({ limit: '50mb' }))
 app.use(express.static('public'))
-app.use(express.json())
 
 app.get('/', (req, res) => {
   res.type('html')
@@ -227,6 +227,39 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
   } catch (err) {
     console.error('[Claude] Error:', err)
     res.json({ ok: false, mensaje: err.message })
+  }
+})
+// ── Endpoint diagnóstico imagen desde Bitácora ─────────────────────────
+app.post('/api/diagnostico-imagen', async (req, res) => {
+  console.log('[DiagIA] llamada recibida, keys:', Object.keys(req.body || {}))
+  const { imagen_b64, media_type, dna_contexto } = req.body
+  if (!imagen_b64) return res.json({ ok: false, diagnostico: 'No se recibió imagen' })
+
+  const systemPrompt = `Sos un agrónomo especialista en cannabis medicinal. Analizás imágenes de cultivos y detectás deficiencias, plagas, patógenos y estrés. Respondé en español de forma técnica y concisa.${dna_contexto ? ' Contexto del lote: ' + dna_contexto : ''}
+Estructura tu respuesta:
+1. DIAGNÓSTICO PRINCIPAL
+2. SÍNTOMAS OBSERVADOS
+3. CAUSA PROBABLE
+4. ACCIÓN RECOMENDADA`
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: media_type || 'image/jpeg', data: imagen_b64 } },
+          { type: 'text', text: 'Analizá esta imagen del cultivo y proporcioná un diagnóstico agronómico.' }
+        ]
+      }]
+    })
+    const diagnostico = response.content[0].text
+    res.json({ ok: true, diagnostico })
+  } catch(err) {
+    console.error('[DiagIA] Error:', err.message)
+    res.json({ ok: false, diagnostico: 'Error: ' + err.message })
   }
 })
 app.listen(PORT, '0.0.0.0', () => { console.log('Servidor corriendo en http://0.0.0.0:' + PORT) })
