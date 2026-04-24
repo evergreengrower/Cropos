@@ -32,7 +32,6 @@
       <div class="sidebar-section-label">Principal</div>
       <ul class="sidebar-nav">
         <li><button class="active" onclick="mostrarVista('dashboard')"><span class="nav-icon">&#9783;</span> Dashboard</button></li>
-        <li><button onclick="mostrarVista('lote-dna')" id="nav-lote-dna"><span class="nav-icon">&#129516;</span> Lote DNA Engine<span class="sidebar-badge">DNA</span></button></li>
         <li><button onclick="mostrarVista('bitacora')"><span class="nav-icon">&#128247;</span> Bitácora Visual IA<span class="sidebar-badge">IA</span></button></li>
         <li><button onclick="irModulo('riego')"><span class="nav-icon">&#128167;</span> Riegos</button></li>
         <li><button onclick="irModulo('import')"><span class="nav-icon">&#128229;</span> Importar CSV</button></li>
@@ -134,7 +133,7 @@
         </div>
 
         <h3 style="margin-top:4px">Módulos</h3>
-        <div class="modulos-grid" style="margin-bottom:16px;grid-template-columns:repeat(3,1fr)">
+        <div class="modulos-grid" style="margin-bottom:16px;grid-template-columns:repeat(2,1fr)">
           <button onclick="mostrarVista('bitacora')" class="btn-mod" style="border-color:var(--green3);box-shadow:0 0 20px rgba(126,207,106,.08)">
             <span class="ai-tag">IA</span>
             <span class="icon">&#128247;</span>
@@ -151,6 +150,12 @@
             <span class="label">Tareas</span>
             <span class="sub">Planificación diaria</span>
           </a>
+          <button onclick="mostrarVista('lote-dna')" class="btn-mod" style="border-color:var(--green3);box-shadow:0 0 20px rgba(126,207,106,.08)">
+            <span class="ai-tag">DNA</span>
+            <span class="icon">&#129516;</span>
+            <span class="label">Lote DNA Engine</span>
+            <span class="sub">Perfil estructural del lote</span>
+          </button>
         </div>
 
         <a id="btn-import" href="#" style="display:none"></a>
@@ -479,6 +484,14 @@
             <div class="bv-preview-strip" id="bv-preview-strip"></div>
           </div>
           <input type="file" id="bv-file-input" accept="image/*,video/*" multiple style="display:none" onchange="bvAgregarMedia(this)">
+        </div>
+
+        <div class="card" id="bv-ia-card" style="margin-bottom:12px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="card-title" style="font-size:12px">🤖 Diagnóstico IA por imagen</span>
+            <button onclick="bvAnalizarConIA()" style="font-size:11px;padding:5px 12px;background:rgba(126,207,106,.1);border:0.5px solid var(--green2);color:var(--green);border-radius:6px;cursor:pointer">Analizar foto</button>
+          </div>
+          <div id="bv-ia-resultado" style="display:none"></div>
         </div>
 
         <div class="card" style="margin-bottom:12px">
@@ -944,11 +957,32 @@ function cargarVariedadDNA(i){const vv=variedades[i];if(!vv)return;const s=(id,v
 
 const BV_KEY='cropos_bv_registros'
 let bvRegistros=JSON.parse(localStorage.getItem(BV_KEY)||'[]')
-let bvTipoActual='',bvSevActual='',bvMediaB64=[],bvModalActivo=null
+let bvTipoActual='',bvSevActual='',bvMediaB64=[],bvModalActivo=null,bvIAResultado=''
+
+async function bvAnalizarConIA(){
+  const primeraImg=bvMediaB64.find(m=>m.tipo==='imagen')
+  if(!primeraImg){mostrarToast('⚠️ Agregá una foto primero');return}
+  const resCont=document.getElementById('bv-ia-resultado')
+  resCont.innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px 0">🤖 Analizando imagen con IA...</div>'
+  resCont.style.display='block'
+  try{
+    const dnaCtx=resumenDNAParaIA(obtenerContextoDNA())
+    const resp=await fetch('/api/diagnostico-imagen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imagen_b64:primeraImg.b64.split(',')[1],media_type:'image/jpeg',dna_contexto:dnaCtx})})
+    if(resp.ok){
+      const d=await resp.json()
+      bvIAResultado=d.diagnostico||''
+      resCont.innerHTML=`<div class="diag-text" style="font-size:11px;margin-top:8px">${bvIAResultado.replace(/\n/g,'<br>')}</div>`
+    }else{
+      resCont.innerHTML='<div style="color:var(--dim);font-size:11px;padding:8px 0">⚠️ Servicio no disponible</div>'
+    }
+  }catch(e){
+    resCont.innerHTML='<div style="color:var(--dim);font-size:11px;padding:8px 0">⚠️ Error de conexión</div>'
+  }
+}
 
 function bvTab(tab){;['carga','timeline','tablero'].forEach(t=>{document.getElementById('bv-panel-'+t).style.display=t===tab?'block':'none';document.getElementById('btab-'+t).classList.toggle('active',t===tab)});if(tab==='timeline')bvRenderTimeline();if(tab==='tablero')bvRenderTablero()}
-function bvSelTipo(btn,tipo){document.querySelectorAll('.bv-tipo-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');bvTipoActual=tipo}
-function bvSelSev(btn){document.querySelectorAll('.bv-sev-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');bvSevActual=btn.dataset.sev}
+function bvSelTipo(btn,tipo){document.querySelectorAll('.bv-tipo-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');bvTipoActual=tipo}
+function bvSelSev(btn){document.querySelectorAll('.bv-sev-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');bvSevActual=btn.dataset.sev}
 function toggleBvMetricas(){const panel=document.getElementById('bv-metricas-panel'),chev=document.getElementById('bv-met-chev'),open=panel.style.display==='block';panel.style.display=open?'none':'block';chev.textContent=open?'⌄':'⌃'}
 
 // Comprime imagen usando Canvas → max 1920px, calidad 0.82 JPEG
@@ -981,6 +1015,7 @@ function bvAgregarMedia(input){
     }
     strip.appendChild(thumb)
     document.getElementById('bv-upload-preview-area').style.display='none'
+    const iaCard=document.getElementById('bv-ia-card');if(iaCard&&m.tipo==='imagen')iaCard.style.display='block'
   })
   input.value=''
 }
@@ -991,15 +1026,32 @@ async function bvGuardarRegistro(){
   const reg={id:'bv-'+Date.now(),fecha:new Date().toISOString(),lote_id:loteId,lote_nombre:loteNombre,sector:document.getElementById('bv-sector')?.value||'',sub_sector:document.getElementById('bv-subsector')?.value||'',tipo:bvTipoActual,severidad:bvSevActual||'baja',descripcion:document.getElementById('bv-descripcion')?.value||'',estado:'abierto',usuario:'Técnico',media:[],metricas:{vwc:document.getElementById('bv-m-vwc')?.value||'',ec:document.getElementById('bv-m-ec')?.value||'',ph:document.getElementById('bv-m-ph')?.value||'',temp:document.getElementById('bv-m-temp')?.value||'',hr:document.getElementById('bv-m-hr')?.value||'',vpd:document.getElementById('bv-m-vpd')?.value||'',vol:document.getElementById('bv-m-vol')?.value||'',drenaje:document.getElementById('bv-m-drenaje')?.value||'',ppfd:document.getElementById('bv-m-ppfd')?.value||''},dna_contexto:dnaCtx?{variedad:dnaCtx.variedad,fase:dnaCtx.fase,modelo:dnaCtx.modelo,sustrato:dnaCtx.sustrato,floracion:dnaCtx.floracion,sens_humedad:dnaCtx.sens_humedad}:null,analisis_ia:bvGenerarAnalisisIA({tipo:bvTipoActual,severidad:bvSevActual,dna:dnaCtx}),validacion:null,nota_val:''}
   mostrarToast('📤 Subiendo imágenes...')
   const mediaConUrl=[]
-  for(const m of bvMediaB64){if(!m.b64)continue;try{const fetchBlob=await fetch(m.b64),blob=await fetchBlob.blob(),ext=m.tipo==='video'?'mp4':'jpg',path=`bitacora/${loteId||'sin-lote'}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,upRes=await fetch(`${SURL}/storage/v1/object/${path}`,{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':blob.type||'image/jpeg','x-upsert':'true'},body:blob});if(upRes.ok)mediaConUrl.push({tipo:m.tipo,url:`${SURL}/storage/v1/object/public/${path}`});else console.warn('Upload falló:',await upRes.text())}catch(e){console.warn('Error:',e)}}
+  const cultivoSlug=(cultivoActual?.nombre||'sin-cultivo').replace(/[^a-zA-Z0-9]/g,'_').toLowerCase()
+  const loteSlug=(loteNombre||'sin-lote').replace(/[^a-zA-Z0-9]/g,'_').toLowerCase()
+  for(const m of bvMediaB64){
+    if(!m.b64)continue
+    const mediaItem={tipo:m.tipo,b64:m.b64,url:null}  // b64 siempre como fallback
+    try{
+      const fetchBlob=await fetch(m.b64),blob=await fetchBlob.blob()
+      const ext=m.tipo==='video'?'mp4':'jpg'
+      const path=`bitacora/${cultivoSlug}/${loteSlug}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const upRes=await fetch(`${SURL}/storage/v1/object/${path}`,{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':blob.type||'image/jpeg','x-upsert':'true'},body:blob})
+      if(upRes.ok) mediaItem.url=`${SURL}/storage/v1/object/public/${path}`
+      else console.warn('Upload falló:',await upRes.text())
+    }catch(e){console.warn('Upload error:',e)}
+    mediaConUrl.push(mediaItem)
+  }
   reg.media=mediaConUrl
+  // Actualizar analisis_ia con resultado de IA si fue solicitado
+  if(bvIAResultado) reg.analisis_ia=bvIAResultado
   bvRegistros.unshift(reg)
   try{localStorage.setItem(BV_KEY,JSON.stringify(bvRegistros))}catch(e){localStorage.setItem(BV_KEY,JSON.stringify(bvRegistros.map(r=>({...r,media:[]})))) }
-  bvTipoActual='';bvSevActual='';bvMediaB64=[]
-  document.querySelectorAll('.bv-tipo-btn,.bv-sev-btn').forEach(b=>b.classList.remove('active'))
+  bvTipoActual='';bvSevActual='';bvMediaB64=[];bvIAResultado=''
+  document.querySelectorAll('.bv-tipo-btn,.bv-sev-btn').forEach(b=>b.classList.remove('selected'))
   ;['bv-sector','bv-subsector','bv-descripcion','bv-m-vwc','bv-m-ec','bv-m-ph','bv-m-temp','bv-m-hr','bv-m-vpd','bv-m-vol','bv-m-drenaje','bv-m-ppfd'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})
   document.getElementById('bv-preview-strip').innerHTML=''
   document.getElementById('bv-upload-preview-area').style.display='block'
+  const bvIACard=document.getElementById('bv-ia-card');if(bvIACard)bvIACard.style.display='none'
   mostrarToast('✅ Observación registrada'+(mediaConUrl.length?' con '+mediaConUrl.length+' imagen(es)':''))
   bvTab('timeline')
 }
@@ -1015,12 +1067,14 @@ function bvRenderTimeline(){
   if(fLote)regs=regs.filter(r=>r.lote_id==fLote);if(fTipo)regs=regs.filter(r=>r.tipo===fTipo);if(fSev)regs=regs.filter(r=>r.severidad===fSev);if(fEstado)regs=regs.filter(r=>r.estado===fEstado)
   if(!regs.length){cont.innerHTML='<div class="empty-state">&#128247;<br><br>Sin registros.<br><span style="color:var(--muted)">Cargá una observación desde "Carga rápida".</span></div>';return}
   const sevColor={baja:'#22c55e',media:'#f0b429',alta:'#f97316',critica:'#dc2626'},tipoLabel={seguimiento_general:'Seguimiento',anomalia_visual:'Anomalía visual',pre_riego:'Pre-riego',post_riego:'Post-riego',poda:'Poda',nutricion:'Nutrición',plaga:'Plaga',patogeno:'Patógeno',estres_termico:'Estrés T°',floracion:'Floración',cosecha:'Cosecha',observacion_libre:'Libre'}
-  cont.innerHTML=regs.map(r=>`<div class="bv-evento" onclick="bvAbrirModal('${r.id}')" style="border-left:3px solid ${sevColor[r.severidad]||'#7ecf6a'}"><div class="bv-evento-header"><div><span class="bv-evento-tipo">${tipoLabel[r.tipo]||r.tipo}</span><span class="bv-sev-tag" style="background:${sevColor[r.severidad]||'#7ecf6a'}22;color:${sevColor[r.severidad]||'#7ecf6a'};border:0.5px solid ${sevColor[r.severidad]||'#7ecf6a'}">${r.severidad}</span></div><span class="bv-evento-fecha">${formatFecha(r.fecha)}</span></div><div class="bv-evento-lote">📍 ${r.lote_nombre||'Sin lote'}${r.sector?' · '+r.sector:''}</div>${r.descripcion?`<div class="bv-evento-desc">${r.descripcion.slice(0,120)}${r.descripcion.length>120?'...':''}</div>`:''}${r.media&&r.media.length?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${r.media.map(m=>m.url?`<img src="${m.url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'">`:''  ).join('')}</div>`:''}<div style="margin-top:8px;font-size:10px;color:var(--dim)">${r.analisis_ia||''}</div></div>`).join('')
+  cont.innerHTML=regs.map(r=>`<div class="bv-evento" onclick="bvAbrirModal('${r.id}')" style="border-left:3px solid ${sevColor[r.severidad]||'#7ecf6a'}"><div class="bv-evento-header"><div><span class="bv-evento-tipo">${tipoLabel[r.tipo]||r.tipo}</span><span class="bv-sev-tag" style="background:${sevColor[r.severidad]||'#7ecf6a'}22;color:${sevColor[r.severidad]||'#7ecf6a'};border:0.5px solid ${sevColor[r.severidad]||'#7ecf6a'}">${r.severidad}</span></div><span class="bv-evento-fecha">${formatFecha(r.fecha)}</span></div><div class="bv-evento-lote">📍 ${r.lote_nombre||'Sin lote'}${r.sector?' · '+r.sector:''}</div>${r.descripcion?`<div class="bv-evento-desc">${r.descripcion.slice(0,120)}${r.descripcion.length>120?'...':''}</div>`:''}${r.media&&r.media.length?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${r.media.map(m=>{const src=m.url||m.b64;return src?`<img src="${src}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'">`:''}).join('')}</div>`:''}<div style="margin-top:8px;font-size:10px;color:var(--dim)">${r.analisis_ia||''}</div></div>`).join('')
 }
 
 function bvRenderTablero(){const criticos=bvRegistros.filter(r=>r.severidad==='critica').length,abiertos=bvRegistros.filter(r=>r.estado==='abierto').length,resueltos=bvRegistros.filter(r=>r.estado==='resuelto').length;document.getElementById('bv-count-criticos').textContent=criticos;document.getElementById('bv-count-abiertos').textContent=abiertos;document.getElementById('bv-count-total').textContent=bvRegistros.length;document.getElementById('bv-count-resueltos').textContent=resueltos;const alertasCont=document.getElementById('bv-alertas-cont'),alertas=bvRegistros.filter(r=>r.estado!=='resuelto'&&(r.severidad==='critica'||r.severidad==='alta'));alertasCont.innerHTML=alertas.length?alertas.map(r=>`<div class="lote-item" onclick="bvAbrirModal('${r.id}')" style="cursor:pointer"><span>${r.tipo} · ${r.lote_nombre||''}</span><span class="lote-badge" style="color:${r.severidad==='critica'?'#dc2626':'#f97316'}">${r.severidad}</span></div>`).join(''):'<div class="empty-state" style="border:none;padding:20px">Sin alertas activas.</div>';const tipos={};bvRegistros.forEach(r=>{tipos[r.tipo]=(tipos[r.tipo]||0)+1});const max=Math.max(...Object.values(tipos),1);document.getElementById('bv-dist-tipo').innerHTML=Object.entries(tipos).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<div style="display:flex;align-items:center;gap:8px"><div style="font-size:11px;color:var(--muted);min-width:120px">${t}</div><div style="flex:1;height:6px;background:var(--border);border-radius:3px"><div style="width:${(n/max*100).toFixed(0)}%;height:100%;background:var(--green2);border-radius:3px"></div></div><div style="font-size:11px;color:var(--dim);min-width:20px">${n}</div></div>`).join('')}
 
-function bvAbrirModal(id){const r=bvRegistros.find(reg=>reg.id===id);if(!r)return;bvModalActivo=r;document.getElementById('bvm-titulo').textContent=(r.tipo||'').replace(/_/g,' ');document.getElementById('bvm-meta').textContent=formatFecha(r.fecha)+' · '+r.lote_nombre+(r.sector?' · '+r.sector:'');const fotosCont=document.getElementById('bvm-fotos');fotosCont.innerHTML=r.media&&r.media.length?r.media.map(m=>m.url?`<img src="${m.url}" style="max-height:180px;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="window.open('${m.url}','_blank')" onerror="this.parentNode.innerHTML+='<div style=padding:10px;color:var(--dim)>📷 No disponible</div>';this.remove()">`:''  ).join(''):'' ;document.getElementById('bvm-body').innerHTML=`${r.descripcion?`<div style="margin-bottom:12px">${r.descripcion}</div>`:''}${r.analisis_ia?`<div class="diag-text" style="margin-bottom:12px">${r.analisis_ia}</div>`:''}${r.metricas&&Object.values(r.metricas).some(Boolean)?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;font-family:var(--mono);margin-bottom:12px">${r.metricas.vwc?`<div>VWC: <b>${r.metricas.vwc}%</b></div>`:''}${r.metricas.ec?`<div>EC: <b>${r.metricas.ec}</b></div>`:''}${r.metricas.ph?`<div>pH: <b>${r.metricas.ph}</b></div>`:''}${r.metricas.temp?`<div>T°: <b>${r.metricas.temp}°C</b></div>`:''}${r.metricas.hr?`<div>HR: <b>${r.metricas.hr}%</b></div>`:''}${r.metricas.vpd?`<div>VPD: <b>${r.metricas.vpd} kPa</b></div>`:''}</div>`:''} `;const valBtns=document.getElementById('bvm-val-btns');valBtns.innerHTML=['abierto','en_seguimiento','resuelto'].map(e=>`<button onclick="bvSetEstado('${r.id}','${e}')" style="width:auto;padding:6px 14px;font-size:11px;${r.estado===e?'background:rgba(126,207,106,.2);border-color:var(--green2);color:var(--green)':''}">${e.replace('_',' ')}</button>`).join('');document.getElementById('bv-modal').style.display='flex'}
+let bvModalMediaCache=[]
+function bvVerImagenGrande(idx){const src=bvModalMediaCache[idx];if(!src)return;const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';ov.onclick=()=>ov.remove();const img=document.createElement('img');img.src=src;img.style.cssText='max-width:95vw;max-height:95vh;border-radius:8px;box-shadow:0 0 40px rgba(0,0,0,.8)';ov.appendChild(img);document.body.appendChild(ov)}
+function bvAbrirModal(id){const r=bvRegistros.find(reg=>reg.id===id);if(!r)return;bvModalActivo=r;document.getElementById('bvm-titulo').textContent=(r.tipo||'').replace(/_/g,' ');document.getElementById('bvm-meta').textContent=formatFecha(r.fecha)+' · '+r.lote_nombre+(r.sector?' · '+r.sector:'');const fotosCont=document.getElementById('bvm-fotos');bvModalMediaCache=(r.media||[]).map(m=>m.url||m.b64||null).filter(Boolean);fotosCont.innerHTML=bvModalMediaCache.length?bvModalMediaCache.map((src,i)=>`<img src="${src}" style="max-height:160px;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;margin-right:6px" onclick="event.stopPropagation();bvVerImagenGrande(${i})" onerror="this.style.opacity=0.3">`).join(''):'' ;document.getElementById('bvm-body').innerHTML=`${r.descripcion?`<div style="margin-bottom:12px">${r.descripcion}</div>`:''}${r.analisis_ia?`<div class="diag-text" style="margin-bottom:12px">${r.analisis_ia}</div>`:''}${r.metricas&&Object.values(r.metricas).some(Boolean)?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;font-family:var(--mono);margin-bottom:12px">${r.metricas.vwc?`<div>VWC: <b>${r.metricas.vwc}%</b></div>`:''}${r.metricas.ec?`<div>EC: <b>${r.metricas.ec}</b></div>`:''}${r.metricas.ph?`<div>pH: <b>${r.metricas.ph}</b></div>`:''}${r.metricas.temp?`<div>T°: <b>${r.metricas.temp}°C</b></div>`:''}${r.metricas.hr?`<div>HR: <b>${r.metricas.hr}%</b></div>`:''}${r.metricas.vpd?`<div>VPD: <b>${r.metricas.vpd} kPa</b></div>`:''}</div>`:''} `;const valBtns=document.getElementById('bvm-val-btns');valBtns.innerHTML=['abierto','en_seguimiento','resuelto'].map(e=>`<button onclick="bvSetEstado('${r.id}','${e}')" style="width:auto;padding:6px 14px;font-size:11px;${r.estado===e?'background:rgba(126,207,106,.2);border-color:var(--green2);color:var(--green)':''}">${e.replace('_',' ')}</button>`).join('');document.getElementById('bv-modal').style.display='flex'}
 function bvSetEstado(id,estado){const idx=bvRegistros.findIndex(r=>r.id===id);if(idx<0)return;bvRegistros[idx].estado=estado;bvModalActivo=bvRegistros[idx];localStorage.setItem(BV_KEY,JSON.stringify(bvRegistros));bvAbrirModal(id)}
 function bvGuardarValidacion(){if(!bvModalActivo)return;const nota=document.getElementById('bvm-nota-val')?.value||'';const idx=bvRegistros.findIndex(r=>r.id===bvModalActivo.id);if(idx>=0){bvRegistros[idx].nota_val=nota;bvRegistros[idx].validacion=new Date().toISOString();localStorage.setItem(BV_KEY,JSON.stringify(bvRegistros));mostrarToast('Validación guardada');bvCerrarModal()}}
 function bvCerrarModal(e){if(e&&e.target!==document.getElementById('bv-modal'))return;document.getElementById('bv-modal').style.display='none';bvRenderTimeline();bvRenderTablero()}
