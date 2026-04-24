@@ -1,4 +1,4 @@
-require('dotenv').config({ override: false })
+﻿require('dotenv').config({ override: false })
 
 const express = require('express')
 const path = require('path')
@@ -18,8 +18,8 @@ app.use('/style.css', (req, res, next) => {
   next()
 })
 
-app.use(express.json({ limit: '50mb' }))
 app.use(express.static('public'))
+app.use(express.json({ limit: '50mb' }))
 
 app.get('/', (req, res) => {
   res.type('html')
@@ -59,7 +59,7 @@ const nuevaMedicion = {
 
   fs.writeFileSync(ruta, JSON.stringify(mediciones, null, 2))
 
-  res.json({ ok: true, mensaje: 'Medición guardada correctamente' })
+  res.json({ ok: true, mensaje: 'MediciÃ³n guardada correctamente' })
 })
 
 app.get('/mediciones', async (req, res) => {
@@ -86,7 +86,7 @@ const multer = require('multer')
 const upload = multer({ storage: multer.memoryStorage() })
 
 app.post('/importar-csv', upload.single('archivo'), async (req, res) => {
-  if (!req.file) return res.json({ ok: false, mensaje: 'No se recibió archivo' })
+  if (!req.file) return res.json({ ok: false, mensaje: 'No se recibiÃ³ archivo' })
   const contenido = req.file.buffer.toString('utf8')
   const lineas = contenido.split('\n').filter(l => l.trim())
   const filas = lineas.slice(1)
@@ -116,12 +116,12 @@ app.post('/importar-csv', upload.single('archivo'), async (req, res) => {
   res.json({ ok: true, insertados, saltadas, total: filas.length })
 })
 
-// ── Endpoint análisis de foto BlueLab con Claude ──────────────────────────
+// â”€â”€ Endpoint anÃ¡lisis de foto BlueLab con Claude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Anthropic = require('@anthropic-ai/sdk')
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 app.post('/analizar-foto', upload.single('foto'), async (req, res) => {
-  if (!req.file) return res.json({ ok: false, mensaje: 'No se recibió imagen' })
+  if (!req.file) return res.json({ ok: false, mensaje: 'No se recibiÃ³ imagen' })
 
   const loteId   = req.body.lote_id
   const loteNom  = req.body.lote || 'Sin lote'
@@ -130,7 +130,7 @@ app.post('/analizar-foto', upload.single('foto'), async (req, res) => {
   // Convertir imagen a base64
   const sharp = require("sharp"); const imgBuffer = await sharp(req.file.buffer).resize(1200, 1200, {fit:"inside"}).jpeg({quality:80}).toBuffer(); const base64 = imgBuffer.toString("base64"); const mime = "image/jpeg";
 
-  // Targets de Carmelo según fase
+  // Targets de Carmelo segÃºn fase
   const targets = {
     vegetativo_temprano: { preRiego: 20, postRiego: 28 },
     vegetativo_avanzado: { preRiego: 24, postRiego: 33 },
@@ -153,14 +153,14 @@ app.post('/analizar-foto', upload.single('foto'), async (req, res) => {
             type: 'text',
             text: `Sos un sistema agronomico de cultivo de cannabis en invernadero.
 
-Analizá esta imagen de la pantalla del sensor BlueLab Pulse y extraé los valores de:
+AnalizÃ¡ esta imagen de la pantalla del sensor BlueLab Pulse y extraÃ© los valores de:
 - EC (mS/cm)
 - VWC o Humedad (%)
-- Temperatura (°C)
+- Temperatura (Â°C)
 
 Esta es la pantalla de historial de la app BlueLab Pulse. Muestra filas de mediciones. Cada fila tiene 3 columnas: COLUMNA IZQUIERDA = EC (numero con superindice EC), COLUMNA CENTRAL = VWC Humedad (numero con superindice % o asterisco), COLUMNA DERECHA = Temperatura (numero con superindice C). Lee cada fila de arriba hacia abajo. Extrae SOLO los numeros de la COLUMNA CENTRAL (VWC). Ignora la ultima fila si esta cortada. Suma todos los valores de VWC que pudiste leer completamente y divide por la cantidad de filas completas. Devuelve tambien cuantas filas leiste.
 
-Respondé SOLO en este formato JSON exacto, sin texto adicional:
+RespondÃ© SOLO en este formato JSON exacto, sin texto adicional:
 {
   "lecturas": {
     "ec_promedio": 0.0,
@@ -191,12 +191,12 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
         vwc:         vwc_promedio?.toString(),
         ec:          ec_promedio?.toString(),
         temperatura: temp_promedio?.toString(),
-        notas:       'Importado desde foto BlueLab · Análisis IA',
+        notas:       'Importado desde foto BlueLab Â· AnÃ¡lisis IA',
         fecha:       new Date().toISOString()
       }])
     }
 
-    // Lógica determinista de recomendación según fase
+    // LÃ³gica determinista de recomendaciÃ³n segÃºn fase
     const vwc = analisis.lecturas?.vwc_promedio || 0
 
     let regar = false
@@ -204,11 +204,11 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
     let motivo = ''
 
     if (fase === 'floracion') {
-      if (vwc >= 27)      { regar = false; volumen = 0;   motivo = 'VWC '+vwc+'% — No regar (generativa)' }
-      else if (vwc >= 25) { regar = true;  volumen = 400; motivo = 'VWC '+vwc+'% — Regar 400ml (generativa ~26%)' }
-      else if (vwc >= 23) { regar = true;  volumen = 550; motivo = 'VWC '+vwc+'% — Regar 550ml (generativa ~24%)' }
-      else if (vwc >= 21) { regar = true;  volumen = 700; motivo = 'VWC '+vwc+'% — Regar 700ml (generativa ~22%)' }
-      else                { regar = true;  volumen = 800; motivo = 'VWC '+vwc+'% — Regar 800ml (generativa ~20%)' }
+      if (vwc >= 27)      { regar = false; volumen = 0;   motivo = 'VWC '+vwc+'% â€” No regar (generativa)' }
+      else if (vwc >= 25) { regar = true;  volumen = 400; motivo = 'VWC '+vwc+'% â€” Regar 400ml (generativa ~26%)' }
+      else if (vwc >= 23) { regar = true;  volumen = 550; motivo = 'VWC '+vwc+'% â€” Regar 550ml (generativa ~24%)' }
+      else if (vwc >= 21) { regar = true;  volumen = 700; motivo = 'VWC '+vwc+'% â€” Regar 700ml (generativa ~22%)' }
+      else                { regar = true;  volumen = 800; motivo = 'VWC '+vwc+'% â€” Regar 800ml (generativa ~20%)' }
     } else {
       const t = targets[fase] || targets.floracion
       if (vwc >= t.preRiego) { regar = false; volumen = 0; motivo = 'VWC '+vwc+'% sobre target '+t.preRiego+'%' }
@@ -229,18 +229,20 @@ Respondé SOLO en este formato JSON exacto, sin texto adicional:
     res.json({ ok: false, mensaje: err.message })
   }
 })
-// ── Endpoint diagnóstico imagen desde Bitácora ─────────────────────────
+// â”€â”€ Endpoint diagnÃ³stico imagen desde BitÃ¡cora â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/diagnostico-imagen', async (req, res) => {
-  console.log('[DiagIA] llamada recibida, keys:', Object.keys(req.body || {}))
   const { imagen_b64, media_type, dna_contexto } = req.body
-  if (!imagen_b64) return res.json({ ok: false, diagnostico: 'No se recibió imagen' })
+  if (!imagen_b64) return res.json({ ok: false, diagnostico: 'No se recibiÃ³ imagen' })
 
-  const systemPrompt = `Sos un agrónomo especialista en cannabis medicinal. Analizás imágenes de cultivos y detectás deficiencias, plagas, patógenos y estrés. Respondé en español de forma técnica y concisa.${dna_contexto ? ' Contexto del lote: ' + dna_contexto : ''}
-Estructura tu respuesta:
-1. DIAGNÓSTICO PRINCIPAL
-2. SÍNTOMAS OBSERVADOS
+  const systemPrompt = `Sos un agrÃ³nomo especialista en cannabis medicinal y cultivos botÃ¡nicos. 
+AnalizÃ¡s imÃ¡genes de cultivos y detectÃ¡s: deficiencias nutricionales, problemas de pH/EC, plagas, patÃ³genos, estrÃ©s hÃ­drico, estrÃ©s tÃ©rmico, problemas de VPD, y otros sÃ­ntomas visuales.
+RespondÃ© en espaÃ±ol, de forma concisa y tÃ©cnica.
+${dna_contexto ? 'Contexto del lote: ' + dna_contexto : ''}
+Estructura tu respuesta asÃ­:
+1. DIAGNÃ“STICO PRINCIPAL (1-2 lÃ­neas)
+2. SÃNTOMAS OBSERVADOS (lista breve)
 3. CAUSA PROBABLE
-4. ACCIÓN RECOMENDADA`
+4. ACCIÃ“N RECOMENDADA`
 
   try {
     const response = await anthropic.messages.create({
@@ -251,22 +253,38 @@ Estructura tu respuesta:
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: media_type || 'image/jpeg', data: imagen_b64 } },
-          { type: 'text', text: 'Analizá esta imagen del cultivo y proporcioná un diagnóstico agronómico.' }
+          { type: 'text', text: 'AnalizÃ¡ esta imagen del cultivo y proporcionÃ¡ un diagnÃ³stico agronÃ³mico detallado.' }
         ]
       }]
     })
     const diagnostico = response.content[0].text
     res.json({ ok: true, diagnostico })
   } catch(err) {
+    console.error('[DiagIA]', err)
+    res.json({ ok: false, diagnostico: 'Error al procesar imagen: ' + err.message })
+  }
+})
+
+// ── Endpoint diagnóstico imagen desde Bitácora ─────────────────────────
+app.post('/api/diagnostico-imagen', async (req, res) => {
+  console.log('[DiagIA] llamada recibida, keys:', Object.keys(req.body || {}))
+  const { imagen_b64, media_type, dna_contexto } = req.body
+  if (!imagen_b64) return res.json({ ok: false, diagnostico: 'No se recibió imagen' })
+  const systemPrompt = `Sos un agrónomo especialista en cannabis medicinal. Analizás imágenes de cultivos y detectás deficiencias, plagas, patógenos y estrés. Respondé en español de forma técnica.${dna_contexto ? ' Contexto: ' + dna_contexto : ''} Estructura: 1. DIAGNÓSTICO PRINCIPAL 2. SÍNTOMAS OBSERVADOS 3. CAUSA PROBABLE 4. ACCIÓN RECOMENDADA`
+  try {
+    const response = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, system: systemPrompt, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: media_type || 'image/jpeg', data: imagen_b64 } }, { type: 'text', text: 'Analizá esta imagen del cultivo.' }] }] })
+    res.json({ ok: true, diagnostico: response.content[0].text })
+  } catch(err) {
     console.error('[DiagIA] Error:', err.message)
     res.json({ ok: false, diagnostico: 'Error: ' + err.message })
   }
 })
+
 app.listen(PORT, '0.0.0.0', () => { console.log('Servidor corriendo en http://0.0.0.0:' + PORT) })
 
-// ── Endpoint análisis clima con Claude ────────────────────────────────────
+// â”€â”€ Endpoint anÃ¡lisis clima con Claude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/analizar-clima', upload.single('foto'), async (req, res) => {
-  if (!req.file) return res.json({ ok: false, mensaje: 'No se recibió imagen' })
+  if (!req.file) return res.json({ ok: false, mensaje: 'No se recibiÃ³ imagen' })
 
   const fase  = req.body.fase  || 'floracion'
   const turno = req.body.turno || 'manana'
@@ -285,12 +303,12 @@ app.post('/analizar-clima', upload.single('foto'), async (req, res) => {
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-          { type: 'text', text: `Esta es una foto de un termohigrómetro digital en un invernadero de cannabis.
+          { type: 'text', text: `Esta es una foto de un termohigrÃ³metro digital en un invernadero de cannabis.
 Lee exactamente:
-- Temperatura (°C) — el número seguido de °C o °
-- Humedad relativa (%) — el número seguido de % o HR
+- Temperatura (Â°C) â€” el nÃºmero seguido de Â°C o Â°
+- Humedad relativa (%) â€” el nÃºmero seguido de % o HR
 
-Respondé SOLO en este JSON sin texto adicional:
+RespondÃ© SOLO en este JSON sin texto adicional:
 {"temperatura": 0.0, "humedad": 0.0}` }
         ]
       }]
@@ -299,7 +317,7 @@ Respondé SOLO en este JSON sin texto adicional:
     const texto = response.content[0].text.trim()
     let leido
     try { leido = JSON.parse(texto.replace(/```json|```/g,'').trim()) }
-    catch { return res.json({ ok: false, mensaje: 'No pude leer el termohigrómetro', raw: texto }) }
+    catch { return res.json({ ok: false, mensaje: 'No pude leer el termohigrÃ³metro', raw: texto }) }
 
     const temp = parseFloat(leido.temperatura)
     const hr   = parseFloat(leido.humedad)
@@ -316,54 +334,54 @@ Respondé SOLO en este JSON sin texto adicional:
 
     // VPD
     if(vpd<0.4){
-      alertas.push('🔴 VPD crítico ('+vpd+' kPa) — Ambiente saturado. Las plantas no transpiran. Riesgo inmediato de hongos y pudrición radicular.')
-      acciones.push('Abrir laterales al máximo','Ventiladores al 100%','NO foliar','Revisar drenaje del sustrato')
+      alertas.push('ðŸ”´ VPD crÃ­tico ('+vpd+' kPa) â€” Ambiente saturado. Las plantas no transpiran. Riesgo inmediato de hongos y pudriciÃ³n radicular.')
+      acciones.push('Abrir laterales al mÃ¡ximo','Ventiladores al 100%','NO foliar','Revisar drenaje del sustrato')
     } else if(vpd<rango.min){
-      alertas.push('🟡 VPD bajo ('+vpd+' kPa) — Transpiración reducida. El ambiente está húmedo para esta fase. Las plantas absorben nutrientes lentamente.')
-      acciones.push('Aumentar ventilación','Abrir laterales parcialmente','Evitar foliar')
+      alertas.push('ðŸŸ¡ VPD bajo ('+vpd+' kPa) â€” TranspiraciÃ³n reducida. El ambiente estÃ¡ hÃºmedo para esta fase. Las plantas absorben nutrientes lentamente.')
+      acciones.push('Aumentar ventilaciÃ³n','Abrir laterales parcialmente','Evitar foliar')
     } else if(vpd<=rango.max){
-      alertas.push('✅ VPD óptimo ('+vpd+' kPa) — Transpiración activa en rango. Las plantas absorben nutrientes correctamente. Sin acción requerida.')
+      alertas.push('âœ… VPD Ã³ptimo ('+vpd+' kPa) â€” TranspiraciÃ³n activa en rango. Las plantas absorben nutrientes correctamente. Sin acciÃ³n requerida.')
     } else if(vpd<=2.0){
-      alertas.push('🟡 VPD alto ('+vpd+' kPa) — Las plantas transpiran más de lo que absorben. Riesgo de estrés hídrico y quema de puntas si se mantiene.')
-      acciones.push('Mojar pasillos','Cerrar laterales si hay viento seco','Aumentar volumen próximo riego')
+      alertas.push('ðŸŸ¡ VPD alto ('+vpd+' kPa) â€” Las plantas transpiran mÃ¡s de lo que absorben. Riesgo de estrÃ©s hÃ­drico y quema de puntas si se mantiene.')
+      acciones.push('Mojar pasillos','Cerrar laterales si hay viento seco','Aumentar volumen prÃ³ximo riego')
     } else {
-      alertas.push('🔴 VPD crítico ('+vpd+' kPa) — Estrés hídrico severo. Fotosíntesis comprometida. Terpenos en riesgo. Actuar de inmediato.')
+      alertas.push('ðŸ”´ VPD crÃ­tico ('+vpd+' kPa) â€” EstrÃ©s hÃ­drico severo. FotosÃ­ntesis comprometida. Terpenos en riesgo. Actuar de inmediato.')
       acciones.push('Mojar pasillos urgente','Riego de emergencia si VWC < 20%','Malla sombra si hay sol directo','Cerrar laterales')
     }
 
     // Temperatura
     if(temp>38){
-      alertas.push('🔴 Temperatura crítica ('+temp+'°C) — Daño celular irreversible posible. Enzimas comprometidas. Cogollos en riesgo.')
-      acciones.push('Malla sombra URGENTE','Ventiladores al máximo','Abrir todos los laterales','Mojar techo si es posible')
+      alertas.push('ðŸ”´ Temperatura crÃ­tica ('+temp+'Â°C) â€” DaÃ±o celular irreversible posible. Enzimas comprometidas. Cogollos en riesgo.')
+      acciones.push('Malla sombra URGENTE','Ventiladores al mÃ¡ximo','Abrir todos los laterales','Mojar techo si es posible')
     } else if(temp>35){
-      alertas.push('🔴 Temperatura muy alta ('+temp+'°C) — Estrés térmico severo. Fotosíntesis reducida al mínimo. Terpenos volátiles.')
-      acciones.push('Malla sombra','Ventiladores al máximo','Abrir laterales')
+      alertas.push('ðŸ”´ Temperatura muy alta ('+temp+'Â°C) â€” EstrÃ©s tÃ©rmico severo. FotosÃ­ntesis reducida al mÃ­nimo. Terpenos volÃ¡tiles.')
+      acciones.push('Malla sombra','Ventiladores al mÃ¡ximo','Abrir laterales')
     } else if(temp>32){
-      alertas.push('🟡 Temperatura alta ('+temp+'°C) — Estrés térmico activo. Si se mantiene más de 2hs puede afectar calidad de cogollos.')
+      alertas.push('ðŸŸ¡ Temperatura alta ('+temp+'Â°C) â€” EstrÃ©s tÃ©rmico activo. Si se mantiene mÃ¡s de 2hs puede afectar calidad de cogollos.')
       acciones.push('Abrir laterales','Activar ventiladores','Mojar pasillos')
     } else if(temp<15){
-      alertas.push('🔴 Temperatura baja ('+temp+'°C) — Metabolismo ralentizado. Riesgo de shock radicular en próximo riego.')
-      acciones.push('Cerrar laterales','Revisar calefacción','No regar hasta que supere 18°C')
+      alertas.push('ðŸ”´ Temperatura baja ('+temp+'Â°C) â€” Metabolismo ralentizado. Riesgo de shock radicular en prÃ³ximo riego.')
+      acciones.push('Cerrar laterales','Revisar calefacciÃ³n','No regar hasta que supere 18Â°C')
     } else if(temp<18){
-      alertas.push('🟡 Temperatura baja ('+temp+'°C) — Crecimiento lento. Absorción de nutrientes reducida.')
+      alertas.push('ðŸŸ¡ Temperatura baja ('+temp+'Â°C) â€” Crecimiento lento. AbsorciÃ³n de nutrientes reducida.')
       acciones.push('Cerrar laterales nocturnos','Monitorear cada 2 horas')
     }
 
     // Humedad relativa
     if(hr>75){
-      alertas.push('🔴 HR muy alta ('+hr+'%) — Riesgo de Botrytis activo. En floración avanzada cualquier condensación en cogollos es crítica.')
-      acciones.push('NO foliar bajo ningún concepto','Ventilación nocturna obligatoria','Revisar cogollos densos','Defoliar si hay zonas sin circulación de aire')
+      alertas.push('ðŸ”´ HR muy alta ('+hr+'%) â€” Riesgo de Botrytis activo. En floraciÃ³n avanzada cualquier condensaciÃ³n en cogollos es crÃ­tica.')
+      acciones.push('NO foliar bajo ningÃºn concepto','VentilaciÃ³n nocturna obligatoria','Revisar cogollos densos','Defoliar si hay zonas sin circulaciÃ³n de aire')
     } else if(hr>65 && fase==='floracion'){
-      alertas.push('🟡 HR elevada para floración ('+hr+'%) — Zona de riesgo. Los cogollos acumulan humedad interna.')
-      acciones.push('Aumentar ventilación','NO foliar','Revisar cogollos cada 2 días')
+      alertas.push('ðŸŸ¡ HR elevada para floraciÃ³n ('+hr+'%) â€” Zona de riesgo. Los cogollos acumulan humedad interna.')
+      acciones.push('Aumentar ventilaciÃ³n','NO foliar','Revisar cogollos cada 2 dÃ­as')
     } else if(hr>70){
-      alertas.push('🟡 HR elevada ('+hr+'%) — Ambiente húmedo. Ventilación insuficiente.')
-      acciones.push('Aumentar ventilación','Evitar foliar')
+      alertas.push('ðŸŸ¡ HR elevada ('+hr+'%) â€” Ambiente hÃºmedo. VentilaciÃ³n insuficiente.')
+      acciones.push('Aumentar ventilaciÃ³n','Evitar foliar')
     } else if(hr<35){
-      alertas.push('🟡 HR baja ('+hr+'%) — Ambiente muy seco. Riesgo de quema de puntas y estrés por transpiración excesiva.')
-      acciones.push('Mojar pasillos','Revisar VPD para ajustar ventilación')
+      alertas.push('ðŸŸ¡ HR baja ('+hr+'%) â€” Ambiente muy seco. Riesgo de quema de puntas y estrÃ©s por transpiraciÃ³n excesiva.')
+      acciones.push('Mojar pasillos','Revisar VPD para ajustar ventilaciÃ³n')
     } else if(hr<25){
-      alertas.push('🔴 HR crítica ('+hr+'%) — Desecación activa. Las plantas pierden agua más rápido de lo que absorben.')
+      alertas.push('ðŸ”´ HR crÃ­tica ('+hr+'%) â€” DesecaciÃ³n activa. Las plantas pierden agua mÃ¡s rÃ¡pido de lo que absorben.')
       acciones.push('Mojar pasillos urgente','Cerrar laterales','Aumentar frecuencia de riego')
     }
 
@@ -375,7 +393,7 @@ Respondé SOLO en este JSON sin texto adicional:
   }
 })
 
-// ── Endpoint análisis visual con Claude ───────────────────────────────────
+// â”€â”€ Endpoint anÃ¡lisis visual con Claude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
   if (!req.files || !req.files.length) return res.json({ ok: false, mensaje: 'No se recibieron fotos' })
 
@@ -383,7 +401,7 @@ app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
   const obs  = req.body.observacion || ''
 
   try {
-    // Preparar imágenes
+    // Preparar imÃ¡genes
     const imagenes = await Promise.all(req.files.map(async file => {
       const buf = await require('sharp')(file.buffer)
         .resize(800, 800, { fit: 'inside' })
@@ -396,11 +414,11 @@ app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
       ...imagenes,
       {
         type: 'text',
-        text: `Sos un agrónomo especializado en cannabis medicinal en invernadero.
-Analizá estas ${imagenes.length} foto(s) de plantas en fase: ${fase}.
+        text: `Sos un agrÃ³nomo especializado en cannabis medicinal en invernadero.
+AnalizÃ¡ estas ${imagenes.length} foto(s) de plantas en fase: ${fase}.
 ${obs ? 'Nota del operario: ' + obs : ''}
 
-Evaluá y respondé SOLO en este JSON sin texto adicional:
+EvaluÃ¡ y respondÃ© SOLO en este JSON sin texto adicional:
 {
   "estado_general": "excelente|bueno|regular|malo|critico",
   "vigor": "alto|normal|bajo",
@@ -427,7 +445,7 @@ Evaluá y respondé SOLO en este JSON sin texto adicional:
     try {
       diagnostico = JSON.parse(texto.replace(/```json|```/g, '').trim())
     } catch {
-      return res.json({ ok: false, mensaje: 'Error parseando diagnóstico', raw: texto })
+      return res.json({ ok: false, mensaje: 'Error parseando diagnÃ³stico', raw: texto })
     }
 
     res.json({ ok: true, diagnostico })
@@ -438,7 +456,7 @@ Evaluá y respondé SOLO en este JSON sin texto adicional:
   }
 })
 
-// ── Endpoint análisis visual con Claude ───────────────────────────────────
+// â”€â”€ Endpoint anÃ¡lisis visual con Claude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
   if (!req.files || !req.files.length) return res.json({ ok: false, mensaje: 'No se recibieron fotos' })
 
@@ -446,7 +464,7 @@ app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
   const obs  = req.body.observacion || ''
 
   try {
-    // Preparar imágenes
+    // Preparar imÃ¡genes
     const imagenes = await Promise.all(req.files.map(async file => {
       const buf = await require('sharp')(file.buffer)
         .resize(800, 800, { fit: 'inside' })
@@ -459,11 +477,11 @@ app.post('/analizar-visual', upload.array('fotos', 4), async (req, res) => {
       ...imagenes,
       {
         type: 'text',
-        text: `Sos un agrónomo especializado en cannabis medicinal en invernadero.
-Analizá estas ${imagenes.length} foto(s) de plantas en fase: ${fase}.
+        text: `Sos un agrÃ³nomo especializado en cannabis medicinal en invernadero.
+AnalizÃ¡ estas ${imagenes.length} foto(s) de plantas en fase: ${fase}.
 ${obs ? 'Nota del operario: ' + obs : ''}
 
-Evaluá y respondé SOLO en este JSON sin texto adicional:
+EvaluÃ¡ y respondÃ© SOLO en este JSON sin texto adicional:
 {
   "estado_general": "excelente|bueno|regular|malo|critico",
   "vigor": "alto|normal|bajo",
@@ -490,7 +508,7 @@ Evaluá y respondé SOLO en este JSON sin texto adicional:
     try {
       diagnostico = JSON.parse(texto.replace(/```json|```/g, '').trim())
     } catch {
-      return res.json({ ok: false, mensaje: 'Error parseando diagnóstico', raw: texto })
+      return res.json({ ok: false, mensaje: 'Error parseando diagnÃ³stico', raw: texto })
     }
 
     res.json({ ok: true, diagnostico })
@@ -501,7 +519,7 @@ Evaluá y respondé SOLO en este JSON sin texto adicional:
   }
 })
 
-// ── Endpoint Smartlife / Tuya sensor ─────────────────────────────────────────
+// â”€â”€ Endpoint Smartlife / Tuya sensor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const crypto = require('crypto')
 
 const TUYA_CLIENT_ID     = 'cpffcwyffdgt5a5wtng7'
@@ -559,7 +577,7 @@ app.get('/smartlife-sensor', async (req, res) => {
 
     const status = data.result
 
-    // Buscar por distintos códigos posibles
+    // Buscar por distintos cÃ³digos posibles
     const tempEntry = status.find(s => s.code === 'va_temperature' || s.code === 'temp_current' || s.code === 'temperature')
     const hrEntry   = status.find(s => s.code === 'va_humidity'    || s.code === 'humidity_value' || s.code === 'humidity')
 
@@ -570,8 +588,8 @@ app.get('/smartlife-sensor', async (req, res) => {
     const tempRaw = tempEntry.value
     const hrRaw   = hrEntry.value
 
-    // Detectar divisor automáticamente
-    // Si el valor raw es mayor a 100 asumimos que está en décimas
+    // Detectar divisor automÃ¡ticamente
+    // Si el valor raw es mayor a 100 asumimos que estÃ¡ en dÃ©cimas
     const tempC = tempRaw > 100 ? tempRaw / 10 : tempRaw
     const hrPct = hrRaw   > 100 ? hrRaw   / 10 : hrRaw
 
@@ -585,3 +603,5 @@ app.get('/smartlife-sensor', async (req, res) => {
     res.json({ ok: false, error: err.message })
   }
 })
+
+

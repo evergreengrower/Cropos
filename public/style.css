@@ -59,29 +59,17 @@ body::before {
 /* ── SIDEBAR ────────────────────────────────────────────────── */
 .sidebar {
   width: var(--sidebar-w);
-  height: 100vh;
+  min-height: 100vh;
   background: var(--bg2);
   border-right: 0.5px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding: 0 0 24px;
   position: fixed;
   top: 0; left: 0;
   z-index: 100;
   transition: transform .25s ease;
-  overflow: hidden;
 }
-
-.sidebar-scroll {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 24px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-.sidebar-scroll::-webkit-scrollbar { width: 4px; }
-.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .sidebar-logo {
   padding: 22px 20px 18px;
