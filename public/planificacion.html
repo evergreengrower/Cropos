@@ -25,6 +25,8 @@
     .tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
     .tab-on{background:#1a5c32;color:#fff}
     .tab-off{background:#060f0a;color:#2d5a3d;border:1px solid #1a3d2b}
+    .timer-preset{background:#0a1a10;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px;padding:4px 7px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .2s}
+    .timer-preset.activo{background:#1a5c32;border-color:#22c55e;color:#fff;font-weight:700}
   </style>
 </head>
 <body>
@@ -169,7 +171,30 @@
 
   <!-- Acciones de hardware -->
   <div style="margin-top:16px;padding:12px;background:#060f0a;border-radius:10px;border:1px solid #1a3d2b">
-    <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">⚙ Control de hardware</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.08em">⚙ Control de hardware</div>
+      <button onclick="configurarTimer()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">⏱ Config timer</button>
+    </div>
+
+    <!-- Timer display -->
+    <div id="timer-display" style="display:none;text-align:center;margin-bottom:10px;padding:8px;background:#0a1a10;border-radius:8px;border:1px solid #1a5c32">
+      <div style="font-size:10px;color:#4a7a5a;margin-bottom:2px">TIEMPO RESTANTE</div>
+      <div id="timer-countdown" style="font-size:32px;font-weight:700;color:#22c55e;letter-spacing:2px">00:00</div>
+      <div style="font-size:10px;color:#4a7a5a;margin-top:2px">Bomba + válvula se apagan automáticamente</div>
+    </div>
+
+    <!-- Duración configurada -->
+    <div id="timer-config-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="font-size:11px;color:#4a7a5a">Duración:</div>
+      <div style="display:flex;gap:4px">
+        <button onclick="setTimerMin(5)"  class="timer-preset" data-min="5">5 min</button>
+        <button onclick="setTimerMin(10)" class="timer-preset" data-min="10">10 min</button>
+        <button onclick="setTimerMin(15)" class="timer-preset" data-min="15">15 min</button>
+        <button onclick="setTimerMin(20)" class="timer-preset" data-min="20">20 min</button>
+        <button onclick="setTimerMin(0)"  class="timer-preset" data-min="0">∞</button>
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       <button onclick="toggleValvula()" id="btn-valvula" style="background:#0a1020;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
         🚰 Abrir válvula
@@ -751,46 +776,100 @@ const BOMBA_DEVICE_ID = localStorage.getItem('cropos_bomba_device_id') || '73634
 let bombaEncendida = false
 let bombaTimer = null
 
+// ── Timer ─────────────────────────────────────────────────────────────────
+let timerMinutos = parseInt(localStorage.getItem('cropos_bomba_minutos') || '0')
+let timerInterval = null
+let timerSegRestantes = 0
+
+function setTimerMin(min){
+  timerMinutos = min
+  localStorage.setItem('cropos_bomba_minutos', min)
+  document.querySelectorAll('.timer-preset').forEach(b => {
+    b.classList.toggle('activo', parseInt(b.dataset.min) === min)
+  })
+}
+
+function configurarTimer(){
+  const actual = timerMinutos > 0 ? timerMinutos : '∞'
+  const val = prompt(`Duración del riego en minutos (actual: ${actual})\n0 = sin límite automático`, timerMinutos || '')
+  if(val === null) return
+  const min = parseInt(val) || 0
+  setTimerMin(min)
+}
+
+function iniciarCountdown(segundos){
+  const display = document.getElementById('timer-display')
+  const countdown = document.getElementById('timer-countdown')
+  timerSegRestantes = segundos
+  display.style.display = 'block'
+  if(timerInterval) clearInterval(timerInterval)
+  function tick(){
+    const m = String(Math.floor(timerSegRestantes/60)).padStart(2,'0')
+    const s = String(timerSegRestantes % 60).padStart(2,'0')
+    countdown.textContent = m + ':' + s
+    // Color: rojo cuando quedan menos de 60s
+    countdown.style.color = timerSegRestantes <= 60 ? '#ef4444' : '#22c55e'
+    if(timerSegRestantes <= 0){
+      clearInterval(timerInterval)
+      timerInterval = null
+      apagarTodo('⏰ Tiempo cumplido — bomba y válvula apagadas automáticamente')
+    } else {
+      timerSegRestantes--
+    }
+  }
+  tick()
+  timerInterval = setInterval(tick, 1000)
+}
+
+function detenerCountdown(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null }
+  document.getElementById('timer-display').style.display = 'none'
+  document.getElementById('timer-countdown').textContent = '00:00'
+}
+
+async function apagarTodo(msg){
+  // Apagar bomba y cerrar válvula simultáneamente
+  await Promise.all([
+    controlSwitch(BOMBA_DEVICE_ID, false),
+    controlSwitch(VALVULA_DEVICE_ID, false)
+  ])
+  bombaEncendida = false
+  valvulaAbierta = false
+  const btnB = document.getElementById('btn-bomba')
+  const btnV = document.getElementById('btn-valvula')
+  btnB.textContent = '💧 Encender bomba'
+  btnB.style.borderColor = '#22c55e'; btnB.style.color = '#22c55e'
+  btnV.textContent = '🚰 Abrir válvula'
+  btnV.style.borderColor = '#f0b429'; btnV.style.color = '#f0b429'
+  detenerCountdown()
+  document.getElementById('bomba-status').textContent = msg || '✅ Sistema apagado'
+}
+
+// ── Control bomba ─────────────────────────────────────────────────────────
 async function encenderBomba(){
   const btn = document.getElementById('btn-bomba')
   const status = document.getElementById('bomba-status')
-  if(!BOMBA_DEVICE_ID){
-    configurarBomba()
-    return
-  }
   if(bombaEncendida){
-    // Apagar
-    await controlBomba(false)
-    bombaEncendida = false
-    if(bombaTimer){ clearTimeout(bombaTimer); bombaTimer = null }
-    btn.textContent = '💧 Encender bomba'
-    btn.style.borderColor = '#22c55e'
-    btn.style.color = '#22c55e'
-    status.textContent = 'Bomba apagada'
+    // Apagar todo manualmente
+    btn.disabled = true
+    status.textContent = '⏳ Apagando...'
+    await apagarTodo('✅ Sistema apagado manualmente')
+    btn.disabled = false
     return
   }
-  // Encender
-  status.textContent = '⏳ Conectando...'
-  const ok = await controlBomba(true)
+  btn.disabled = true
+  status.textContent = '⏳ Encendiendo bomba...'
+  const ok = await controlSwitch(BOMBA_DEVICE_ID, true)
+  btn.disabled = false
   if(ok){
     bombaEncendida = true
-    btn.textContent = '🔴 Apagar bomba'
-    btn.style.borderColor = '#dc2626'
-    btn.style.color = '#dc2626'
-    // Leer duración configurada (minutos)
-    const mins = parseInt(localStorage.getItem('cropos_bomba_minutos') || '0')
-    if(mins > 0){
-      status.textContent = `Bomba ON · apaga en ${mins} min`
-      bombaTimer = setTimeout(async ()=>{
-        await controlBomba(false)
-        bombaEncendida = false
-        btn.textContent = '💧 Encender bomba'
-        btn.style.borderColor = '#22c55e'
-        btn.style.color = '#22c55e'
-        status.textContent = '✅ Bomba apagada automáticamente'
-      }, mins * 60 * 1000)
+    btn.textContent = '🔴 Apagar todo'
+    btn.style.borderColor = '#ef4444'; btn.style.color = '#ef4444'
+    if(timerMinutos > 0){
+      status.textContent = `💧 Bomba ON · apaga en ${timerMinutos} min`
+      iniciarCountdown(timerMinutos * 60)
     } else {
-      status.textContent = 'Bomba ON · apagá manualmente'
+      status.textContent = '💧 Bomba ON · apagá manualmente'
     }
   } else {
     status.textContent = '⚠️ Error al conectar con la bomba'
@@ -800,24 +879,20 @@ async function encenderBomba(){
 async function controlSwitch(device_id, encender){
   try{
     const r = await fetch('/smartlife-switch', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({device_id, encender})
     })
-    const d = await r.json()
-    return d.ok === true
+    const d = await r.json(); return d.ok === true
   }catch(e){ return false }
 }
 async function controlBomba(encender){ return controlSwitch(BOMBA_DEVICE_ID, encender) }
 
-function configurarBomba(){
-  const id = prompt('Device ID del interruptor de bomba (Smartlife):\n\nEncontralo en la app Smartlife → dispositivo → ícono lápiz → Información del dispositivo')
-  if(!id) return
-  localStorage.setItem('cropos_bomba_device_id', id.trim())
-  const mins = prompt('¿Apagar bomba automáticamente después de cuántos minutos?\n(0 = no apagar automáticamente)', '20')
-  if(mins !== null) localStorage.setItem('cropos_bomba_minutos', parseInt(mins)||0)
-  location.reload()
-}
+// Marcar preset activo al cargar
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.timer-preset').forEach(b=>{
+    b.classList.toggle('activo', parseInt(b.dataset.min) === timerMinutos)
+  })
+})
 
 init()
 </script>
