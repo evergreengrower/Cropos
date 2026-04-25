@@ -171,11 +171,11 @@
   <div style="margin-top:16px;padding:12px;background:#060f0a;border-radius:10px;border:1px solid #1a3d2b">
     <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">⚙ Control de hardware</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button onclick="toggleValvula()" id="btn-valvula" style="background:#0a1020;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
+        🚰 Abrir válvula
+      </button>
       <button onclick="encenderBomba()" id="btn-bomba" style="background:#0a1200;border:1px solid #22c55e;color:#22c55e;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
         💧 Encender bomba
-      </button>
-      <button onclick="abrirRainPoint()" style="background:#0a1020;border:1px solid #60a5fa;color:#60a5fa;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
-        🌧 RainPoint
       </button>
     </div>
     <div id="bomba-status" style="font-size:11px;color:#4a7a5a;text-align:center;min-height:16px"></div>
@@ -721,34 +721,29 @@ async function confirmarRiego(){
   }
 }
 
-// ── RainPoint deep link ───────────────────────────────────────────────────
-function abrirRainPoint(){
-  // Intenta abrir la app RainPoint Home instalada
-  const schemes = ['rainpoinths://', 'rainpoint://']
-  let intentado = false
-  function intentar(i){
-    if(i >= schemes.length){
-      // Ningún scheme funcionó → ir al App Store
-      window.open('https://apps.apple.com/app/rainpoint-home/id1575018083', '_blank')
-      return
-    }
-    const iframe = document.createElement('iframe')
-    iframe.style.display = 'none'
-    iframe.src = schemes[i]
-    document.body.appendChild(iframe)
-    setTimeout(()=>{
-      document.body.removeChild(iframe)
-      // Si el usuario sigue en esta página, el scheme no funcionó
-    }, 800)
+// ── Smart Valve (Tuya Smartlife) ─────────────────────────────────────────
+const VALVULA_DEVICE_ID = 'ebec0e3a9dfd95b85dh3mv'
+let valvulaAbierta = false
+
+async function toggleValvula(){
+  const btn = document.getElementById('btn-valvula')
+  const status = document.getElementById('bomba-status')
+  const abrir = !valvulaAbierta
+  btn.disabled = true
+  btn.textContent = abrir ? '⏳ Abriendo...' : '⏳ Cerrando...'
+  status.textContent = ''
+  const ok = await controlSwitch(VALVULA_DEVICE_ID, abrir)
+  btn.disabled = false
+  if(ok){
+    valvulaAbierta = abrir
+    btn.textContent = abrir ? '🔴 Cerrar válvula' : '🚰 Abrir válvula'
+    btn.style.borderColor = abrir ? '#ef4444' : '#f0b429'
+    btn.style.color = abrir ? '#ef4444' : '#f0b429'
+    status.textContent = abrir ? '✅ Válvula abierta — podés encender la bomba' : '✅ Válvula cerrada'
+  } else {
+    btn.textContent = valvulaAbierta ? '🔴 Cerrar válvula' : '🚰 Abrir válvula'
+    status.textContent = '⚠️ Error al conectar con la válvula'
   }
-  // En iOS PWA, location.href funciona mejor que iframe
-  window.location.href = schemes[0]
-  // Si en 1.2s no cambió la app, abre App Store
-  setTimeout(()=>{
-    if(!document.hidden){
-      window.open('https://apps.apple.com/app/rainpoint-home/id1575018083', '_blank')
-    }
-  }, 1200)
 }
 
 // ── Control bomba Smartlife (Tuya) ────────────────────────────────────────
@@ -802,17 +797,18 @@ async function encenderBomba(){
   }
 }
 
-async function controlBomba(encender){
+async function controlSwitch(device_id, encender){
   try{
     const r = await fetch('/smartlife-switch', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({device_id: BOMBA_DEVICE_ID, encender})
+      body: JSON.stringify({device_id, encender})
     })
     const d = await r.json()
     return d.ok === true
   }catch(e){ return false }
 }
+async function controlBomba(encender){ return controlSwitch(BOMBA_DEVICE_ID, encender) }
 
 function configurarBomba(){
   const id = prompt('Device ID del interruptor de bomba (Smartlife):\n\nEncontralo en la app Smartlife → dispositivo → ícono lápiz → Información del dispositivo')
