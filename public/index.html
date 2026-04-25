@@ -725,7 +725,7 @@ function mostrarVista(id) {
 function irModulo(mod) {
   if (mod !== 'import' && !loteActual) { alert('Primero seleccioná un lote desde el Dashboard.'); return }
   const base = loteActual ? '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre) : ''
-  const urls = { riego:'/riego.html'+base, clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base }
+  const urls = { riego:'/planificacion.html'+base, clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base }
   if (urls[mod]) location.href = urls[mod]
 }
 function irATareas() { irModulo('tareas') }
@@ -780,7 +780,7 @@ async function abrirLote(id, nombre, tipo) {
   loteActual = { id, nombre, tipo }
   document.getElementById('topbar-titulo').textContent = nombre
   document.getElementById('topbar-sub').textContent = (cultivoActual?.nombre||'') + ' · ' + (tipo||'')
-  document.getElementById('btn-plan').href    = '/riego.html?lote_id='   + id + '&lote=' + encodeURIComponent(nombre)
+  document.getElementById('btn-plan').href    = '/planificacion.html?lote_id=' + id + '&lote=' + encodeURIComponent(nombre)
   document.getElementById('btn-tareas').href  = '/tareas.html?lote_id='  + id + '&lote=' + encodeURIComponent(nombre)
   document.getElementById('btn-import').href  = '/import.html?lote_id='  + id + '&lote=' + encodeURIComponent(nombre)
   document.getElementById('btn-historial').href = '/historial-riegos.html?lote_id=' + id + '&lote=' + encodeURIComponent(nombre)
