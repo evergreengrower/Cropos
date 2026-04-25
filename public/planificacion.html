@@ -216,11 +216,15 @@ function navAnterior(){offset--;cargarPlanes()}
 function navSiguiente(){offset++;cargarPlanes()}
 
 async function init(){
-  const rF=await fetch(SURL+'/rest/v1/fertilizantes?activo=eq.true&select=*',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-  fertis=await rF.json()
+  try{
+    const rF=await fetch(SURL+'/rest/v1/fertilizantes?activo=eq.true&select=*',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+    const fd=await rF.json(); fertis=Array.isArray(fd)?fd:[]
+  }catch(e){fertis=[]}
   if(loteId){
-    const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+loteId+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-    const ld=await rL.json(); plantasLote=ld[0]?.cantidad_plantas||0
+    try{
+      const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+loteId+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const ld=await rL.json(); plantasLote=(Array.isArray(ld)?ld[0]:null)?.cantidad_plantas||0
+    }catch(e){}
   }
   await cargarPlanes()
   // Si viene con resultado de IA, abrir modal de riego
@@ -238,8 +242,13 @@ async function init(){
 async function cargarPlanes(){
   const dias=getDias()
   const desde=fmt(dias[0]), hasta=fmt(dias[dias.length-1])
-  const r=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
-  planes=await r.json()
+  try{
+    const url=loteId
+      ? SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
+      : SURL+'/rest/v1/planes_riego?fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
+    const r=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+    const d=await r.json(); planes=Array.isArray(d)?d:[]
+  }catch(e){planes=[]}
   const opts={timeZone:'America/Montevideo',day:'2-digit',month:'2-digit'}
   document.getElementById('rango-fechas').textContent=
     new Date(desde+'T12:00').toLocaleDateString('es-UY',opts)+' — '+
