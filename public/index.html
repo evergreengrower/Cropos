@@ -723,9 +723,15 @@ function mostrarVista(id) {
 }
 
 function irModulo(mod) {
-  if (mod !== 'import' && !loteActual) { alert('Primero seleccioná un lote desde el Dashboard.'); return }
-  const base = loteActual ? '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre) : ''
-  const urls = { riego:'/planificacion.html'+base, clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base }
+  // Riegos abre el calendario siempre, sin requerir lote
+  if (mod === 'riego') {
+    const base = loteActual ? '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre) : ''
+    location.href = '/planificacion.html' + base
+    return
+  }
+  if (!loteActual) { alert('Primero seleccioná un lote desde el Dashboard.'); return }
+  const base = '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre)
+  const urls = { clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base }
   if (urls[mod]) location.href = urls[mod]
 }
 function irATareas() { irModulo('tareas') }

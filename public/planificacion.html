@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Planificación Fertiriego</title>
+  <title>Planificación Fertiriego v2</title>
   <link rel="stylesheet" href="/style.css">
   <style>
     .almanaque{width:100%;border-collapse:collapse;font-size:12px}
@@ -31,6 +31,14 @@
 <div class="app">
   <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
   <div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">← Volver</button><button onclick="location.href='/index.html'" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">🏠 Dashboard</button></div>
+
+  <!-- Selector de lote cuando no viene por URL -->
+  <div id="lote-selector-bar" style="display:none;margin-bottom:12px;background:#0a1a10;border:1px solid #1a3d2b;border-radius:10px;padding:10px 12px">
+    <div style="font-size:10px;color:#4a7a5a;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Seleccionar lote</div>
+    <select id="lote-selector" onchange="cambiarLote(this.value)" style="width:100%;background:#060f0a;color:#e8f0eb;border:1px solid #1a3d2b;border-radius:6px;padding:7px;font-size:13px">
+      <option value="">— Todos los lotes —</option>
+    </select>
+  </div>
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
     <h3 id="titulo-lote" style="margin:0">Planificación</h3>
@@ -159,6 +167,20 @@
   <label>Notas del riego</label>
   <textarea id="r-notas" style="margin-top:4px;min-height:40px" placeholder="Observaciones..."></textarea>
 
+  <!-- Acciones de hardware -->
+  <div style="margin-top:16px;padding:12px;background:#060f0a;border-radius:10px;border:1px solid #1a3d2b">
+    <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">⚙ Control de hardware</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button onclick="encenderBomba()" id="btn-bomba" style="background:#0a1200;border:1px solid #22c55e;color:#22c55e;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
+        💧 Encender bomba
+      </button>
+      <button onclick="abrirRainPoint()" style="background:#0a1020;border:1px solid #60a5fa;color:#60a5fa;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
+        🌧 RainPoint
+      </button>
+    </div>
+    <div id="bomba-status" style="font-size:11px;color:#4a7a5a;text-align:center;min-height:16px"></div>
+  </div>
+
   <button onclick="confirmarRiego()" class="btn-gold" style="margin-top:14px;font-size:15px">
     ✅ Confirmar y guardar riego
   </button>
@@ -215,12 +237,29 @@ function cambiarVista(v){
 function navAnterior(){offset--;cargarPlanes()}
 function navSiguiente(){offset++;cargarPlanes()}
 
+let _loteIdDinamic = loteId
+let _loteNomDinamic = loteNom
+
 async function init(){
   try{
     const rF=await fetch(SURL+'/rest/v1/fertilizantes?activo=eq.true&select=*',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
     const fd=await rF.json(); fertis=Array.isArray(fd)?fd:[]
   }catch(e){fertis=[]}
-  if(loteId){
+  // Si no viene lote_id por URL, mostrar selector y cargar lotes
+  if(!loteId){
+    const bar=document.getElementById('lote-selector-bar')
+    bar.style.display='block'
+    try{
+      const rLotes=await fetch(SURL+'/rest/v1/lotes?activo=eq.true&select=id,nombre&order=nombre',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const lotes=await rLotes.json()
+      if(Array.isArray(lotes)){
+        const sel=document.getElementById('lote-selector')
+        lotes.forEach(l=>{
+          const o=document.createElement('option'); o.value=l.id; o.textContent=l.nombre; sel.appendChild(o)
+        })
+      }
+    }catch(e){}
+  } else {
     try{
       const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+loteId+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
       const ld=await rL.json(); plantasLote=(Array.isArray(ld)?ld[0]:null)?.cantidad_plantas||0
@@ -239,12 +278,32 @@ async function init(){
   }
 }
 
+async function cambiarLote(id){
+  _loteIdDinamic = id || ''
+  if(id){
+    const sel = document.getElementById('lote-selector')
+    const opt = sel.querySelector('option[value="'+id+'"]')
+    _loteNomDinamic = opt ? opt.textContent : 'Lote'
+    // load plantas
+    try{
+      const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+id+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const ld=await rL.json(); plantasLote=(Array.isArray(ld)?ld[0]:null)?.cantidad_plantas||0
+    }catch(e){}
+  } else {
+    _loteNomDinamic = 'Todos los lotes'
+    plantasLote = 0
+  }
+  document.getElementById('titulo-lote').textContent = _loteNomDinamic
+  await cargarPlanes()
+}
+
 async function cargarPlanes(){
+  const efLoteId = _loteIdDinamic
   const dias=getDias()
   const desde=fmt(dias[0]), hasta=fmt(dias[dias.length-1])
   try{
-    const url=loteId
-      ? SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
+    const url=efLoteId
+      ? SURL+'/rest/v1/planes_riego?lote_id=eq.'+efLoteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
       : SURL+'/rest/v1/planes_riego?fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
     const r=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
     const d=await r.json(); planes=Array.isArray(d)?d:[]
@@ -392,8 +451,8 @@ async function guardarPlan(){
     const dosis=f.marca==='Athena'?parseFloat((f.dosis_max*pct/70).toFixed(2)):parseFloat(document.querySelector('#p-lista-prod input[type=number][data-id="'+id+'"]')?.value||f.dosis_max)
     productos[f.nombre]=dosis+' ml/L'
   })
-  const payload={lote_id:parseInt(loteId),nombre:celdaActual.turno,tipo:tipoRiego,fecha_inicio:celdaActual.fecha,fecha_fin:celdaActual.fecha,ml_por_planta:mlPl,cantidad_plantas:plts,volumen_l:volL,ec_objetivo:parseFloat(document.getElementById('p-ec').value)||null,ph_objetivo:parseFloat(document.getElementById('p-ph').value)||null,pct_athena:pct,productos:Object.keys(productos).length?productos:null,notas:document.getElementById('p-notas').value||null,activo:true,confirmado:false}
-  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  const payload={lote_id:parseInt(_loteIdDinamic),nombre:celdaActual.turno,tipo:tipoRiego,fecha_inicio:celdaActual.fecha,fecha_fin:celdaActual.fecha,ml_por_planta:mlPl,cantidad_plantas:plts,volumen_l:volL,ec_objetivo:parseFloat(document.getElementById('p-ec').value)||null,ph_objetivo:parseFloat(document.getElementById('p-ph').value)||null,pct_athena:pct,productos:Object.keys(productos).length?productos:null,notas:document.getElementById('p-notas').value||null,activo:true,confirmado:false}
+  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+_loteIdDinamic+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
   await fetch(SURL+'/rest/v1/planes_riego',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)})
   cerrarModalPlan(); cargarPlanes()
 }
@@ -403,7 +462,7 @@ async function borrarPlan(){
   if(!confirm('¿Borrar este plan? También se borrarán los registros de riego asociados.')) return
 
   // Buscar el id del plan
-  const rPlan=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno+'&select=id',{
+  const rPlan=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+_loteIdDinamic+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno+'&select=id',{
     headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
   })
   const planes=await rPlan.json()
@@ -552,7 +611,7 @@ function aplicarMLManual(){
 function irAFoto(){
   const turno = planActual?.turno || planActual?.nombre || getTurnoActual()
   const fecha = planActual?.fecha_inicio || new Date().toISOString().slice(0,10)
-  location.href='/import.html?lote_id='+loteId+'&lote='+encodeURIComponent(loteNom)+'&turno='+turno+'&fecha='+fecha+'&volver=planificacion'
+  location.href='/import.html?lote_id='+_loteIdDinamic+'&lote='+encodeURIComponent(_loteNomDinamic)+'&turno='+turno+'&fecha='+fecha+'&volver=planificacion'
 }
 
 function setRiegoFase(f){
@@ -603,8 +662,8 @@ async function confirmarRiego(){
   })
 
   const payload={
-    lote_id:         parseInt(loteId),
-    lote_nombre:     loteNom,
+    lote_id:         parseInt(_loteIdDinamic),
+    lote_nombre:     _loteNomDinamic,
     fecha:           new Date().toISOString(),
     turno:           planActual.turno,
     ml_por_planta:   planActual.mlPl||null,
@@ -631,7 +690,7 @@ async function confirmarRiego(){
         method:'POST',
         headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({
-          lote_id:parseInt(loteId), nombre:planActual.turno, tipo:'fertirrigacion',
+          lote_id:parseInt(_loteIdDinamic), nombre:planActual.turno, tipo:'fertirrigacion',
           fecha_inicio:hoy, fecha_fin:hoy,
           ml_por_planta:planActual.mlPl, cantidad_plantas:planActual.plts,
           volumen_l:planActual.volL||null,
@@ -655,11 +714,113 @@ async function confirmarRiego(){
     }
     cerrarModalRiego()
     // Redirigir limpio para recargar almanaque sin params de IA
-    window.location.href = '/planificacion.html?lote_id=' + loteId + '&lote=' + encodeURIComponent(loteNom)
+    window.location.href = '/planificacion.html?lote_id=' + _loteIdDinamic + '&lote=' + encodeURIComponent(_loteNomDinamic)
   } else {
     const err=await r.text()
     alert('❌ Error: '+err)
   }
+}
+
+// ── RainPoint deep link ───────────────────────────────────────────────────
+function abrirRainPoint(){
+  // Intenta abrir la app RainPoint Home instalada
+  const schemes = ['rainpoinths://', 'rainpoint://']
+  let intentado = false
+  function intentar(i){
+    if(i >= schemes.length){
+      // Ningún scheme funcionó → ir al App Store
+      window.open('https://apps.apple.com/app/rainpoint-home/id1575018083', '_blank')
+      return
+    }
+    const iframe = document.createElement('iframe')
+    iframe.style.display = 'none'
+    iframe.src = schemes[i]
+    document.body.appendChild(iframe)
+    setTimeout(()=>{
+      document.body.removeChild(iframe)
+      // Si el usuario sigue en esta página, el scheme no funcionó
+    }, 800)
+  }
+  // En iOS PWA, location.href funciona mejor que iframe
+  window.location.href = schemes[0]
+  // Si en 1.2s no cambió la app, abre App Store
+  setTimeout(()=>{
+    if(!document.hidden){
+      window.open('https://apps.apple.com/app/rainpoint-home/id1575018083', '_blank')
+    }
+  }, 1200)
+}
+
+// ── Control bomba Smartlife (Tuya) ────────────────────────────────────────
+const BOMBA_DEVICE_ID = localStorage.getItem('cropos_bomba_device_id') || '73634132ec94cb80a44e'
+let bombaEncendida = false
+let bombaTimer = null
+
+async function encenderBomba(){
+  const btn = document.getElementById('btn-bomba')
+  const status = document.getElementById('bomba-status')
+  if(!BOMBA_DEVICE_ID){
+    configurarBomba()
+    return
+  }
+  if(bombaEncendida){
+    // Apagar
+    await controlBomba(false)
+    bombaEncendida = false
+    if(bombaTimer){ clearTimeout(bombaTimer); bombaTimer = null }
+    btn.textContent = '💧 Encender bomba'
+    btn.style.borderColor = '#22c55e'
+    btn.style.color = '#22c55e'
+    status.textContent = 'Bomba apagada'
+    return
+  }
+  // Encender
+  status.textContent = '⏳ Conectando...'
+  const ok = await controlBomba(true)
+  if(ok){
+    bombaEncendida = true
+    btn.textContent = '🔴 Apagar bomba'
+    btn.style.borderColor = '#dc2626'
+    btn.style.color = '#dc2626'
+    // Leer duración configurada (minutos)
+    const mins = parseInt(localStorage.getItem('cropos_bomba_minutos') || '0')
+    if(mins > 0){
+      status.textContent = `Bomba ON · apaga en ${mins} min`
+      bombaTimer = setTimeout(async ()=>{
+        await controlBomba(false)
+        bombaEncendida = false
+        btn.textContent = '💧 Encender bomba'
+        btn.style.borderColor = '#22c55e'
+        btn.style.color = '#22c55e'
+        status.textContent = '✅ Bomba apagada automáticamente'
+      }, mins * 60 * 1000)
+    } else {
+      status.textContent = 'Bomba ON · apagá manualmente'
+    }
+  } else {
+    status.textContent = '⚠️ Error al conectar con la bomba'
+  }
+}
+
+async function controlBomba(encender){
+  try{
+    const r = await fetch('/smartlife-switch', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({device_id: BOMBA_DEVICE_ID, encender})
+    })
+    const d = await r.json()
+    return d.ok === true
+  }catch(e){ return false }
+}
+
+function configurarBomba(){
+  const id = prompt('Device ID del interruptor de bomba (Smartlife):\n\nEncontralo en la app Smartlife → dispositivo → ícono lápiz → Información del dispositivo')
+  if(!id) return
+  localStorage.setItem('cropos_bomba_device_id', id.trim())
+  const mins = prompt('¿Apagar bomba automáticamente después de cuántos minutos?\n(0 = no apagar automáticamente)', '20')
+  if(mins !== null) localStorage.setItem('cropos_bomba_minutos', parseInt(mins)||0)
+  location.reload()
 }
 
 init()
