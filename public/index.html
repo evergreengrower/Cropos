@@ -44,6 +44,7 @@
       <ul class="sidebar-nav">
         <li><button onclick="mostrarVista('nutricion')"><span class="nav-icon">&#9881;</span> Nutrición</button></li>
         <li><button onclick="irModulo('tareas')"><span class="nav-icon">&#9989;</span> Tareas</button></li>
+        <li><button onclick="irModulo('vision')"><span class="nav-icon">&#128247;</span> Visión Agronómica</button></li>
       </ul>
     </div>
 
@@ -731,7 +732,7 @@ function irModulo(mod) {
   }
   if (!loteActual) { alert('Primero seleccioná un lote desde el Dashboard.'); return }
   const base = '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre)
-  const urls = { clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base }
+  const urls = { clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base, vision:'/vision.html'+base }
   if (urls[mod]) location.href = urls[mod]
 }
 function irATareas() { irModulo('tareas') }
