@@ -371,7 +371,6 @@ body::before {
   color: var(--gold);
   font-family: var(--mono);
   line-height: 1;
-  text-shadow: 0 0 12px rgba(240,180,41,.5), 0 0 30px rgba(240,180,41,.2);
 }
 
 .kpi-sub {
