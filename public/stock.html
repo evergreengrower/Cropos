@@ -798,11 +798,44 @@ async function renderResumenDispositivos(){
     return
   }
   const TIPO_LABEL = {switch_deshum:'Deshumidificador',switch_ac:'Aire acondicionado',switch_fan:'Ventilador',switch_extractor:'Extractor',sensor_th:'Sensor TH'}
-  cont.innerHTML = disps.map(d => {
-    const esTH = d.tipo === 'sensor_th'
-    const icon = TIPO_ICON[d.tipo] || '⚙️'
-    const label = TIPO_LABEL[d.tipo] || d.tipo
-    if(esTH){
+  const thSensors = disps.filter(d => d.tipo === 'sensor_th')
+  const switches  = disps.filter(d => d.tipo !== 'sensor_th')
+
+  let html = ''
+
+  // Sensores TH → grid de KPI cards idéntico al de arriba
+  if(thSensors.length){
+    html += `<div class="kpi-row" style="margin-bottom:${switches.length?'12px':'0'}">`
+    html += thSensors.map(d => `
+      <div class="kpi" style="cursor:default">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600">${esc(d.nombre)}${d.ubicacion?' · '+d.ubicacion:''}</div>
+          <button class="btn-sec" style="padding:2px 7px;font-size:9px;line-height:1.4" id="rbd-btn-${d.id}" onclick="leerSensorResumen('${d.id}','${d.device_id}',this)">📡</button>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end" id="rbd-res-${d.id}">
+          <div>
+            <div class="kpi-val" id="rbd-temp-${d.id}" style="font-size:22px">—</div>
+            <div class="kpi-lbl">Temp</div>
+          </div>
+          <div>
+            <div class="kpi-val" id="rbd-hr-${d.id}" style="font-size:22px">—</div>
+            <div class="kpi-lbl">HR</div>
+          </div>
+          <div>
+            <div class="kpi-val" id="rbd-vpd-${d.id}" style="font-size:14px;color:#60a5fa">—</div>
+            <div class="kpi-lbl">VPD</div>
+          </div>
+        </div>
+      </div>`).join('')
+    html += `</div>`
+  }
+
+  // Switches → filas compactas
+  if(switches.length){
+    html += switches.map(d => {
+      const on = estadoSwitches[d.device_id] || false
+      const icon = TIPO_ICON[d.tipo] || '⚙️'
+      const label = TIPO_LABEL[d.tipo] || d.tipo
       return `<div class="bar-row" style="align-items:center;gap:8px">
         <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
           <span style="font-size:14px">${icon}</span>
@@ -811,41 +844,37 @@ async function renderResumenDispositivos(){
             <div style="font-size:9px;color:var(--dim)">${label}${d.ubicacion?' · '+d.ubicacion:''}</div>
           </div>
         </div>
-        <button class="btn-sec" style="padding:3px 9px;font-size:10px;flex-shrink:0" id="rbd-btn-${d.id}" onclick="leerSensorResumen('${d.id}','${d.device_id}',this)">📡 Leer</button>
-        <div id="rbd-res-${d.id}" style="font-size:11px;min-width:90px;text-align:right;color:var(--dim)">—</div>
+        <button class="switch-btn ${on?'on':'off'}" style="flex-shrink:0" id="rbd-sw-${d.id}" onclick="toggleSwitchResumen('${d.id}','${d.device_id}',this)">${on?'ON':'OFF'}</button>
       </div>`
-    }
-    const on = estadoSwitches[d.device_id] || false
-    return `<div class="bar-row" style="align-items:center;gap:8px">
-      <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
-        <span style="font-size:14px">${icon}</span>
-        <div style="min-width:0">
-          <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.nombre)}</div>
-          <div style="font-size:9px;color:var(--dim)">${label}${d.ubicacion?' · '+d.ubicacion:''}</div>
-        </div>
-      </div>
-      <button class="switch-btn ${on?'on':'off'}" style="flex-shrink:0" id="rbd-sw-${d.id}" onclick="toggleSwitchResumen('${d.id}','${d.device_id}',this)">${on?'ON':'OFF'}</button>
-    </div>`
-  }).join('')
+    }).join('')
+  }
+
+  cont.innerHTML = html
 }
 
 async function leerSensorResumen(dispId, deviceId, btn){
   if(!deviceId){ return }
-  const resEl = document.getElementById('rbd-res-'+dispId)
   btn.textContent = '⏳'
   btn.disabled = true
   try{
     const r = await fetch('/smartlife-sensor?device_id='+encodeURIComponent(deviceId))
     const d = await r.json()
     if(d.ok){
-      resEl.innerHTML = `<span style="color:#7ecf6a"><b>${d.temperatura}°</b> · <b>${d.humedad}%</b></span>`
+      const tEl  = document.getElementById('rbd-temp-'+dispId)
+      const hEl  = document.getElementById('rbd-hr-'+dispId)
+      const vEl  = document.getElementById('rbd-vpd-'+dispId)
+      if(tEl) tEl.textContent = d.temperatura+'°'
+      if(hEl) hEl.textContent = d.humedad+'%'
+      if(vEl) vEl.textContent = d.vpd
     } else {
-      resEl.innerHTML = `<span style="color:#dc2626;font-size:9px">Error</span>`
+      const resEl = document.getElementById('rbd-res-'+dispId)
+      if(resEl) resEl.innerHTML = `<span style="color:#dc2626;font-size:10px">Error al leer</span>`
     }
   }catch(e){
-    resEl.innerHTML = `<span style="color:#dc2626;font-size:9px">Error</span>`
+    const resEl = document.getElementById('rbd-res-'+dispId)
+    if(resEl) resEl.innerHTML = `<span style="color:#dc2626;font-size:10px">Error de conexión</span>`
   }
-  btn.textContent = '📡 Leer'
+  btn.textContent = '📡'
   btn.disabled = false
 }
 
