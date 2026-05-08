@@ -323,7 +323,7 @@ select option{background:#0d1a10}
     </div>
     <div class="card" style="margin:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="card-title" style="margin:0">⚡ Interruptores</div>
+        <div class="card-title" style="margin:0">⚙️ Dispositivos Tuya</div>
         <button class="btn-prim" style="padding:4px 8px;font-size:10px" onclick="abrirModalDisp()">+ Agregar</button>
       </div>
       <div id="lista-switches"></div>
@@ -1292,12 +1292,62 @@ const TIPO_ICON={switch_deshum:'💧',switch_ac:'❄️',switch_fan:'🌀',switc
 
 function renderSwitches(){
   const cont=document.getElementById('lista-switches'); if(!cont) return
-  const disps=getDisps().filter(d=>d.tipo?.startsWith('switch'))
-  if(!disps.length){ cont.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:14px 0">Sin interruptores configurados</div>'; return }
+  const disps=getDisps()
+  if(!disps.length){ cont.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:14px 0">Sin dispositivos configurados</div>'; return }
   cont.innerHTML=disps.map(d=>{
+    const esTH = d.tipo==='sensor_th'
+    if(esTH){
+      return `<div class="switch-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <span class="switch-label">${TIPO_ICON[d.tipo]||'🌡'} ${esc(d.nombre)}</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn-sec" style="padding:3px 8px;font-size:10px" id="th-read-btn-${d.id}" onclick="leerSensorTH('${d.id}','${d.device_id}',this)">📡 Leer</button>
+            <button class="btn-sec" style="padding:3px 8px;font-size:10px" onclick="abrirModalDisp('${d.id}')">✏️</button>
+            <button class="btn-sec" style="padding:3px 8px;font-size:10px;color:#dc2626" onclick="eliminarDisp('${d.id}')">🗑</button>
+          </div>
+        </div>
+        <div id="th-read-res-${d.id}" style="font-size:10px;color:var(--dim);padding-left:2px">${d.device_id?'Device ID: '+d.device_id:'⚠️ Sin Device ID configurado'}</div>
+      </div>`
+    }
     const on=estadoSwitches[d.device_id]||false
-    return `<div class="switch-row"><span class="switch-label">${TIPO_ICON[d.tipo]||'⚙️'} ${esc(d.nombre)}</span><button class="switch-btn ${on?'on':'off'}" onclick="toggleSwitch('${d.id}','${d.device_id}',this)">${on?'ON':'OFF'}</button></div>`
+    return `<div class="switch-row">
+      <span class="switch-label">${TIPO_ICON[d.tipo]||'⚙️'} ${esc(d.nombre)}</span>
+      <div style="display:flex;gap:4px;align-items:center">
+        <button class="switch-btn ${on?'on':'off'}" onclick="toggleSwitch('${d.id}','${d.device_id}',this)">${on?'ON':'OFF'}</button>
+        <button class="btn-sec" style="padding:3px 8px;font-size:10px" onclick="abrirModalDisp('${d.id}')">✏️</button>
+        <button class="btn-sec" style="padding:3px 8px;font-size:10px;color:#dc2626" onclick="eliminarDisp('${d.id}')">🗑</button>
+      </div>
+    </div>`
   }).join('')
+}
+
+async function leerSensorTH(dispId, deviceId, btn){
+  if(!deviceId){ alert('Configurá el Device ID primero'); return }
+  const resEl=document.getElementById('th-read-res-'+dispId)
+  btn.textContent='⏳ Leyendo...'
+  btn.disabled=true
+  try{
+    const r=await fetch('/smartlife-sensor?device_id='+encodeURIComponent(deviceId))
+    const d=await r.json()
+    if(d.ok){
+      const t=d.temp!==undefined?d.temp+'°C':'—'
+      const h=d.hr!==undefined?d.hr+'%':'—'
+      const v=d.vpd!==undefined?d.vpd+' kPa':'—'
+      resEl.innerHTML=`<span style="color:#7ecf6a">✓ Temp: <b>${t}</b> · HR: <b>${h}</b> · VPD: <b>${v}</b></span>`
+    } else {
+      resEl.innerHTML=`<span style="color:#dc2626">Error: ${d.error||'No se pudo leer'}</span>`
+    }
+  }catch(e){
+    resEl.innerHTML=`<span style="color:#dc2626">Error de conexión</span>`
+  }
+  btn.textContent='📡 Leer'
+  btn.disabled=false
+}
+
+function eliminarDisp(id){
+  if(!confirm('¿Eliminar este dispositivo?')) return
+  saveDisps(getDisps().filter(d=>d.id!==id))
+  renderSecadero()
 }
 
 async function toggleSwitch(dispId,deviceId,btn){
