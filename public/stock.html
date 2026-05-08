@@ -264,6 +264,7 @@ select option{background:#0d1a10}
     <input class="filter-input" type="date" id="f-hasta" oninput="renderPartidas()">
     <button class="btn-sec" onclick="limpiarFiltros()">✕</button>
   </div>
+  <button class="btn-prim" style="width:100%;margin-bottom:10px" onclick="guardarYActualizarResumen()">💾 Guardar y actualizar Resumen</button>
   <div id="lista-partidas"></div>
 </div>
 
@@ -1418,30 +1419,63 @@ function eliminarBolsa(id){
    MIGRACIÓN Y EXPORT/IMPORT
 ══════════════════════════════════════════════════════ */
 function migrarPartidas(){
-  // Migrar movimientos de key vieja (stk_movimientos) a nueva (stk_movs)
+  // 1) Migrar movimientos de key vieja (stk_movimientos) a nueva (stk_movs)
   const movViejos = localStorage.getItem('stk_movimientos')
   if(movViejos && movViejos !== '[]'){
     const movNuevos = localStorage.getItem('stk_movs')
     if(!movNuevos || movNuevos === '[]'){
       localStorage.setItem('stk_movs', movViejos)
-      console.log('[migrar] stk_movimientos → stk_movs OK')
     }
   }
-  // Migrar partidas sin cultivoId al cultivo existente (cualquier nombre)
-  const parts=getPartidas()
-  const sin=parts.filter(p=>!p.cultivoId)
-  if(!sin.length) return
-  const cultivos=getCultivos()
-  // Usar el primer cultivo existente, o buscar por nombre parcial "Medplant"
-  let med = cultivos.find(c=>c.nombre&&c.nombre.toLowerCase().includes('medplant'))
-    || cultivos[0]
-  if(!med){
-    med={id:uid(),nombre:'Medplant',descripcion:'Cultivo migrado',activo:true,creadoMs:Date.now()}
-    cultivos.push(med)
+
+  let cultivos = getCultivos()
+  let parts    = getPartidas()
+
+  // 2) Si hay más de un cultivo con nombre "medplant", consolidar en el más completo
+  const medCults = cultivos.filter(c=>c.nombre&&c.nombre.toLowerCase().includes('medplant'))
+  if(medCults.length > 1){
+    // El cultivo principal es el que tiene el nombre más largo (ej: "Medplant 2025/2026")
+    medCults.sort((a,b)=>b.nombre.length - a.nombre.length)
+    const principal = medCults[0]
+    const duplicados = medCults.slice(1).map(c=>c.id)
+    // Reasignar todas las partidas de los duplicados al principal
+    parts = parts.map(p=> duplicados.includes(p.cultivoId) ? {...p, cultivoId:principal.id} : p)
+    // Eliminar cultivos duplicados
+    cultivos = cultivos.filter(c=>!duplicados.includes(c.id))
     saveCultivos(cultivos)
+    savePartidas(parts)
+    console.log('[migrar] Consolidado: '+duplicados.length+' cultivos duplicados → '+principal.nombre)
   }
-  savePartidas(parts.map(p=>p.cultivoId?p:{...p,cultivoId:med.id}))
-  console.log('[migrar] '+sin.length+' partidas → cultivoId:'+med.id+' ('+med.nombre+')')
+
+  // 3) Migrar partidas sin cultivoId al cultivo principal
+  const sin = parts.filter(p=>!p.cultivoId)
+  if(sin.length){
+    let med = cultivos.find(c=>c.nombre&&c.nombre.toLowerCase().includes('medplant')) || cultivos[0]
+    if(!med){
+      med={id:uid(),nombre:'Medplant',descripcion:'Cultivo migrado',activo:true,creadoMs:Date.now()}
+      cultivos.push(med); saveCultivos(cultivos)
+    }
+    savePartidas(parts.map(p=>p.cultivoId?p:{...p,cultivoId:med.id}))
+    console.log('[migrar] '+sin.length+' partidas huérfanas → '+med.nombre)
+  }
+
+  // 4) Si hay partidas apuntando a cultivos inexistentes, reasignarlas
+  const idsValidos = new Set(getCultivos().map(c=>c.id))
+  const huerfanas = getPartidas().filter(p=>p.cultivoId && !idsValidos.has(p.cultivoId))
+  if(huerfanas.length){
+    const med = getCultivos()[0]
+    if(med){
+      savePartidas(getPartidas().map(p=>(!idsValidos.has(p.cultivoId)?{...p,cultivoId:med.id}:p)))
+      console.log('[migrar] '+huerfanas.length+' partidas con cultivoId inválido → '+med.nombre)
+    }
+  }
+}
+
+async function guardarYActualizarResumen(){
+  mostrarStatus('💾 Guardando...')
+  await subirNube()
+  irTab('dashboard')
+  mostrarStatus('✅ Datos guardados y resumen actualizado')
 }
 
 function exportarJSON(){
