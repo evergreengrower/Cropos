@@ -1,5 +1,5 @@
 ﻿require('dotenv').config({ override: false })
-
+// restart: 2026-05-05
 const express = require('express')
 const path = require('path')
 const fs = require('fs')
@@ -18,11 +18,22 @@ app.use('/style.css', (req, res, next) => {
   next()
 })
 
+// HTML sin caché para que siempre cargue la versión más nueva
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html') || req.path === '/') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+    res.setHeader('Expires', '0')
+  }
+  next()
+})
+
 app.use(express.static('public'))
 app.use(express.json({ limit: '50mb' }))
 
 app.get('/', (req, res) => {
   res.type('html')
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 })
 
@@ -522,9 +533,9 @@ EvaluÃ¡ y respondÃ© SOLO en este JSON sin texto adicional:
 // â”€â”€ Endpoint Smartlife / Tuya sensor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const crypto = require('crypto')
 
-const TUYA_CLIENT_ID     = 'cpffcwyffdgt5a5wtng7'
-const TUYA_CLIENT_SECRET = '76dfd300403b4683bb2a115e1488c3ef'
-const TUYA_BASE_URL      = 'https://openapi.tuyaus.com'
+const TUYA_CLIENT_ID     = process.env.TUYA_CLIENT_ID     || '9h5p59xp7xwjrxgqf4vf'
+const TUYA_CLIENT_SECRET = process.env.TUYA_CLIENT_SECRET || '4c95779aba914d5f81637c74d759a948'
+const TUYA_BASE_URL      = process.env.TUYA_BASE_URL      || 'https://openapi.tuyaus.com'
 
 let tuyaToken = null
 let tuyaTokenExpiry = 0
@@ -605,3 +616,214 @@ app.get('/smartlife-sensor', async (req, res) => {
 })
 
 
+
+// ── Helper: enviar comando a dispositivo Tuya ─────────────────────────────
+async function tuyaCommand(token, device_id, code, value) {
+  const t     = Date.now().toString()
+  const nonce = ''
+  const path  = `/v1.0/devices/${device_id}/commands`
+  const body  = JSON.stringify({ commands: [{ code, value }] })
+  const signStr = tuyaBuildSignStr(TUYA_CLIENT_ID, token, t, nonce, 'POST', path, body)
+  const sign    = tuyaSign(TUYA_CLIENT_SECRET, signStr)
+  const r = await fetch(TUYA_BASE_URL + path, {
+    method: 'POST',
+    headers: {
+      'client_id': TUYA_CLIENT_ID, 'access_token': token,
+      'sign': sign, 'sign_method': 'HMAC-SHA256',
+      't': t, 'nonce': nonce, 'Content-Type': 'application/json'
+    },
+    body
+  })
+  return r.json()
+}
+
+// ── Control switch/valve Smartlife (Tuya) ────────────────────────────────
+app.post('/smartlife-switch', async (req, res) => {
+  const { device_id, encender } = req.body
+  if (!device_id) return res.json({ ok: false, error: 'device_id requerido' })
+  try {
+    const token = await getTuyaToken()
+    const val = !!encender
+
+    // Probar códigos en orden hasta que uno funcione
+    const codigos = ['switch_1', 'switch', 'valve_switch', 'mach_operate']
+    let lastErr = null
+    for (const code of codigos) {
+      const data = await tuyaCommand(token, device_id, code, val)
+      console.log(`[Switch] device=${device_id} code=${code} success=${data.success} msg=${data.msg||''} code_err=${data.code||''}`)
+      if (data.success) {
+        return res.json({ ok: true, encendido: val, code_usado: code })
+      }
+      lastErr = { msg: data.msg, code: data.code }
+      // Si el error NO es "dp inválido", no seguir probando
+      if (data.code !== 2009 && data.code !== 2012 && data.code !== 27) break
+    }
+    res.json({ ok: false, error: lastErr?.msg || 'Error Tuya', tuya_code: lastErr?.code })
+  } catch(err) {
+    console.error('[Switch]', err)
+    res.json({ ok: false, error: err.message })
+  }
+})
+
+// ── Info dispositivo (diagnóstico) ──────────────────────────────────────
+app.get('/smartlife-device-info', async (req, res) => {
+  const { device_id } = req.query
+  if (!device_id) return res.json({ ok: false, error: 'device_id requerido' })
+  try {
+    const token = await getTuyaToken()
+    const data  = await getTuyaDeviceStatus(device_id)
+    res.json({ ok: true, status: data.result, raw: data })
+  } catch(err) {
+    res.json({ ok: false, error: err.message })
+  }
+})
+
+// ════════════════════════════════════════════════════════════════════
+// CONSULTOR IA OPERATIVO — Cuadrillas & Operaciones
+// ════════════════════════════════════════════════════════════════════
+
+// POST /api/consultor-preguntas
+// body: { tipo, contexto_extra?, fotos?: [{data, media_type}] }
+// returns: { ok, preguntas: [{ pregunta, opciones:[a,b,c] }] }
+app.post('/api/consultor-preguntas', async (req, res) => {
+  const { tipo = 'Tarea operativa', contexto_extra = '', fotos = [] } = req.body
+  try {
+    const systemPrompt = `Sos un consultor agronómico senior especializado en optimización de tiempos, eficiencia operativa y planificación de cuadrillas de trabajo en cultivos protegidos (invernaderos, grow rooms, cannabis medicinal y horticultura intensiva).
+Tu objetivo es generar preguntas clave que te permitan entender a fondo el contexto del productor antes de recomendar un plan de trabajo.${fotos.length ? ' También analizás las imágenes del cultivo o entorno que el productor adjunta como contexto visual.' : ''}
+Respondés ÚNICAMENTE con JSON válido, sin markdown, sin texto extra.`
+
+    const userPrompt = `El productor quiere planificar la siguiente operación agrícola: "${tipo}".
+${contexto_extra ? `Contexto adicional: ${contexto_extra}` : ''}
+${fotos.length ? `El productor adjuntó ${fotos.length} imagen(es) del cultivo/entorno — analizalas para enriquecer las preguntas.` : ''}
+
+Generá exactamente 10 preguntas diagnósticas clave sobre esta operación. Cada pregunta debe explorar un eje diferente y estratégico para poder diseñar un plan de trabajo preciso. Cubrí los siguientes ejes sin repetir:
+1. Escala / cantidad de unidades a trabajar
+2. Infraestructura y espacio disponible
+3. Tamaño y experiencia de la cuadrilla
+4. Disponibilidad económica y presupuesto
+5. Urgencia / prioridad temporal
+6. Estado actual del cultivo / condición fitosanitaria
+7. Herramientas y equipamiento disponible
+8. Historial de la operación (primera vez o recurrente)
+9. Objetivos de calidad o rendimiento específicos
+10. Restricciones logísticas o condiciones del entorno
+
+Cada pregunta debe tener exactamente 3 opciones de respuesta concretas, mutuamente excluyentes y ordenadas de menor a mayor escala/inversión/complejidad.
+
+Respondé SOLO con este JSON (sin texto extra):
+{
+  "preguntas": [
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] },
+    { "pregunta": "...", "opciones": ["opcion A", "opcion B", "opcion C"] }
+  ]
+}`
+
+    // Construir contenido: imágenes + texto
+    const contentItems = []
+    for (const foto of fotos.slice(0, 4)) {
+      if (foto.data && foto.media_type) {
+        contentItems.push({ type: 'image', source: { type: 'base64', media_type: foto.media_type, data: foto.data } })
+      }
+    }
+    contentItems.push({ type: 'text', text: userPrompt })
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: contentItems }]
+    })
+
+    const raw = resp.content[0].text.trim()
+    // Extraer JSON aunque haya texto extra
+    const match = raw.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(match ? match[0] : raw)
+    res.json({ ok: true, preguntas: parsed.preguntas })
+  } catch(err) {
+    console.error('[ConsultorIA preguntas]', err.message)
+    res.json({ ok: false, error: err.message })
+  }
+})
+
+// POST /api/consultor-plan
+// body: { tipo, preguntas:[{pregunta,opciones}], respuestas:[idx0,idx1,...], fotos?:[{data,media_type}] }
+// returns: { ok, planes: [{titulo,enfoque,personal,duracion_total,cronograma,rendimiento,costo_estimado,materiales,ventajas,limitaciones}] }
+app.post('/api/consultor-plan', async (req, res) => {
+  const { tipo = 'Tarea operativa', preguntas = [], respuestas = [], fotos = [] } = req.body
+  try {
+    // Armar contexto
+    const contexto = preguntas.map((p, i) => {
+      const idx = respuestas[i] ?? 0
+      return `- ${p.pregunta}\n  → ${p.opciones[idx]}`
+    }).join('\n')
+
+    const systemPrompt = `Sos un consultor agronómico senior especializado en optimización de operaciones y planificación de cuadrillas en cultivos protegidos. Generás planes de trabajo detallados, prácticos y adaptados al contexto real del productor.
+Respondés ÚNICAMENTE con JSON válido, sin markdown, sin texto extra.`
+
+    const userPrompt = `Operación a planificar: "${tipo}"
+
+Contexto del productor (preguntas y respuestas del diagnóstico):
+${contexto}
+
+Generá exactamente 3 planes de trabajo alternativos para esta operación, ordenados de menor a mayor inversión/complejidad:
+- Plan 1: Económico y eficiente (mínimos recursos, máximo aprovechamiento de lo disponible)
+- Plan 2: Equilibrado (mejor relación costo-beneficio, pequeña inversión en materiales o personal extra)
+- Plan 3: Premium (máxima eficiencia y velocidad, inversión justificada en optimización)
+
+Para cada plan incluí información concreta basada en las respuestas del productor.
+
+Respondé SOLO con este JSON:
+{
+  "planes": [
+    {
+      "titulo": "Plan 1: Nombre descriptivo",
+      "enfoque": "descripción del enfoque en 2-3 oraciones",
+      "personal_necesario": "ej: 2 podadores + 1 encargado",
+      "duracion_total": "ej: 6-8 horas / 1 jornada",
+      "cronograma": [
+        "07:00 - Preparación de materiales y asignación de sectores",
+        "07:30 - Inicio de operación por sector norte",
+        "..."
+      ],
+      "rendimiento_estimado": "ej: 40-50 plantas/hora por operario",
+      "costo_estimado_personal": "ej: $45.000 (3 jornales x $15.000)",
+      "materiales_insumos": "ej: Tijeras de poda desinfectadas, bolsas de residuos, guantes",
+      "ventajas": ["Bajo costo", "Fácil coordinación"],
+      "limitaciones": ["Mayor tiempo total", "Requiere operarios experimentados"]
+    }
+  ]
+}`
+
+    // Construir contenido: imágenes del contexto + texto
+    const planContentItems = []
+    for (const foto of fotos.slice(0, 4)) {
+      if (foto.data && foto.media_type) {
+        planContentItems.push({ type: 'image', source: { type: 'base64', media_type: foto.media_type, data: foto.data } })
+      }
+    }
+    planContentItems.push({ type: 'text', text: userPrompt })
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 3000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: planContentItems }]
+    })
+
+    const raw = resp.content[0].text.trim()
+    const match = raw.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(match ? match[0] : raw)
+    res.json({ ok: true, planes: parsed.planes })
+  } catch(err) {
+    console.error('[ConsultorIA plan]', err.message)
+    res.json({ ok: false, error: err.message })
+  }
+})
