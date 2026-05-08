@@ -247,8 +247,8 @@ select option{background:#0d1a10}
     <div id="bar-partidas"></div>
   </div>
   <div class="card">
-    <div class="card-title">🌿 Stock por lote</div>
-    <div id="bar-lotes"></div>
+    <div class="card-title">⚙️ Dispositivos Secadero</div>
+    <div id="res-dispositivos"></div>
   </div>
   <div class="card">
     <div class="card-title">📅 Últimos movimientos</div>
@@ -777,11 +777,8 @@ function renderDashboard(){
     return `<div class="bar-row"><div class="bar-lbl" title="${p.nombre}">${p.nombre}</div><div class="bar-track"><div class="bar-fill" style="width:${(s/maxS*100).toFixed(1)}%"></div></div><div class="bar-val">${fmtKg(s)}</div></div>`
   }).join('') : '<div class="empty"><div class="empty-icon">📦</div>Sin partidas</div>'
 
-  // Barras lotes
-  const lotMap={}; parts.forEach(p=>{ const l=p.lote||'Sin lote'; lotMap[l]=(lotMap[l]||0)+Math.max(0,calcStock(p.id)) })
-  const lots = Object.entries(lotMap).sort((a,b)=>b[1]-a[1])
-  const maxL = lots.length ? lots[0][1]||0.001 : 0.001
-  document.getElementById('bar-lotes').innerHTML = lots.length ? lots.map(([l,s])=>`<div class="bar-row"><div class="bar-lbl" title="${l}">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(s/maxL*100).toFixed(1)}%"></div></div><div class="bar-val">${fmtKg(s)}</div></div>`).join('') : '<div class="empty"><div class="empty-icon">🌿</div>Sin lotes</div>'
+  // Dispositivos Secadero en Resumen
+  renderResumenDispositivos()
 
   // Últimos movimientos
   const pMap={}; parts.forEach(p=>pMap[p.id]=p.nombre)
@@ -790,6 +787,88 @@ function renderDashboard(){
     const sal = ['venta','consumo','merma','transferencia'].includes(m.tipo)
     return `<div class="mov"><div class="mov-date">${fmtFecha(m.fecha)}</div><div class="mov-desc">${tipoEmoji(m.tipo)} ${tipoLabel(m.tipo)} · <span style="color:var(--muted)">${esc(pMap[m.partidaId]||'?')}</span></div><div class="mov-kg ${sal?'salida':'entrada'}">${sal?'-':'+'}${fmtKg(m.kg)}</div></div>`
   }).join('') : '<div class="empty"><div class="empty-icon">🔄</div>Sin movimientos</div>'
+}
+
+async function renderResumenDispositivos(){
+  const cont = document.getElementById('res-dispositivos')
+  if(!cont) return
+  const disps = getDisps()
+  if(!disps.length){
+    cont.innerHTML = '<div class="empty"><div class="empty-icon">⚙️</div>Sin dispositivos. Agregá desde Secadero.</div>'
+    return
+  }
+  const TIPO_LABEL = {switch_deshum:'Deshumidificador',switch_ac:'Aire acondicionado',switch_fan:'Ventilador',switch_extractor:'Extractor',sensor_th:'Sensor TH'}
+  cont.innerHTML = disps.map(d => {
+    const esTH = d.tipo === 'sensor_th'
+    const icon = TIPO_ICON[d.tipo] || '⚙️'
+    const label = TIPO_LABEL[d.tipo] || d.tipo
+    if(esTH){
+      return `<div class="bar-row" style="align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
+          <span style="font-size:14px">${icon}</span>
+          <div style="min-width:0">
+            <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.nombre)}</div>
+            <div style="font-size:9px;color:var(--dim)">${label}${d.ubicacion?' · '+d.ubicacion:''}</div>
+          </div>
+        </div>
+        <button class="btn-sec" style="padding:3px 9px;font-size:10px;flex-shrink:0" id="rbd-btn-${d.id}" onclick="leerSensorResumen('${d.id}','${d.device_id}',this)">📡 Leer</button>
+        <div id="rbd-res-${d.id}" style="font-size:11px;min-width:90px;text-align:right;color:var(--dim)">—</div>
+      </div>`
+    }
+    const on = estadoSwitches[d.device_id] || false
+    return `<div class="bar-row" style="align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
+        <span style="font-size:14px">${icon}</span>
+        <div style="min-width:0">
+          <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.nombre)}</div>
+          <div style="font-size:9px;color:var(--dim)">${label}${d.ubicacion?' · '+d.ubicacion:''}</div>
+        </div>
+      </div>
+      <button class="switch-btn ${on?'on':'off'}" style="flex-shrink:0" id="rbd-sw-${d.id}" onclick="toggleSwitchResumen('${d.id}','${d.device_id}',this)">${on?'ON':'OFF'}</button>
+    </div>`
+  }).join('')
+}
+
+async function leerSensorResumen(dispId, deviceId, btn){
+  if(!deviceId){ return }
+  const resEl = document.getElementById('rbd-res-'+dispId)
+  btn.textContent = '⏳'
+  btn.disabled = true
+  try{
+    const r = await fetch('/smartlife-sensor?device_id='+encodeURIComponent(deviceId))
+    const d = await r.json()
+    if(d.ok){
+      resEl.innerHTML = `<span style="color:#7ecf6a"><b>${d.temperatura}°</b> · <b>${d.humedad}%</b></span>`
+    } else {
+      resEl.innerHTML = `<span style="color:#dc2626;font-size:9px">Error</span>`
+    }
+  }catch(e){
+    resEl.innerHTML = `<span style="color:#dc2626;font-size:9px">Error</span>`
+  }
+  btn.textContent = '📡 Leer'
+  btn.disabled = false
+}
+
+async function toggleSwitchResumen(dispId, deviceId, btn){
+  const on = estadoSwitches[deviceId]
+  btn.textContent = '...'
+  btn.disabled = true
+  try{
+    const r = await fetch('/smartlife-switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:deviceId,encender:!on})})
+    const d = await r.json()
+    if(d.ok){
+      estadoSwitches[deviceId] = !on
+      btn.textContent = !on?'ON':'OFF'
+      btn.className = 'switch-btn '+(!on?'on':'off')
+    } else {
+      btn.textContent = on?'ON':'OFF'
+      btn.className = 'switch-btn '+(on?'on':'off')
+    }
+  }catch(e){
+    btn.textContent = on?'ON':'OFF'
+    btn.className = 'switch-btn '+(on?'on':'off')
+  }
+  btn.disabled = false
 }
 
 /* ══════════════════════════════════════════════════════
