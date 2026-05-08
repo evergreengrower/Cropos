@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visión Agronómica · CropOS</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* ── TABS ───────────────────────────────────────────────────── */
+    .vtabs{display:flex;gap:4px;background:#060f0a;border:1px solid #1a3d2b;border-radius:10px;padding:4px;margin-bottom:18px;overflow-x:auto}
+    .vtab{flex:1;min-width:80px;padding:8px 10px;border:none;border-radius:7px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:#4a7a5a;transition:all .2s;white-space:nowrap;text-align:center}
+    .vtab.on{background:#1a5c32;color:#fff;box-shadow:0 0 12px rgba(126,207,106,.15)}
+
+    /* ── CARDS CÁMARA ──────────────────────────────────────────── */
+    .cam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+    .cam-card{background:#0a1a10;border:1px solid #1a3d2b;border-radius:12px;overflow:hidden}
+    .cam-thumb{width:100%;height:160px;background:#060f0a;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+    .cam-thumb img{width:100%;height:100%;object-fit:cover}
+    .cam-thumb .no-stream{font-size:40px;opacity:.3}
+    .cam-status{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%}
+    .cam-status.on{background:#22c55e;box-shadow:0 0 8px #22c55e}
+    .cam-status.off{background:#4a7a5a}
+    .cam-info{padding:10px 12px}
+    .cam-nombre{font-size:14px;font-weight:700;color:#e8f0eb;margin-bottom:3px}
+    .cam-meta{font-size:11px;color:#4a7a5a;margin-bottom:10px}
+    .cam-actions{display:flex;gap:6px}
+    .cam-btn{flex:1;padding:7px;border-radius:7px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+    .cam-btn.stream{background:#0d2318;border:1px solid #1a5c32;color:#22c55e}
+    .cam-btn.capture{background:#1a5c32;color:#fff}
+    .cam-btn.inactive{background:#0a1200;border:1px solid #1a3d2b;color:#2d5a3d;cursor:not-allowed}
+
+    /* ── GALERÍA HISTORIAL ─────────────────────────────────────── */
+    .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+    .gallery-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;background:#060f0a;border:1px solid #1a3d2b}
+    .gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s}
+    .gallery-item:hover img{transform:scale(1.05)}
+    .gallery-item .overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:8px 6px 5px;font-size:10px;color:#e8f0eb}
+    .gallery-item .fase-tag{position:absolute;top:6px;left:6px;background:rgba(26,92,50,.9);color:#7ecf6a;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase}
+    .gallery-item .ia-tag{position:absolute;top:6px;right:6px;background:rgba(240,180,41,.9);color:#000;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+    .gallery-item .video-tag{position:absolute;top:6px;right:6px;background:rgba(59,130,246,.9);color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+
+    /* ── FILTROS ────────────────────────────────────────────────── */
+    .filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+    .filtro-select{background:#0a1a10;border:1px solid #1a3d2b;color:#e8f0eb;border-radius:8px;padding:7px 10px;font-size:12px;font-family:inherit}
+
+    /* ── CAPTURA ───────────────────────────────────────────────── */
+    .upload-zone{border:2px dashed #1a3d2b;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:#060f0a}
+    .upload-zone:hover,.upload-zone.dragover{border-color:#22c55e;background:#0a1a10}
+    .upload-zone .icon{font-size:40px;margin-bottom:8px}
+    .preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:12px}
+    .preview-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#060f0a}
+    .preview-item img,.preview-item video{width:100%;height:100%;object-fit:cover}
+    .preview-item .remove{position:absolute;top:4px;right:4px;background:rgba(220,38,38,.9);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+    /* ── DIAGNÓSTICO IA ────────────────────────────────────────── */
+    .ia-card{background:#0a1a10;border:1px solid #1a3d2b;border-radius:12px;overflow:hidden;display:flex;gap:0;flex-direction:column}
+    .ia-card-img{width:100%;height:180px;object-fit:cover}
+    .ia-card-body{padding:12px}
+    .ia-diag{background:#060f0a;border-radius:8px;padding:10px;margin-top:8px;font-size:12px;line-height:1.5}
+    .ia-prob{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;margin:4px 0}
+    .ia-prob.alta{background:#1a5c32;color:#7ecf6a}
+    .ia-prob.media{background:#1a1200;color:#f0b429}
+    .ia-prob.baja{background:#1a0a0a;color:#dc2626}
+
+    /* ── MODAL ─────────────────────────────────────────────────── */
+    .modal-vis{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+    .modal-vis-content{background:#0a1a10;border:1px solid #1a3d2b;border-radius:16px;width:100%;max-width:600px;max-height:92vh;overflow-y:auto}
+    .modal-vis-img{width:100%;max-height:60vh;object-fit:contain;border-radius:12px 12px 0 0;background:#060f0a}
+
+    /* ── STREAM MODAL ──────────────────────────────────────────── */
+    .stream-frame{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;display:flex;align-items:center;justify-content:center;border:1px solid #1a3d2b}
+    .stream-frame iframe,.stream-frame img{width:100%;height:100%;border:none;border-radius:8px;object-fit:contain}
+
+    /* ── EMPTY STATE ───────────────────────────────────────────── */
+    .empty-state{text-align:center;padding:48px 24px;color:#2d5a3d}
+    .empty-state .icon{font-size:48px;margin-bottom:12px;opacity:.5}
+
+    /* ── SECTION HEADER ─────────────────────────────────────────── */
+    .sec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .sec-title{font-size:13px;font-weight:700;color:#e8f0eb;text-transform:uppercase;letter-spacing:.06em}
+    .sec-count{font-size:11px;color:#4a7a5a;background:#060f0a;padding:3px 8px;border-radius:20px;border:1px solid #1a3d2b}
+
+    /* ── FORM ──────────────────────────────────────────────────── */
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    @media(max-width:480px){.form-row{grid-template-columns:1fr}.cam-grid{grid-template-columns:1fr}.gallery-grid{grid-template-columns:repeat(2,1fr)}.vtab{font-size:11px;padding:7px 6px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><img src="/logo.png" alt="CropOS" class="logo"></div>
+
+  <!-- NAV -->
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">← Volver</button>
+    <button onclick="location.href='/index.html'" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">🏠 Dashboard</button>
+  </div>
+
+  <!-- TÍTULO -->
+  <div style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:24px">📷</span>
+      <div>
+        <h2 style="margin:0;font-size:18px;font-weight:700">Visión Agronómica</h2>
+        <div style="font-size:11px;color:#4a7a5a;margin-top:2px" id="vis-subtitulo">Monitoreo visual del cultivo</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="vtabs">
+    <button class="vtab on" onclick="setTab('camaras')" id="tab-camaras">📷 Cámaras</button>
+    <button class="vtab" onclick="setTab('captura')" id="tab-captura">📸 Captura</button>
+    <button class="vtab" onclick="setTab('historial')" id="tab-historial">🗂 Historial</button>
+    <button class="vtab" onclick="setTab('ia')" id="tab-ia">🤖 Análisis IA</button>
+  </div>
+
+  <!-- ══════ SECCIÓN CÁMARAS ══════ -->
+  <div id="sec-camaras">
+    <div class="sec-header">
+      <div>
+        <span class="sec-title">Cámaras activas</span>
+        <span class="sec-count" id="cam-count">—</span>
+      </div>
+      <button onclick="abrirModalCamara()" style="width:auto;padding:8px 14px;font-size:12px;background:#1a5c32;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">+ Agregar cámara</button>
+    </div>
+    <div class="cam-grid" id="cam-grid"></div>
+  </div>
+
+  <!-- ══════ SECCIÓN CAPTURA ══════ -->
+  <div id="sec-captura" style="display:none">
+    <div class="sec-header">
+      <span class="sec-title">Nueva captura</span>
+    </div>
+
+    <!-- Metadata -->
+    <div style="background:#0a1a10;border:1px solid #1a3d2b;border-radius:12px;padding:14px;margin-bottom:14px">
+      <div class="form-row">
+        <div>
+          <label>Lote</label>
+          <select id="cap-lote" style="margin-top:4px">
+            <option value="">— Sin lote —</option>
+          </select>
+        </div>
+        <div>
+          <label>Fase del cultivo</label>
+          <select id="cap-fase" style="margin-top:4px">
+            <option value="vegetativo">🌿 Vegetativo</option>
+            <option value="floracion" selected>🌸 Floración</option>
+            <option value="maduracion">🌾 Maduración</option>
+            <option value="transplante">🌱 Trasplante</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label>Observaciones</label>
+        <textarea id="cap-obs" placeholder="Notas sobre el estado del cultivo..." style="margin-top:4px;min-height:60px"></textarea>
+      </div>
+    </div>
+
+    <!-- Zona de carga -->
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('cap-file').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
+      <div class="icon">📁</div>
+      <div style="font-size:14px;font-weight:600;color:#e8f0eb;margin-bottom:4px">Subir imágenes o video</div>
+      <div style="font-size:12px;color:#4a7a5a">Arrastrá archivos acá o tocá para seleccionar</div>
+      <div style="font-size:11px;color:#2d5a3d;margin-top:4px">JPG, PNG, HEIC, MP4, MOV</div>
+      <input type="file" id="cap-file" multiple accept="image/*,video/*" style="display:none" onchange="archivosSel(this.files)">
+    </div>
+
+    <!-- Captura desde cámara del iPad -->
+    <button onclick="capturarCamara()" style="margin-top:10px;background:#0a1a10;border:1px solid #1a3d2b;color:#7ecf6a;border-radius:10px;padding:12px;width:100%;font-size:13px;font-weight:600;cursor:pointer">
+      📷 Capturar desde cámara del iPad
+    </button>
+    <video id="cam-preview-live" style="display:none;width:100%;border-radius:10px;margin-top:8px" autoplay playsinline></video>
+    <button id="btn-tomar-foto" onclick="tomarFoto()" style="display:none;margin-top:8px;background:#1a5c32;color:#fff;border:none;border-radius:10px;padding:12px;width:100%;font-size:14px;font-weight:700;cursor:pointer">📸 Tomar foto</button>
+    <canvas id="cam-canvas" style="display:none"></canvas>
+
+    <!-- Preview archivos -->
+    <div class="preview-grid" id="preview-grid"></div>
+
+    <!-- Guardar -->
+    <button onclick="guardarCaptura()" style="margin-top:16px;background:#7ecf6a;color:#0a120c;border:none;border-radius:10px;padding:14px;width:100%;font-size:15px;font-weight:700;cursor:pointer">
+      💾 Guardar captura
+    </button>
+    <div id="cap-status" style="margin-top:8px;font-size:12px;color:#4a7a5a;text-align:center;min-height:18px"></div>
+  </div>
+
+  <!-- ══════ SECCIÓN HISTORIAL ══════ -->
+  <div id="sec-historial" style="display:none">
+    <div class="sec-header">
+      <span class="sec-title">Historial visual</span>
+      <span class="sec-count" id="hist-count">0 registros</span>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros">
+      <select class="filtro-select" id="f-lote" onchange="filtrarHistorial()">
+        <option value="">Todos los lotes</option>
+      </select>
+      <select class="filtro-select" id="f-fase" onchange="filtrarHistorial()">
+        <option value="">Todas las fases</option>
+        <option value="vegetativo">🌿 Vegetativo</option>
+        <option value="floracion">🌸 Floración</option>
+        <option value="maduracion">🌾 Maduración</option>
+        <option value="transplante">🌱 Trasplante</option>
+      </select>
+      <select class="filtro-select" id="f-tipo" onchange="filtrarHistorial()">
+        <option value="">Todos los archivos</option>
+        <option value="imagen">🖼 Imágenes</option>
+        <option value="video">🎥 Videos</option>
+      </select>
+      <input type="date" id="f-fecha" class="filtro-select" onchange="filtrarHistorial()" placeholder="Fecha">
+      <button onclick="limpiarFiltros()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer;white-space:nowrap">✕ Limpiar</button>
+    </div>
+
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+
+  <!-- ══════ SECCIÓN IA ══════ -->
+  <div id="sec-ia" style="display:none">
+    <div class="sec-header">
+      <span class="sec-title">Análisis IA</span>
+      <span class="sec-count" id="ia-count">0 pendientes</span>
+    </div>
+    <div style="background:#060f0a;border:1px solid #1a3d2b;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:#4a7a5a">
+      🤖 Seleccioná una imagen para analizarla con IA. El sistema detecta deficiencias, plagas, estrés hídrico y otros síntomas agronómicos.
+    </div>
+    <div id="ia-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+  </div>
+</div>
+
+<!-- ══════ MODAL AGREGAR CÁMARA ══════ -->
+<div id="modal-camara" style="display:none" class="modal" onclick="if(event.target===this)cerrarModalCamara()">
+<div class="modal-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h3 id="modal-cam-titulo" style="margin:0;font-size:15px">Nueva cámara</h3>
+    <button onclick="cerrarModalCamara()" style="width:auto;padding:4px 12px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a">✕</button>
+  </div>
+  <div class="form-row">
+    <div><label>Nombre</label><input type="text" id="c-nombre" placeholder="Ej: Cam Norte" style="margin-top:4px"></div>
+    <div><label>Ubicación</label><input type="text" id="c-ubicacion" placeholder="Sala Barracas" style="margin-top:4px"></div>
+  </div>
+  <div class="form-row">
+    <div>
+      <label>Lote asociado</label>
+      <select id="c-lote" style="margin-top:4px"><option value="">— Sin lote —</option></select>
+    </div>
+    <div>
+      <label>Tipo de cámara</label>
+      <select id="c-tipo" style="margin-top:4px">
+        <option value="ip">📡 IP / WiFi</option>
+        <option value="usb">🔌 USB</option>
+        <option value="mobile">📱 Móvil</option>
+        <option value="rtsp">📺 RTSP</option>
+      </select>
+    </div>
+  </div>
+  <div>
+    <label>URL de stream (opcional)</label>
+    <input type="url" id="c-stream" placeholder="http://192.168.1.x/video" style="margin-top:4px">
+    <div style="font-size:10px;color:#2d5a3d;margin-top:3px">Para cámaras IP con feed HTTP/MJPEG</div>
+  </div>
+  <div style="margin-top:8px">
+    <label>Notas</label>
+    <textarea id="c-notas" placeholder="Descripción, ángulo, zona..." style="margin-top:4px;min-height:50px"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:4px;align-items:center">
+    <input type="checkbox" id="c-activa" checked style="width:auto;accent-color:#22c55e">
+    <label for="c-activa" style="font-size:13px;cursor:pointer">Cámara activa</label>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button onclick="cerrarModalCamara()" style="flex:1;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:10px;font-size:13px">Cancelar</button>
+    <button onclick="guardarCamara()" style="flex:2;background:#1a5c32;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Guardar cámara</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════ MODAL VER IMAGEN ══════ -->
+<div id="modal-imagen" style="display:none" class="modal-vis" onclick="if(event.target===this)cerrarModalImagen()">
+<div class="modal-vis-content">
+  <img id="modal-img-src" src="" class="modal-vis-img" alt="">
+  <div style="padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+      <div>
+        <div id="modal-img-lote" style="font-size:13px;font-weight:700;color:#e8f0eb"></div>
+        <div id="modal-img-fecha" style="font-size:11px;color:#4a7a5a;margin-top:2px"></div>
+      </div>
+      <div>
+        <span id="modal-img-fase" style="background:#1a5c32;color:#7ecf6a;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase"></span>
+      </div>
+    </div>
+    <div id="modal-img-obs" style="font-size:12px;color:#4a7a5a;margin-bottom:10px"></div>
+
+    <!-- Diagnóstico IA -->
+    <div id="modal-ia-section">
+      <div id="modal-ia-resultado" style="display:none" class="ia-diag"></div>
+      <button id="modal-ia-btn" onclick="analizarImagenModal()" style="width:100%;background:#0d2318;border:1px solid #1a5c32;color:#7ecf6a;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px">
+        🤖 Analizar con IA
+      </button>
+    </div>
+
+    <button onclick="cerrarModalImagen()" style="margin-top:10px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:9px;width:100%;font-size:13px">Cerrar</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════ MODAL STREAM ══════ -->
+<div id="modal-stream" style="display:none" class="modal-vis" onclick="if(event.target===this)cerrarStream()">
+<div class="modal-vis-content" style="max-width:700px">
+  <div style="padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 id="stream-titulo" style="margin:0;font-size:15px"></h3>
+      <button onclick="cerrarStream()" style="width:auto;padding:4px 12px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a">✕</button>
+    </div>
+    <div class="stream-frame" id="stream-frame-content"></div>
+    <div id="stream-url-display" style="margin-top:8px;font-size:11px;color:#2d5a3d;word-break:break-all"></div>
+    <button onclick="capturarDesdeStream()" style="margin-top:10px;background:#1a5c32;color:#fff;border:none;border-radius:8px;padding:10px;width:100%;font-size:13px;font-weight:600;cursor:pointer">📸 Capturar esta imagen</button>
+  </div>
+</div>
+</div>
+
+<script>
+const SURL = 'https://ufkyfsnbyouqumipoqss.supabase.co'
+const SKEY = 'sb_publishable_CJl515IY6oLNrC6J778PkQ_z4FEcL-o'
+const urlP = new URLSearchParams(location.search)
+const LOTE_ID = urlP.get('lote_id') || ''
+
+const H = { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': 'application/json' }
+
+let lotes = [], capturas = [], camaras = []
+let archivosParaSubir = []
+let streamActivo = null
+let imagenModalActual = null
+
+// ── TABS ───────────────────────────────────────────────────────
+function setTab(tab) {
+  ['camaras','captura','historial','ia'].forEach(t => {
+    document.getElementById('sec-' + t).style.display = t === tab ? 'block' : 'none'
+    document.getElementById('tab-' + t).classList.toggle('on', t === tab)
+  })
+  if (tab === 'historial') cargarHistorial()
+  if (tab === 'ia') cargarPendientesIA()
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  await cargarLotes()
+  await cargarCamaras()
+}
+
+async function cargarLotes() {
+  try {
+    const r = await fetch(SURL + '/rest/v1/lotes?activo=eq.true&select=id,nombre,cultivo_id,cantidad_plantas&order=nombre', { headers: H })
+    const d = await r.json()
+    lotes = Array.isArray(d) ? d : []
+  } catch(e) { lotes = [] }
+
+  // Poblar selects
+  const opts = lotes.map(l => `<option value="${l.id}">${l.nombre}</option>`).join('')
+  ;['cap-lote','c-lote','f-lote'].forEach(id => {
+    const el = document.getElementById(id)
+    if (!el) return
+    const base = el.id === 'f-lote' ? '<option value="">Todos los lotes</option>' : '<option value="">— Sin lote —</option>'
+    el.innerHTML = base + opts
+    if (LOTE_ID && el.id !== 'f-lote') el.value = LOTE_ID
+  })
+}
+
+// ── CÁMARAS ───────────────────────────────────────────────────
+async function cargarCamaras() {
+  try {
+    const r = await fetch(SURL + '/rest/v1/camaras?select=*&order=created_at.desc', { headers: H })
+    const d = await r.json()
+    camaras = Array.isArray(d) ? d : []
+  } catch(e) { camaras = [] }
+  renderCamaras()
+}
+
+function renderCamaras() {
+  const grid = document.getElementById('cam-grid')
+  document.getElementById('cam-count').textContent = camaras.length + ' registradas'
+  if (!camaras.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📷</div><div>No hay cámaras registradas</div><div style="font-size:12px;margin-top:6px">Agregá tu primera cámara para comenzar</div></div>`
+    return
+  }
+  grid.innerHTML = camaras.map(c => {
+    const lote = lotes.find(l => l.id === c.lote_id)
+    const thumb = c.stream_url
+      ? `<img src="${c.stream_url}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
+      : ''
+    return `
+    <div class="cam-card">
+      <div class="cam-thumb">
+        ${thumb}
+        <div class="no-stream" style="${c.stream_url ? 'display:none' : ''}">📷</div>
+        <div class="cam-status ${c.activa ? 'on' : 'off'}"></div>
+      </div>
+      <div class="cam-info">
+        <div class="cam-nombre">${c.nombre}</div>
+        <div class="cam-meta">
+          📍 ${c.ubicacion || '—'} · ${c.tipo?.toUpperCase() || 'IP'}
+          ${lote ? `<br>🌿 ${lote.nombre}` : ''}
+        </div>
+        <div class="cam-actions">
+          <button class="cam-btn stream ${!c.activa || !c.stream_url ? 'inactive' : ''}"
+            onclick="${c.stream_url && c.activa ? `abrirStream(${c.id})` : ''}"
+          >▶ Ver stream</button>
+          <button class="cam-btn capture ${!c.activa ? 'inactive' : ''}"
+            onclick="${c.activa ? `capturarDesdeCamara(${c.id})` : ''}"
+          >📸 Capturar</button>
+        </div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// Modal cámara
+let camaraEditando = null
+function abrirModalCamara(cam) {
+  camaraEditando = cam || null
+  document.getElementById('modal-cam-titulo').textContent = cam ? 'Editar cámara' : 'Nueva cámara'
+  document.getElementById('c-nombre').value = cam?.nombre || ''
+  document.getElementById('c-ubicacion').value = cam?.ubicacion || ''
+  document.getElementById('c-lote').value = cam?.lote_id || ''
+  document.getElementById('c-tipo').value = cam?.tipo || 'ip'
+  document.getElementById('c-stream').value = cam?.stream_url || ''
+  document.getElementById('c-notas').value = cam?.notas || ''
+  document.getElementById('c-activa').checked = cam ? cam.activa : true
+  document.getElementById('modal-camara').style.display = 'flex'
+}
+function cerrarModalCamara() { document.getElementById('modal-camara').style.display = 'none' }
+
+async function guardarCamara() {
+  const payload = {
+    nombre: document.getElementById('c-nombre').value.trim(),
+    ubicacion: document.getElementById('c-ubicacion').value.trim(),
+    lote_id: parseInt(document.getElementById('c-lote').value) || null,
+    tipo: document.getElementById('c-tipo').value,
+    stream_url: document.getElementById('c-stream').value.trim() || null,
+    notas: document.getElementById('c-notas').value.trim() || null,
+    activa: document.getElementById('c-activa').checked
+  }
+  if (!payload.nombre) { alert('Ingresá un nombre para la cámara'); return }
+  try {
+    if (camaraEditando) {
+      await fetch(SURL + '/rest/v1/camaras?id=eq.' + camaraEditando.id, {
+        method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
+      })
+    } else {
+      await fetch(SURL + '/rest/v1/camaras', {
+        method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
+      })
+    }
+    cerrarModalCamara()
+    await cargarCamaras()
+  } catch(e) { alert('Error guardando cámara: ' + e.message) }
+}
+
+// Stream
+function abrirStream(id) {
+  const cam = camaras.find(c => c.id === id)
+  if (!cam || !cam.stream_url) return
+  streamActivo = cam
+  document.getElementById('stream-titulo').textContent = cam.nombre
+  document.getElementById('stream-url-display').textContent = cam.stream_url
+  const frame = document.getElementById('stream-frame-content')
+  // Intentar como imagen MJPEG primero, si falla como iframe
+  frame.innerHTML = `<img src="${cam.stream_url}" style="width:100%;height:100%;object-fit:contain;border-radius:8px" onerror="this.outerHTML='<iframe src=${cam.stream_url} style=width:100%;height:100%;border:none;border-radius:8px></iframe>'">`
+  document.getElementById('modal-stream').style.display = 'flex'
+}
+function cerrarStream() {
+  document.getElementById('stream-frame-content').innerHTML = ''
+  document.getElementById('modal-stream').style.display = 'none'
+  streamActivo = null
+}
+function capturarDesdeStream() {
+  if (!streamActivo) return
+  setTab('captura')
+  cerrarStream()
+}
+
+function capturarDesdeCamara(id) {
+  setTab('captura')
+  setTimeout(capturarCamara, 300)
+}
+
+// ── CAPTURA ──────────────────────────────────────────────────
+function dragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('dragover') }
+function dragLeave(e) { document.getElementById('upload-zone').classList.remove('dragover') }
+function dropFiles(e) {
+  e.preventDefault()
+  document.getElementById('upload-zone').classList.remove('dragover')
+  archivosSel(e.dataTransfer.files)
+}
+
+function archivosSel(files) {
+  archivosParaSubir = [...archivosParaSubir, ...Array.from(files)]
+  renderPreview()
+}
+
+function renderPreview() {
+  const grid = document.getElementById('preview-grid')
+  grid.innerHTML = archivosParaSubir.map((f, i) => {
+    const url = URL.createObjectURL(f)
+    const isVideo = f.type.startsWith('video/')
+    return `
+    <div class="preview-item">
+      ${isVideo
+        ? `<video src="${url}" muted loop autoplay playsinline></video>`
+        : `<img src="${url}" alt="">`}
+      <button class="remove" onclick="removeArchivo(${i})">✕</button>
+    </div>`
+  }).join('')
+}
+
+function removeArchivo(i) {
+  archivosParaSubir.splice(i, 1)
+  renderPreview()
+}
+
+let streamCamActive = false
+async function capturarCamara() {
+  if (streamCamActive) {
+    detenerCamara()
+    return
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    const video = document.getElementById('cam-preview-live')
+    video.srcObject = stream
+    video.style.display = 'block'
+    document.getElementById('btn-tomar-foto').style.display = 'block'
+    streamCamActive = true
+  } catch(e) {
+    alert('No se pudo acceder a la cámara: ' + e.message)
+  }
+}
+
+function detenerCamara() {
+  const video = document.getElementById('cam-preview-live')
+  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null }
+  video.style.display = 'none'
+  document.getElementById('btn-tomar-foto').style.display = 'none'
+  streamCamActive = false
+}
+
+function tomarFoto() {
+  const video = document.getElementById('cam-preview-live')
+  const canvas = document.getElementById('cam-canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0)
+  canvas.toBlob(blob => {
+    const file = new File([blob], 'captura-' + Date.now() + '.jpg', { type: 'image/jpeg' })
+    archivosParaSubir.push(file)
+    renderPreview()
+    detenerCamara()
+  }, 'image/jpeg', 0.85)
+}
+
+async function guardarCaptura() {
+  if (!archivosParaSubir.length) { alert('Seleccioná al menos una imagen o video'); return }
+  const loteId = document.getElementById('cap-lote').value
+  const fase = document.getElementById('cap-fase').value
+  const obs = document.getElementById('cap-obs').value.trim()
+  const lote = lotes.find(l => l.id == loteId)
+  const loteNom = lote ? lote.nombre : ''
+  const status = document.getElementById('cap-status')
+  status.textContent = '⏳ Subiendo archivos...'
+
+  let subidos = 0
+  for (const archivo of archivosParaSubir) {
+    try {
+      // Comprimir imágenes
+      let blob = archivo
+      if (archivo.type.startsWith('image/') && !archivo.type.includes('gif')) {
+        blob = await comprimirImagen(archivo, 1920, 0.82)
+      }
+      // Path en Storage
+      const ts = Date.now()
+      const ext = archivo.name.split('.').pop() || 'jpg'
+      const loteSlug = loteNom.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') || 'sin-lote'
+      const path = `vision/${loteSlug}/${ts}.${ext}`
+      // Subir a Supabase Storage
+      const upRes = await fetch(SURL + '/storage/v1/object/vision/' + path, {
+        method: 'POST',
+        headers: { 'apikey': SKEY, 'Authorization': 'Bearer ' + SKEY, 'Content-Type': archivo.type, 'x-upsert': 'true' },
+        body: blob
+      })
+      let imageUrl = null
+      if (upRes.ok) {
+        imageUrl = SURL + '/storage/v1/object/public/vision/' + path
+      }
+      // Guardar metadata en DB
+      await fetch(SURL + '/rest/v1/capturas_vision', {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          lote_id: loteId ? parseInt(loteId) : null,
+          lote_nombre: loteNom,
+          imagen_url: imageUrl || '',
+          tipo_archivo: archivo.type.startsWith('video/') ? 'video' : 'imagen',
+          fase, observaciones: obs,
+          fecha: new Date().toISOString().slice(0, 10)
+        })
+      })
+      subidos++
+    } catch(e) { console.error('Error subiendo archivo:', e) }
+  }
+
+  status.textContent = `✅ ${subidos} archivo${subidos !== 1 ? 's' : ''} guardado${subidos !== 1 ? 's' : ''}`
+  archivosParaSubir = []
+  renderPreview()
+  document.getElementById('cap-obs').value = ''
+}
+
+async function comprimirImagen(file, maxPx, quality) {
+  return new Promise(resolve => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxPx || height > maxPx) {
+        const r = Math.min(maxPx / width, maxPx / height)
+        width = Math.round(width * r); height = Math.round(height * r)
+      }
+      const c = document.createElement('canvas'); c.width = width; c.height = height
+      c.getContext('2d').drawImage(img, 0, 0, width, height)
+      c.toBlob(blob => resolve(blob), 'image/jpeg', quality)
+    }
+    img.src = url
+  })
+}
+
+// ── HISTORIAL ────────────────────────────────────────────────
+let todasCapturas = []
+async function cargarHistorial() {
+  try {
+    const r = await fetch(SURL + '/rest/v1/capturas_vision?select=*&order=created_at.desc&limit=200', { headers: H })
+    const d = await r.json()
+    todasCapturas = Array.isArray(d) ? d : []
+  } catch(e) { todasCapturas = [] }
+  filtrarHistorial()
+}
+
+function filtrarHistorial() {
+  const fLote = document.getElementById('f-lote').value
+  const fFase = document.getElementById('f-fase').value
+  const fTipo = document.getElementById('f-tipo').value
+  const fFecha = document.getElementById('f-fecha').value
+  let filtradas = todasCapturas
+  if (fLote) filtradas = filtradas.filter(c => String(c.lote_id) === fLote)
+  if (fFase) filtradas = filtradas.filter(c => c.fase === fFase)
+  if (fTipo) filtradas = filtradas.filter(c => c.tipo_archivo === fTipo)
+  if (fFecha) filtradas = filtradas.filter(c => c.fecha === fFecha)
+  document.getElementById('hist-count').textContent = filtradas.length + ' registros'
+  renderGaleria(filtradas)
+}
+
+function limpiarFiltros() {
+  ;['f-lote','f-fase','f-tipo','f-fecha'].forEach(id => document.getElementById(id).value = '')
+  filtrarHistorial()
+}
+
+function renderGaleria(items) {
+  const grid = document.getElementById('gallery-grid')
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🗂</div><div>No hay capturas con esos filtros</div></div>`
+    return
+  }
+  grid.innerHTML = items.map(c => {
+    const fecha = new Date(c.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' })
+    const hora = new Date(c.created_at).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })
+    const esVideo = c.tipo_archivo === 'video'
+    const thumb = c.imagen_url
+      ? (esVideo
+          ? `<video src="${c.imagen_url}" muted style="width:100%;height:100%;object-fit:cover"></video>`
+          : `<img src="${c.imagen_url}" loading="lazy" alt="">`)
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.4">${esVideo ? '🎥' : '📷'}</div>`
+    return `
+    <div class="gallery-item" onclick='abrirImagen(${JSON.stringify(JSON.stringify(c))})'>
+      ${thumb}
+      <div class="fase-tag">${c.fase?.slice(0,3) || '—'}</div>
+      ${c.ia_procesado ? '<div class="ia-tag">IA ✓</div>' : ''}
+      ${esVideo ? '<div class="video-tag">📹</div>' : ''}
+      <div class="overlay">
+        <div style="font-weight:600">${c.lote_nombre || 'Sin lote'}</div>
+        <div style="opacity:.7">${fecha} ${hora}</div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// ── MODAL IMAGEN ──────────────────────────────────────────────
+function abrirImagen(jsonStr) {
+  const c = JSON.parse(jsonStr)
+  imagenModalActual = c
+  const el = document.getElementById('modal-img-src')
+  if (c.tipo_archivo === 'video') {
+    el.outerHTML = `<video id="modal-img-src" src="${c.imagen_url}" class="modal-vis-img" controls></video>`
+  } else {
+    el.src = c.imagen_url || ''
+  }
+  document.getElementById('modal-img-lote').textContent = c.lote_nombre || 'Sin lote'
+  document.getElementById('modal-img-fecha').textContent = new Date(c.created_at).toLocaleString('es-AR')
+  document.getElementById('modal-img-fase').textContent = c.fase || ''
+  document.getElementById('modal-img-obs').textContent = c.observaciones || ''
+  const iaRes = document.getElementById('modal-ia-resultado')
+  if (c.diagnostico_ia) {
+    iaRes.style.display = 'block'
+    iaRes.innerHTML = `<div style="color:#7ecf6a;font-weight:700;margin-bottom:4px">🤖 Diagnóstico IA</div>${c.diagnostico_ia.replace(/\n/g,'<br>')}`
+    document.getElementById('modal-ia-btn').textContent = '🔄 Re-analizar'
+  } else {
+    iaRes.style.display = 'none'
+    document.getElementById('modal-ia-btn').textContent = '🤖 Analizar con IA'
+  }
+  document.getElementById('modal-imagen').style.display = 'flex'
+}
+function cerrarModalImagen() { document.getElementById('modal-imagen').style.display = 'none'; imagenModalActual = null }
+
+async function analizarImagenModal() {
+  if (!imagenModalActual?.imagen_url) { alert('No hay imagen para analizar'); return }
+  const btn = document.getElementById('modal-ia-btn')
+  const res = document.getElementById('modal-ia-resultado')
+  btn.textContent = '⏳ Analizando...'
+  btn.disabled = true
+  try {
+    // Descargar imagen como base64
+    const imgRes = await fetch(imagenModalActual.imagen_url)
+    const blob = await imgRes.blob()
+    const b64 = await new Promise(resolve => {
+      const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(blob)
+    })
+    const lote = lotes.find(l => l.id === imagenModalActual.lote_id)
+    const ctx = lote ? `Lote: ${lote.nombre} · Fase: ${imagenModalActual.fase} · Plantas: ${lote.cantidad_plantas || '—'}` : ''
+    const apiRes = await fetch('/api/diagnostico-imagen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagen_b64: b64, media_type: blob.type || 'image/jpeg', dna_contexto: ctx })
+    })
+    const data = await apiRes.json()
+    if (data.ok) {
+      res.style.display = 'block'
+      res.innerHTML = `<div style="color:#7ecf6a;font-weight:700;margin-bottom:4px">🤖 Diagnóstico IA</div>${data.diagnostico.replace(/\n/g,'<br>')}`
+      // Guardar en DB
+      await fetch(SURL + '/rest/v1/capturas_vision?id=eq.' + imagenModalActual.id, {
+        method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ diagnostico_ia: data.diagnostico, ia_procesado: true })
+      })
+      imagenModalActual.diagnostico_ia = data.diagnostico
+      imagenModalActual.ia_procesado = true
+    } else {
+      res.style.display = 'block'
+      res.innerHTML = `<div style="color:#dc2626">⚠️ Error: ${data.diagnostico || 'No se pudo analizar'}</div>`
+    }
+  } catch(e) {
+    res.style.display = 'block'
+    res.innerHTML = `<div style="color:#dc2626">⚠️ Error de conexión: ${e.message}</div>`
+  }
+  btn.textContent = '🔄 Re-analizar'
+  btn.disabled = false
+}
+
+// ── SECCIÓN IA ────────────────────────────────────────────────
+async function cargarPendientesIA() {
+  try {
+    const r = await fetch(SURL + '/rest/v1/capturas_vision?ia_procesado=eq.false&tipo_archivo=eq.imagen&select=*&order=created_at.desc&limit=50', { headers: H })
+    const d = await r.json()
+    const pendientes = Array.isArray(d) ? d : []
+    document.getElementById('ia-count').textContent = pendientes.length + ' pendientes'
+    const grid = document.getElementById('ia-grid')
+    if (!pendientes.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🤖</div><div>Todas las imágenes ya fueron analizadas</div></div>`
+      return
+    }
+    grid.innerHTML = pendientes.map(c => {
+      const fecha = new Date(c.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' })
+      return `
+      <div class="ia-card">
+        ${c.imagen_url ? `<img src="${c.imagen_url}" class="ia-card-img" loading="lazy" alt="">` : `<div class="ia-card-img" style="display:flex;align-items:center;justify-content:center;font-size:40px;background:#060f0a">📷</div>`}
+        <div class="ia-card-body">
+          <div style="font-size:13px;font-weight:700;color:#e8f0eb">${c.lote_nombre || 'Sin lote'}</div>
+          <div style="font-size:11px;color:#4a7a5a;margin-bottom:8px">${fecha} · ${c.fase || '—'}</div>
+          ${c.observaciones ? `<div style="font-size:12px;color:#4a7a5a;margin-bottom:8px">${c.observaciones}</div>` : ''}
+          <button onclick='analizarCaptura(${JSON.stringify(JSON.stringify(c))})' style="width:100%;background:#0d2318;border:1px solid #1a5c32;color:#7ecf6a;border-radius:8px;padding:9px;font-size:12px;font-weight:600;cursor:pointer">
+            🤖 Analizar con IA
+          </button>
+          <div id="ia-res-${c.id}" style="display:none;margin-top:8px" class="ia-diag"></div>
+        </div>
+      </div>`
+    }).join('')
+  } catch(e) {
+    document.getElementById('ia-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div>⚠️ Error cargando pendientes</div></div>`
+  }
+}
+
+async function analizarCaptura(jsonStr) {
+  const c = JSON.parse(jsonStr)
+  const btn = event.target
+  const resEl = document.getElementById('ia-res-' + c.id)
+  btn.textContent = '⏳ Analizando...'
+  btn.disabled = true
+  try {
+    const imgRes = await fetch(c.imagen_url)
+    const blob = await imgRes.blob()
+    const b64 = await new Promise(resolve => {
+      const r = new FileReader(); r.onload = () => resolve(r.result.split(',')[1]); r.readAsDataURL(blob)
+    })
+    const lote = lotes.find(l => l.id === c.lote_id)
+    const ctx = lote ? `Lote: ${lote.nombre} · Fase: ${c.fase} · Plantas: ${lote.cantidad_plantas || '—'}` : ''
+    const apiRes = await fetch('/api/diagnostico-imagen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagen_b64: b64, media_type: blob.type || 'image/jpeg', dna_contexto: ctx })
+    })
+    const data = await apiRes.json()
+    if (data.ok) {
+      resEl.style.display = 'block'
+      resEl.innerHTML = `<div style="color:#7ecf6a;font-weight:600;margin-bottom:4px">Diagnóstico:</div>${data.diagnostico.replace(/\n/g,'<br>')}`
+      await fetch(SURL + '/rest/v1/capturas_vision?id=eq.' + c.id, {
+        method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ diagnostico_ia: data.diagnostico, ia_procesado: true })
+      })
+      btn.textContent = '✅ Analizado'
+    } else {
+      resEl.style.display = 'block'
+      resEl.innerHTML = `<div style="color:#dc2626">⚠️ ${data.diagnostico || 'Error'}</div>`
+      btn.textContent = '🔄 Reintentar'
+      btn.disabled = false
+    }
+  } catch(e) {
+    resEl.style.display = 'block'
+    resEl.innerHTML = `<div style="color:#dc2626">⚠️ ${e.message}</div>`
+    btn.textContent = '🔄 Reintentar'
+    btn.disabled = false
+  }
+}
+
+init()
+</script>
+</body>
+</html>

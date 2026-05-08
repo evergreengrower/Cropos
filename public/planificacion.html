@@ -3,54 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Planificación Fertiriego</title>
+  <title>Planificación Fertiriego v2</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    .almanaque{width:100%;border-collapse:collapse;font-size:12px}
-    .almanaque th{background:#060f0a;color:#4a7a5a;padding:8px 4px;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1a3d2b}
-    .almanaque td{padding:4px 3px;border-bottom:1px solid #0a1a10;vertical-align:top}
-    .almanaque tr.hoy td{background:#0d2318}
-    .almanaque tr.hoy td:first-child{border-left:2px solid #f0b429}
-    .celda{background:#060f0a;border-radius:6px;padding:6px;min-height:54px;cursor:pointer;font-size:10px;color:#4a7a5a;border:1px dashed #1a3d2b;text-align:center;display:flex;align-items:center;justify-content:center}
-    .celda.tiene-plan{background:#0a1a10;border:1px solid #1a5c32;color:#e8f0eb;display:block;text-align:left}
-    .celda.confirmado{border:1px solid #f0b429;background:#1a1200}
-    .dia-label{font-size:11px;font-weight:600;color:#e8f0eb;text-align:center}
-    .dia-fecha{font-size:9px;color:#2d5a3d;text-align:center}
-    .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end}
-    .modal-content{background:#0a1a10;border-radius:16px 16px 0 0;padding:20px 16px;width:100%;max-height:92vh;overflow-y:auto;border-top:1px solid #1a3d2b}
-    .fila{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #060f0a}
-    .fila:last-child{border-bottom:none}
-    .marca-header{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#1a5c32;padding:6px 0 2px;font-weight:700}
-    .ml-res{font-size:12px;font-weight:700;color:#f0b429;min-width:52px;text-align:right}
-    .tab{flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-    .tab-on{background:#1a5c32;color:#fff}
-    .tab-off{background:#060f0a;color:#2d5a3d;border:1px solid #1a3d2b}
+    /* ── LAYOUT PANTALLA COMPLETA ────────────────────────────── */
+    .plan-page { display:flex; flex-direction:column; min-height:100vh; position:relative; z-index:1; }
+
+    .plan-topbar {
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      padding:12px 24px; border-bottom:1px solid transparent; position:relative;
+      background:var(--bg2); z-index:10; position:sticky; top:0;
+    }
+    .plan-topbar::after {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,#7ecf6a55,#7ecf6aaa 50%,#7ecf6a55,transparent);
+    }
+    .plan-topbar-logo { display:flex; align-items:center; gap:10px; margin-right:4px; }
+    .plan-topbar-logo img { height:34px; filter:drop-shadow(0 0 10px rgba(126,207,106,.35)); }
+    .plan-topbar-logo-text { display:flex; flex-direction:column; }
+    .plan-topbar-title { font-size:14px; font-weight:700; color:var(--text); }
+    .plan-topbar-sub { font-size:9px; color:var(--dim); font-family:var(--mono); letter-spacing:.06em; }
+
+    .plan-topbar-nav {
+      display:flex; align-items:center; gap:8px;
+      background:#060f0a; border:0.5px solid var(--border); border-radius:10px; padding:4px 10px;
+    }
+    .plan-topbar-nav .rango { font-size:12px; color:var(--muted); font-family:var(--mono); min-width:160px; text-align:center; }
+    .plan-nav-btn { background:transparent; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:2px 8px; width:auto; line-height:1; }
+    .plan-nav-btn:hover { color:var(--green); box-shadow:none; }
+
+    .plan-view-toggle { display:flex; gap:4px; }
+    .plan-vbtn { width:auto; padding:6px 12px; font-size:11px; font-weight:600; border-radius:7px; cursor:pointer; border:0.5px solid var(--border); }
+    .plan-vbtn.on { background:#1a5c32; color:#fff; border-color:var(--green2); }
+    .plan-vbtn.off { background:transparent; color:var(--muted); }
+
+    .plan-topbar-spacer { flex:1; }
+
+    .plan-topbar-actions { display:flex; align-items:center; gap:6px; }
+    .plan-back-btn { width:auto; padding:6px 12px; font-size:12px; background:transparent; border:0.5px solid var(--border); color:var(--muted); border-radius:7px; cursor:pointer; }
+    .plan-back-btn:hover { border-color:var(--border2); color:var(--text); box-shadow:none; }
+
+    .plan-lote-sel {
+      background:#060f0a; border:0.5px solid var(--border); color:var(--text);
+      border-radius:8px; padding:6px 10px; font-size:12px; font-family:var(--sans);
+      min-width:140px;
+    }
+
+    /* ── CONTENT ─────────────────────────────────────────────── */
+    .plan-content {
+      flex:1; padding:16px 24px 40px; overflow-x:auto;
+    }
+
+    /* ── TABLA CALENDARIO ────────────────────────────────────── */
+    .almanaque { width:100%; border-collapse:collapse; font-size:12px; min-width:600px; }
+    .almanaque th {
+      background:#060f0a; color:#4a7a5a; padding:10px 8px; text-align:center;
+      font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+      border-bottom:1px solid #1a3d2b; position:sticky; top:57px; z-index:5;
+    }
+    .almanaque th:first-child { min-width:80px; }
+    .almanaque td { padding:5px 4px; border-bottom:0.5px solid #0a1a10; vertical-align:top; }
+    .almanaque tr.hoy td { background:#0d2318; }
+    .almanaque tr.hoy td:first-child { border-left:2px solid #f0b429; }
+    .almanaque tr:hover td { background:#0a1a10; }
+
+    .celda {
+      background:#060f0a; border-radius:8px; padding:8px;
+      min-height:72px; cursor:pointer; font-size:10px; color:#4a7a5a;
+      border:1px dashed #1a3d2b; text-align:center;
+      display:flex; align-items:center; justify-content:center;
+      transition:border-color .15s, background .15s;
+    }
+    .celda:hover { border-color:#2d5a3d; background:#0a1a10; }
+    .celda.tiene-plan { background:#0a1a10; border:1px solid #1a5c32; color:#e8f0eb; display:block; text-align:left; }
+    .celda.tiene-plan:hover { border-color:#22c55e; box-shadow:0 0 10px rgba(126,207,106,.15); }
+    .celda.confirmado { border:1px solid #f0b429; background:#1a1200; }
+    .celda.confirmado:hover { box-shadow:0 0 10px rgba(240,180,41,.2); }
+
+    .dia-label { font-size:12px; font-weight:700; color:#e8f0eb; text-align:center; }
+    .dia-fecha { font-size:9px; color:#2d5a3d; text-align:center; margin-top:2px; }
+
+    /* ── MODAL ───────────────────────────────────────────────── */
+    .modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.85); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
+    .modal-content { background:#0a1a10; border-radius:16px 16px 0 0; padding:20px 20px 32px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; border-top:1px solid #1a3d2b; }
+
+    /* ── OTROS ───────────────────────────────────────────────── */
+    .fila { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid #060f0a; }
+    .fila:last-child { border-bottom:none; }
+    .marca-header { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#1a5c32; padding:6px 0 2px; font-weight:700; }
+    .ml-res { font-size:12px; font-weight:700; color:#f0b429; min-width:52px; text-align:right; }
+    .tab { flex:1; padding:8px; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .tab-on { background:#1a5c32; color:#fff; }
+    .tab-off { background:#060f0a; color:#2d5a3d; border:1px solid #1a3d2b; }
+    .timer-preset { background:#0a1a10; border:1px solid #1a3d2b; color:#4a7a5a; border-radius:6px; padding:4px 7px; font-size:11px; cursor:pointer; font-family:inherit; transition:all .2s; }
+    .timer-preset.activo { background:#1a5c32; border-color:#22c55e; color:#fff; font-weight:700; }
+
+    @media(max-width:700px){
+      .plan-topbar { padding:10px 14px; gap:8px; }
+      .plan-topbar-nav .rango { min-width:100px; font-size:11px; }
+      .plan-content { padding:10px 10px 40px; }
+      .celda { min-height:54px; }
+      .almanaque th { top:52px; font-size:9px; }
+    }
   </style>
 </head>
 <body>
-<div class="app">
-  <div class="header"><img src="/logo.png" alt="Evergreen Cultiva" class="logo"></div>
-  <div style="display:flex;gap:8px;margin-bottom:16px"><button onclick="history.back()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">← Volver</button><button onclick="location.href='/index.html'" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:8px;padding:7px 14px;font-size:13px;width:auto">🏠 Dashboard</button></div>
+<div class="plan-page">
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-    <h3 id="titulo-lote" style="margin:0">Planificación</h3>
-    <div style="display:flex;gap:6px">
-      <button onclick="cambiarVista('semanal')" id="btn-sem" style="width:auto;padding:5px 10px;font-size:11px;background:#1a5c32;color:#fff;border:none;border-radius:6px">Semanal</button>
-      <button onclick="cambiarVista('quincenal')" id="btn-quin" style="width:auto;padding:5px 10px;font-size:11px;background:#0a1a10;color:#4a7a5a;border:1px solid #1a3d2b;border-radius:6px">Quincenal</button>
+  <!-- ── TOPBAR ──────────────────────────────────────────────── -->
+  <div class="plan-topbar">
+    <div class="plan-topbar-logo">
+      <img src="/logo.png" alt="CropOS">
+      <div class="plan-topbar-logo-text">
+        <span class="plan-topbar-title" id="titulo-lote">Planificación</span>
+        <span class="plan-topbar-sub">Fertiriego · turnos de riego</span>
+      </div>
+    </div>
+
+    <!-- Navegación fechas -->
+    <div class="plan-topbar-nav">
+      <button class="plan-nav-btn" onclick="navAnterior()">&#8249;</button>
+      <span class="rango" id="rango-fechas">—</span>
+      <button class="plan-nav-btn" onclick="navSiguiente()">&#8250;</button>
+    </div>
+
+    <!-- Vista semanal / quincenal -->
+    <div class="plan-view-toggle">
+      <button onclick="cambiarVista('semanal')"   id="btn-sem"  class="plan-vbtn on">Semanal</button>
+      <button onclick="cambiarVista('quincenal')" id="btn-quin" class="plan-vbtn off">Quincenal</button>
+    </div>
+
+    <div class="plan-topbar-spacer"></div>
+
+    <!-- Selector de lote -->
+    <div id="lote-selector-bar" style="display:none">
+      <select id="lote-selector" onchange="cambiarLote(this.value)" class="plan-lote-sel">
+        <option value="">— Todos los lotes —</option>
+      </select>
+    </div>
+
+    <!-- Acciones -->
+    <div class="plan-topbar-actions">
+      <button onclick="history.back()" class="plan-back-btn">&#8592; Volver</button>
+      <button onclick="location.href='/index.html'" class="plan-back-btn">&#127968; Dashboard</button>
     </div>
   </div>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-    <button onclick="navAnterior()" style="width:auto;padding:5px 14px;font-size:16px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px">‹</button>
-    <div style="font-size:12px;color:#4a7a5a;text-align:center" id="rango-fechas"></div>
-    <button onclick="navSiguiente()" style="width:auto;padding:5px 14px;font-size:16px;background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px">›</button>
-  </div>
-
-  <div style="overflow-x:auto">
+  <!-- ── CALENDARIO ──────────────────────────────────────────── -->
+  <div class="plan-content">
     <table class="almanaque">
       <thead>
         <tr>
-          <th style="min-width:36px">Día</th>
+          <th>Día</th>
           <th>🌅 Mañana</th>
           <th>☀️ Tarde</th>
           <th>🌙 Noche</th>
@@ -58,8 +162,11 @@
       </thead>
       <tbody id="tbody"></tbody>
     </table>
+    <div style="margin-top:10px;font-size:11px;color:#2d5a3d;text-align:center;font-family:var(--mono)">
+      + para planificar &nbsp;·&nbsp; ✓ Regar para confirmar el turno
+    </div>
   </div>
-  <div style="margin-top:8px;font-size:11px;color:#2d5a3d;text-align:center">+ para planificar · ✓ Regar para confirmar</div>
+
 </div>
 
 <!-- Modal planificacion (agrónomo) -->
@@ -159,6 +266,43 @@
   <label>Notas del riego</label>
   <textarea id="r-notas" style="margin-top:4px;min-height:40px" placeholder="Observaciones..."></textarea>
 
+  <!-- Acciones de hardware -->
+  <div style="margin-top:16px;padding:12px;background:#060f0a;border-radius:10px;border:1px solid #1a3d2b">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:10px;color:#4a7a5a;text-transform:uppercase;letter-spacing:.08em">⚙ Control de hardware</div>
+      <button onclick="configurarTimer()" style="background:transparent;border:1px solid #1a3d2b;color:#4a7a5a;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">⏱ Config timer</button>
+    </div>
+
+    <!-- Timer display -->
+    <div id="timer-display" style="display:none;text-align:center;margin-bottom:10px;padding:8px;background:#0a1a10;border-radius:8px;border:1px solid #1a5c32">
+      <div style="font-size:10px;color:#4a7a5a;margin-bottom:2px">TIEMPO RESTANTE</div>
+      <div id="timer-countdown" style="font-size:32px;font-weight:700;color:#22c55e;letter-spacing:2px">00:00</div>
+      <div style="font-size:10px;color:#4a7a5a;margin-top:2px">Bomba + válvula se apagan automáticamente</div>
+    </div>
+
+    <!-- Duración configurada -->
+    <div id="timer-config-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="font-size:11px;color:#4a7a5a">Duración:</div>
+      <div style="display:flex;gap:4px">
+        <button onclick="setTimerMin(5)"  class="timer-preset" data-min="5">5 min</button>
+        <button onclick="setTimerMin(10)" class="timer-preset" data-min="10">10 min</button>
+        <button onclick="setTimerMin(15)" class="timer-preset" data-min="15">15 min</button>
+        <button onclick="setTimerMin(20)" class="timer-preset" data-min="20">20 min</button>
+        <button onclick="setTimerMin(0)"  class="timer-preset" data-min="0">∞</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button onclick="toggleValvula()" id="btn-valvula" style="background:#0a1020;border:1px solid #f0b429;color:#f0b429;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
+        🚰 Abrir válvula
+      </button>
+      <button onclick="encenderBomba()" id="btn-bomba" style="background:#0a1200;border:1px solid #22c55e;color:#22c55e;border-radius:8px;padding:10px 6px;font-size:13px;font-weight:600;cursor:pointer">
+        💧 Encender bomba
+      </button>
+    </div>
+    <div id="bomba-status" style="font-size:11px;color:#4a7a5a;text-align:center;min-height:16px"></div>
+  </div>
+
   <button onclick="confirmarRiego()" class="btn-gold" style="margin-top:14px;font-size:15px">
     ✅ Confirmar y guardar riego
   </button>
@@ -206,25 +350,49 @@ function getTurnoActual(){const h=new Date().getHours();return h<14?'manana':h<2
 
 function cambiarVista(v){
   vista=v
-  document.getElementById('btn-sem').style.background  = v==='semanal'?'#1a5c32':'#0a1a10'
-  document.getElementById('btn-sem').style.color        = v==='semanal'?'#fff':'#4a7a5a'
-  document.getElementById('btn-quin').style.background = v==='quincenal'?'#1a5c32':'#0a1a10'
-  document.getElementById('btn-quin').style.color      = v==='quincenal'?'#fff':'#4a7a5a'
+  document.getElementById('btn-sem').className  = 'plan-vbtn ' + (v==='semanal'?'on':'off')
+  document.getElementById('btn-quin').className = 'plan-vbtn ' + (v==='quincenal'?'on':'off')
   renderAlmanaque()
 }
 function navAnterior(){offset--;cargarPlanes()}
 function navSiguiente(){offset++;cargarPlanes()}
+
+let _loteIdDinamic = loteId
+let _loteNomDinamic = loteNom
 
 async function init(){
   try{
     const rF=await fetch(SURL+'/rest/v1/fertilizantes?activo=eq.true&select=*',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
     const fd=await rF.json(); fertis=Array.isArray(fd)?fd:[]
   }catch(e){fertis=[]}
-  if(loteId){
+  // Si no viene lote_id por URL, mostrar selector y cargar lotes
+  if(!loteId){
+    const bar=document.getElementById('lote-selector-bar')
+    bar.style.display='block'
+    try{
+      const rLotes=await fetch(SURL+'/rest/v1/lotes?activo=eq.true&select=id,nombre&order=nombre',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const lotes=await rLotes.json()
+      if(Array.isArray(lotes)){
+        const sel=document.getElementById('lote-selector')
+        lotes.forEach(l=>{
+          const o=document.createElement('option'); o.value=l.id; o.textContent=l.nombre; sel.appendChild(o)
+        })
+      }
+    }catch(e){}
+  } else {
     try{
       const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+loteId+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
       const ld=await rL.json(); plantasLote=(Array.isArray(ld)?ld[0]:null)?.cantidad_plantas||0
     }catch(e){}
+    // Fallback: leer desde Lote DNA Engine si lotes.cantidad_plantas es 0
+    if(!plantasLote){
+      try{
+        const rD=await fetch(SURL+'/rest/v1/lote_dna?lote_id=eq.'+loteId+'&select=datos&limit=1',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+        const dd=await rD.json()
+        const dna=(dd&&dd.length)?dd[0]?.datos:null
+        if(dna?.plantas) plantasLote=parseInt(dna.plantas)||0
+      }catch(e){}
+    }
   }
   await cargarPlanes()
   // Si viene con resultado de IA, abrir modal de riego
@@ -239,12 +407,40 @@ async function init(){
   }
 }
 
+async function cambiarLote(id){
+  _loteIdDinamic = id || ''
+  if(id){
+    const sel = document.getElementById('lote-selector')
+    const opt = sel.querySelector('option[value="'+id+'"]')
+    _loteNomDinamic = opt ? opt.textContent : 'Lote'
+    // load plantas
+    try{
+      const rL=await fetch(SURL+'/rest/v1/lotes?id=eq.'+id+'&select=cantidad_plantas',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+      const ld=await rL.json(); plantasLote=(Array.isArray(ld)?ld[0]:null)?.cantidad_plantas||0
+    }catch(e){}
+    if(!plantasLote){
+      try{
+        const rD=await fetch(SURL+'/rest/v1/lote_dna?lote_id=eq.'+id+'&select=datos&limit=1',{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+        const dd=await rD.json()
+        const dna=(dd&&dd.length)?dd[0]?.datos:null
+        if(dna?.plantas) plantasLote=parseInt(dna.plantas)||0
+      }catch(e){}
+    }
+  } else {
+    _loteNomDinamic = 'Todos los lotes'
+    plantasLote = 0
+  }
+  document.getElementById('titulo-lote').textContent = _loteNomDinamic
+  await cargarPlanes()
+}
+
 async function cargarPlanes(){
+  const efLoteId = _loteIdDinamic
   const dias=getDias()
   const desde=fmt(dias[0]), hasta=fmt(dias[dias.length-1])
   try{
-    const url=loteId
-      ? SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
+    const url=efLoteId
+      ? SURL+'/rest/v1/planes_riego?lote_id=eq.'+efLoteId+'&fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
       : SURL+'/rest/v1/planes_riego?fecha_inicio=gte.'+desde+'&fecha_inicio=lte.'+hasta+'&order=fecha_inicio'
     const r=await fetch(url,{headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
     const d=await r.json(); planes=Array.isArray(d)?d:[]
@@ -392,8 +588,8 @@ async function guardarPlan(){
     const dosis=f.marca==='Athena'?parseFloat((f.dosis_max*pct/70).toFixed(2)):parseFloat(document.querySelector('#p-lista-prod input[type=number][data-id="'+id+'"]')?.value||f.dosis_max)
     productos[f.nombre]=dosis+' ml/L'
   })
-  const payload={lote_id:parseInt(loteId),nombre:celdaActual.turno,tipo:tipoRiego,fecha_inicio:celdaActual.fecha,fecha_fin:celdaActual.fecha,ml_por_planta:mlPl,cantidad_plantas:plts,volumen_l:volL,ec_objetivo:parseFloat(document.getElementById('p-ec').value)||null,ph_objetivo:parseFloat(document.getElementById('p-ph').value)||null,pct_athena:pct,productos:Object.keys(productos).length?productos:null,notas:document.getElementById('p-notas').value||null,activo:true,confirmado:false}
-  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
+  const payload={lote_id:parseInt(_loteIdDinamic),nombre:celdaActual.turno,tipo:tipoRiego,fecha_inicio:celdaActual.fecha,fecha_fin:celdaActual.fecha,ml_por_planta:mlPl,cantidad_plantas:plts,volumen_l:volL,ec_objetivo:parseFloat(document.getElementById('p-ec').value)||null,ph_objetivo:parseFloat(document.getElementById('p-ph').value)||null,pct_athena:pct,productos:Object.keys(productos).length?productos:null,notas:document.getElementById('p-notas').value||null,activo:true,confirmado:false}
+  await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+_loteIdDinamic+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno,{method:'DELETE',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}})
   await fetch(SURL+'/rest/v1/planes_riego',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)})
   cerrarModalPlan(); cargarPlanes()
 }
@@ -403,7 +599,7 @@ async function borrarPlan(){
   if(!confirm('¿Borrar este plan? También se borrarán los registros de riego asociados.')) return
 
   // Buscar el id del plan
-  const rPlan=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+loteId+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno+'&select=id',{
+  const rPlan=await fetch(SURL+'/rest/v1/planes_riego?lote_id=eq.'+_loteIdDinamic+'&fecha_inicio=eq.'+celdaActual.fecha+'&nombre=eq.'+celdaActual.turno+'&select=id',{
     headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY}
   })
   const planes=await rPlan.json()
@@ -552,7 +748,7 @@ function aplicarMLManual(){
 function irAFoto(){
   const turno = planActual?.turno || planActual?.nombre || getTurnoActual()
   const fecha = planActual?.fecha_inicio || new Date().toISOString().slice(0,10)
-  location.href='/import.html?lote_id='+loteId+'&lote='+encodeURIComponent(loteNom)+'&turno='+turno+'&fecha='+fecha+'&volver=planificacion'
+  location.href='/import.html?lote_id='+_loteIdDinamic+'&lote='+encodeURIComponent(_loteNomDinamic)+'&turno='+turno+'&fecha='+fecha+'&volver=planificacion'
 }
 
 function setRiegoFase(f){
@@ -603,8 +799,8 @@ async function confirmarRiego(){
   })
 
   const payload={
-    lote_id:         parseInt(loteId),
-    lote_nombre:     loteNom,
+    lote_id:         parseInt(_loteIdDinamic),
+    lote_nombre:     _loteNomDinamic,
     fecha:           new Date().toISOString(),
     turno:           planActual.turno,
     ml_por_planta:   planActual.mlPl||null,
@@ -631,7 +827,7 @@ async function confirmarRiego(){
         method:'POST',
         headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({
-          lote_id:parseInt(loteId), nombre:planActual.turno, tipo:'fertirrigacion',
+          lote_id:parseInt(_loteIdDinamic), nombre:planActual.turno, tipo:'fertirrigacion',
           fecha_inicio:hoy, fecha_fin:hoy,
           ml_por_planta:planActual.mlPl, cantidad_plantas:planActual.plts,
           volumen_l:planActual.volL||null,
@@ -655,12 +851,160 @@ async function confirmarRiego(){
     }
     cerrarModalRiego()
     // Redirigir limpio para recargar almanaque sin params de IA
-    window.location.href = '/planificacion.html?lote_id=' + loteId + '&lote=' + encodeURIComponent(loteNom)
+    window.location.href = '/planificacion.html?lote_id=' + _loteIdDinamic + '&lote=' + encodeURIComponent(_loteNomDinamic)
   } else {
     const err=await r.text()
     alert('❌ Error: '+err)
   }
 }
+
+// ── Smart Valve (Tuya Smartlife) ─────────────────────────────────────────
+const VALVULA_DEVICE_ID = 'ebec0e3a9dfd95b85dh3mv'
+let valvulaAbierta = false
+
+async function toggleValvula(){
+  const btn = document.getElementById('btn-valvula')
+  const status = document.getElementById('bomba-status')
+  const abrir = !valvulaAbierta
+  btn.disabled = true
+  btn.textContent = abrir ? '⏳ Abriendo...' : '⏳ Cerrando...'
+  status.textContent = ''
+  const ok = await controlSwitch(VALVULA_DEVICE_ID, abrir)
+  btn.disabled = false
+  if(ok){
+    valvulaAbierta = abrir
+    btn.textContent = abrir ? '🔴 Cerrar válvula' : '🚰 Abrir válvula'
+    btn.style.borderColor = abrir ? '#ef4444' : '#f0b429'
+    btn.style.color = abrir ? '#ef4444' : '#f0b429'
+    status.textContent = abrir ? '✅ Válvula abierta — podés encender la bomba' : '✅ Válvula cerrada'
+  } else {
+    btn.textContent = valvulaAbierta ? '🔴 Cerrar válvula' : '🚰 Abrir válvula'
+    status.textContent = '⚠️ Error al conectar con la válvula'
+  }
+}
+
+// ── Control bomba Smartlife (Tuya) ────────────────────────────────────────
+const BOMBA_DEVICE_ID = localStorage.getItem('cropos_bomba_device_id') || '73634132ec94cb80a44e'
+let bombaEncendida = false
+let bombaTimer = null
+
+// ── Timer ─────────────────────────────────────────────────────────────────
+let timerMinutos = parseInt(localStorage.getItem('cropos_bomba_minutos') || '0')
+let timerInterval = null
+let timerSegRestantes = 0
+
+function setTimerMin(min){
+  timerMinutos = min
+  localStorage.setItem('cropos_bomba_minutos', min)
+  document.querySelectorAll('.timer-preset').forEach(b => {
+    b.classList.toggle('activo', parseInt(b.dataset.min) === min)
+  })
+}
+
+function configurarTimer(){
+  const actual = timerMinutos > 0 ? timerMinutos : '∞'
+  const val = prompt(`Duración del riego en minutos (actual: ${actual})\n0 = sin límite automático`, timerMinutos || '')
+  if(val === null) return
+  const min = parseInt(val) || 0
+  setTimerMin(min)
+}
+
+function iniciarCountdown(segundos){
+  const display = document.getElementById('timer-display')
+  const countdown = document.getElementById('timer-countdown')
+  timerSegRestantes = segundos
+  display.style.display = 'block'
+  if(timerInterval) clearInterval(timerInterval)
+  function tick(){
+    const m = String(Math.floor(timerSegRestantes/60)).padStart(2,'0')
+    const s = String(timerSegRestantes % 60).padStart(2,'0')
+    countdown.textContent = m + ':' + s
+    // Color: rojo cuando quedan menos de 60s
+    countdown.style.color = timerSegRestantes <= 60 ? '#ef4444' : '#22c55e'
+    if(timerSegRestantes <= 0){
+      clearInterval(timerInterval)
+      timerInterval = null
+      apagarTodo('⏰ Tiempo cumplido — bomba y válvula apagadas automáticamente')
+    } else {
+      timerSegRestantes--
+    }
+  }
+  tick()
+  timerInterval = setInterval(tick, 1000)
+}
+
+function detenerCountdown(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null }
+  document.getElementById('timer-display').style.display = 'none'
+  document.getElementById('timer-countdown').textContent = '00:00'
+}
+
+async function apagarTodo(msg){
+  // Apagar bomba y cerrar válvula simultáneamente
+  await Promise.all([
+    controlSwitch(BOMBA_DEVICE_ID, false),
+    controlSwitch(VALVULA_DEVICE_ID, false)
+  ])
+  bombaEncendida = false
+  valvulaAbierta = false
+  const btnB = document.getElementById('btn-bomba')
+  const btnV = document.getElementById('btn-valvula')
+  btnB.textContent = '💧 Encender bomba'
+  btnB.style.borderColor = '#22c55e'; btnB.style.color = '#22c55e'
+  btnV.textContent = '🚰 Abrir válvula'
+  btnV.style.borderColor = '#f0b429'; btnV.style.color = '#f0b429'
+  detenerCountdown()
+  document.getElementById('bomba-status').textContent = msg || '✅ Sistema apagado'
+}
+
+// ── Control bomba ─────────────────────────────────────────────────────────
+async function encenderBomba(){
+  const btn = document.getElementById('btn-bomba')
+  const status = document.getElementById('bomba-status')
+  if(bombaEncendida){
+    // Apagar todo manualmente
+    btn.disabled = true
+    status.textContent = '⏳ Apagando...'
+    await apagarTodo('✅ Sistema apagado manualmente')
+    btn.disabled = false
+    return
+  }
+  btn.disabled = true
+  status.textContent = '⏳ Encendiendo bomba...'
+  const ok = await controlSwitch(BOMBA_DEVICE_ID, true)
+  btn.disabled = false
+  if(ok){
+    bombaEncendida = true
+    btn.textContent = '🔴 Apagar todo'
+    btn.style.borderColor = '#ef4444'; btn.style.color = '#ef4444'
+    if(timerMinutos > 0){
+      status.textContent = `💧 Bomba ON · apaga en ${timerMinutos} min`
+      iniciarCountdown(timerMinutos * 60)
+    } else {
+      status.textContent = '💧 Bomba ON · apagá manualmente'
+    }
+  } else {
+    status.textContent = '⚠️ Error al conectar con la bomba'
+  }
+}
+
+async function controlSwitch(device_id, encender){
+  try{
+    const r = await fetch('/smartlife-switch', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({device_id, encender})
+    })
+    const d = await r.json(); return d.ok === true
+  }catch(e){ return false }
+}
+async function controlBomba(encender){ return controlSwitch(BOMBA_DEVICE_ID, encender) }
+
+// Marcar preset activo al cargar
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.timer-preset').forEach(b=>{
+    b.classList.toggle('activo', parseInt(b.dataset.min) === timerMinutos)
+  })
+})
 
 init()
 </script>

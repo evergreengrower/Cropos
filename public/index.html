@@ -44,6 +44,15 @@
       <ul class="sidebar-nav">
         <li><button onclick="mostrarVista('nutricion')"><span class="nav-icon">&#9881;</span> Nutrición</button></li>
         <li><button onclick="irModulo('tareas')"><span class="nav-icon">&#9989;</span> Tareas</button></li>
+        <li><button onclick="irModulo('vision')"><span class="nav-icon">&#128247;</span> Visión Agronómica</button></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Hardware</div>
+      <ul class="sidebar-nav">
+        <li><button onclick="mostrarVista('sensores')"><span class="nav-icon">&#128268;</span> Sensores</button></li>
+        <li><button onclick="mostrarVista('camaras')"><span class="nav-icon">&#128249;</span> Cámaras</button></li>
       </ul>
     </div>
 
@@ -85,6 +94,19 @@
 
       <div id="panel-lote-data" style="display:none">
         <button class="btn-back" onclick="volverLotes()">&#8592; Volver a lotes</button>
+
+        <!-- BANNER RESUMEN DNA -->
+        <div id="dna-banner" onclick="mostrarVista('lote-dna')" style="display:none;cursor:pointer;background:linear-gradient(90deg,#0a1a10,#0d2318);border:0.5px solid #1a5c32;border-radius:10px;padding:11px 16px;margin-bottom:12px;position:relative;overflow:hidden;transition:box-shadow .2s,border-color .2s">
+          <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#7ecf6a88,transparent)"></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:16px">&#129516;</span>
+            <div id="dna-banner-content" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;flex:1;min-width:0">
+              <span style="font-size:11px;color:var(--dim);font-family:var(--mono)">Cargando perfil...</span>
+            </div>
+            <span style="font-size:10px;color:var(--green3);font-family:var(--mono);white-space:nowrap">DNA ›</span>
+          </div>
+        </div>
+
         <div id="alerta-lote" style="display:none;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:500"></div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -469,7 +491,8 @@
     <div class="vista" id="vista-bitacora">
       <div class="btabs">
         <button class="btab active" onclick="bvTab('carga')" id="btab-carga">&#43; Carga rápida</button>
-        <button class="btab" onclick="bvTab('timeline')" id="btab-timeline">&#128337; Timeline</button>
+        <button class="btab" onclick="bvTab('timeline')" id="btab-timeline">&#128202; Timeline Gráfico</button>
+        <button class="btab" onclick="bvTab('galeria')" id="btab-galeria">&#128444; Galería IA</button>
         <button class="btab" onclick="bvTab('tablero')" id="btab-tablero">&#9881; Tablero IA</button>
       </div>
 
@@ -594,6 +617,17 @@
         </div>
       </div>
 
+      <!-- ══ GALERÍA IA ══ -->
+      <div id="bv-panel-galeria" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:10px;color:var(--dim);font-family:var(--mono)">Solo registros con imagen · orden cronológico</div>
+          <select id="bv-gal-lote" onchange="bvRenderGaleria()" style="font-size:11px;padding:6px 10px;border-radius:8px;min-width:130px">
+            <option value="">Todos los lotes</option>
+          </select>
+        </div>
+        <div id="bv-galeria-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px"></div>
+      </div>
+
       <div id="bv-panel-tablero" style="display:none">
         <div class="bv-tablero-kpis">
           <div class="bv-kpi" style="border-left:3px solid #dc2626"><div class="bv-kpi-val" id="bv-count-criticos" style="color:#dc2626">0</div><div class="bv-kpi-label">🔴 Críticos</div></div>
@@ -634,6 +668,83 @@
     </div>
 
     <div class="vista" id="vista-genetica" style="display:none"></div>
+
+    <!-- ══════ SENSORES ══════ -->
+    <div class="vista" id="vista-sensores">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <h3 style="margin-bottom:2px">Sensores instalados</h3>
+          <div style="font-size:10px;color:var(--dim);font-family:var(--mono)">Smartlife / Tuya · actualización cada 60s</div>
+        </div>
+        <button onclick="abrirModalSensor()" style="width:auto;padding:8px 14px;font-size:12px">+ Agregar sensor</button>
+      </div>
+      <div id="lista-sensores"><div class="empty-state">&#128268;<br><br>No hay sensores configurados aún.</div></div>
+    </div>
+
+    <!-- modal sensor -->
+    <div id="modal-sensor" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:none;align-items:flex-end;justify-content:center">
+      <div style="background:var(--bg2);border-radius:16px 16px 0 0;border-top:0.5px solid var(--border);padding:20px 18px 36px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <span style="font-size:14px;font-weight:700">Configurar sensor</span>
+          <button onclick="cerrarModalSensor()" style="width:auto;padding:4px 12px;background:transparent;border:0.5px solid var(--border);color:var(--dim);font-size:13px">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><label>Nombre del sensor</label><input id="s-nombre" type="text" placeholder="Ej: Sensor Carpa 1" style="margin-top:4px"></div>
+          <div><label>Device ID (Tuya/Smartlife)</label><input id="s-device" type="text" placeholder="Ej: eb65b1c57e5cdf703..." style="margin-top:4px;font-family:var(--mono);font-size:12px"></div>
+          <div><label>Tipo</label>
+            <select id="s-tipo" style="margin-top:4px">
+              <option value="temp_hr">🌡 Temperatura + Humedad</option>
+              <option value="vwc">💧 VWC (humedad sustrato)</option>
+              <option value="ec">⚡ EC</option>
+              <option value="co2">🌬 CO₂</option>
+              <option value="luz">☀️ Luz / PPFD</option>
+              <option value="otro">📡 Otro</option>
+            </select>
+          </div>
+          <div><label>Lote asociado (opcional)</label><select id="s-lote" style="margin-top:4px"><option value="">— Sin lote —</option></select></div>
+          <div><label>Notas</label><textarea id="s-notas" placeholder="Ubicación, observaciones..." style="margin-top:4px;min-height:60px"></textarea></div>
+        </div>
+        <button onclick="guardarSensor()" style="margin-top:14px;width:100%">Guardar sensor</button>
+      </div>
+    </div>
+
+    <!-- ══════ CÁMARAS ══════ -->
+    <div class="vista" id="vista-camaras">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <h3 style="margin-bottom:2px">Cámaras Smartlife</h3>
+          <div style="font-size:10px;color:var(--dim);font-family:var(--mono)">IP · RTSP · Stream URL</div>
+        </div>
+        <button onclick="abrirModalCamaraInline()" style="width:auto;padding:8px 14px;font-size:12px">+ Agregar cámara</button>
+      </div>
+      <div id="lista-camaras-inline"><div class="empty-state">&#128249;<br><br>No hay cámaras configuradas aún.</div></div>
+    </div>
+
+    <!-- modal camara inline -->
+    <div id="modal-camara-inline" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;align-items:flex-end;justify-content:center">
+      <div style="background:var(--bg2);border-radius:16px 16px 0 0;border-top:0.5px solid var(--border);padding:20px 18px 36px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <span style="font-size:14px;font-weight:700">Configurar cámara</span>
+          <button onclick="cerrarModalCamaraInline()" style="width:auto;padding:4px 12px;background:transparent;border:0.5px solid var(--border);color:var(--dim);font-size:13px">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><label>Nombre</label><input id="ci-nombre" type="text" placeholder="Ej: Cámara Carpa 1" style="margin-top:4px"></div>
+          <div><label>Tipo</label>
+            <select id="ci-tipo" style="margin-top:4px">
+              <option value="smartlife">📱 Smartlife / Tuya</option>
+              <option value="ip">🌐 IP Camera</option>
+              <option value="rtsp">📡 RTSP Stream</option>
+              <option value="otro">📷 Otro</option>
+            </select>
+          </div>
+          <div><label>Stream URL (opcional)</label><input id="ci-stream" type="text" placeholder="rtsp://... o http://..." style="margin-top:4px;font-family:var(--mono);font-size:12px"></div>
+          <div><label>Ubicación</label><input id="ci-ubicacion" type="text" placeholder="Ej: Sector norte, altura 2m" style="margin-top:4px"></div>
+          <div><label>Lote asociado (opcional)</label><select id="ci-lote" style="margin-top:4px"><option value="">— Sin lote —</option></select></div>
+          <div><label>Notas</label><textarea id="ci-notas" placeholder="Resolución, ángulo, observaciones..." style="margin-top:4px;min-height:60px"></textarea></div>
+        </div>
+        <button onclick="guardarCamaraInline()" style="margin-top:14px;width:100%">Guardar cámara</button>
+      </div>
+    </div>
 
     <div class="vista" id="vista-nutricion">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
@@ -719,20 +830,214 @@ function mostrarVista(id) {
   if (id === 'lote-dna')       cargarDNA()
   if (id === 'bitacora')       { bvCargarLotesCarga(); bvTab('carga') }
   if (id === 'nutricion')      renderRecetas()
+  if (id === 'sensores')       renderSensores()
+  if (id === 'camaras')        renderCamarasInline()
   if (id === 'diagnostico-ia') renderHistorialDiag()
 }
 
 function irModulo(mod) {
-  if (mod !== 'import' && !loteActual) { alert('Primero seleccioná un lote desde el Dashboard.'); return }
-  const base = loteActual ? '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre) : ''
-  const urls = { riego:'/planificacion.html'+base, clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base }
+  // Riegos abre el calendario siempre, sin requerir lote
+  if (mod === 'riego') {
+    const base = loteActual ? '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre) : ''
+    location.href = '/planificacion.html' + base
+    return
+  }
+  if (!loteActual) { alert('Primero seleccioná un lote desde el Dashboard.'); return }
+  const base = '?lote_id=' + loteActual.id + '&lote=' + encodeURIComponent(loteActual.nombre)
+  const urls = { clima:'/clima.html'+base, tareas:'/tareas.html'+base, import:'/import.html'+base, vision:'/vision.html'+base }
   if (urls[mod]) location.href = urls[mod]
 }
 function irATareas() { irModulo('tareas') }
 
+/* ══════════════════════════════════════════════
+   SENSORES
+══════════════════════════════════════════════ */
+function getSensores() { return JSON.parse(localStorage.getItem('cropos_sensores') || '[]') }
+function saveSensores(arr) { localStorage.setItem('cropos_sensores', JSON.stringify(arr)) }
+
+function abrirModalSensor() {
+  // poblar selector lotes
+  const sl = document.getElementById('s-lote')
+  if (sl && loteActual) {
+    sl.innerHTML = '<option value="">— Sin lote —</option><option value="'+loteActual.id+'" selected>'+loteActual.nombre+'</option>'
+  }
+  ;['s-nombre','s-device','s-notas'].forEach(id => { const el=document.getElementById(id); if(el) el.value='' })
+  const m = document.getElementById('modal-sensor'); if(m){ m.style.display='flex' }
+}
+function cerrarModalSensor() { const m=document.getElementById('modal-sensor'); if(m) m.style.display='none' }
+
+function guardarSensor() {
+  const nombre = document.getElementById('s-nombre').value.trim()
+  const device = document.getElementById('s-device').value.trim()
+  if (!nombre || !device) { alert('Nombre y Device ID son obligatorios'); return }
+  const sensores = getSensores()
+  sensores.push({
+    id: Date.now(),
+    nombre,
+    device_id: device,
+    tipo: document.getElementById('s-tipo').value,
+    lote_id: document.getElementById('s-lote').value || null,
+    lote_nombre: document.getElementById('s-lote').selectedOptions[0]?.text || '',
+    notas: document.getElementById('s-notas').value,
+    activo: true,
+    created_at: new Date().toISOString()
+  })
+  saveSensores(sensores)
+  cerrarModalSensor()
+  renderSensores()
+  mostrarToast('Sensor guardado')
+}
+
+async function renderSensores() {
+  const cont = document.getElementById('lista-sensores')
+  if (!cont) return
+  const sensores = getSensores()
+  if (!sensores.length) { cont.innerHTML='<div class="empty-state">&#128268;<br><br>No hay sensores configurados aún.</div>'; return }
+  const tipoLabel = {temp_hr:'🌡 Temp + HR', vwc:'💧 VWC', ec:'⚡ EC', co2:'🌬 CO₂', luz:'☀️ Luz', otro:'📡 Otro'}
+  cont.innerHTML = sensores.map((s,i) => `
+    <div class="card" style="margin-bottom:10px;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${s.nombre}</div>
+          <div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px">${tipoLabel[s.tipo]||s.tipo}${s.lote_nombre?' · '+s.lote_nombre:''}</div>
+          <div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:1px;opacity:.6">${s.device_id}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="sensor-status-${i}" style="font-size:8px;font-family:var(--mono);background:#0a1a10;border:0.5px solid var(--border);border-radius:10px;padding:2px 7px;color:var(--dim)">—</span>
+          <button onclick="eliminarSensor(${i})" style="width:auto;padding:4px 10px;font-size:11px;background:rgba(220,38,38,.1);border:0.5px solid rgba(220,38,38,.3);color:#dc2626;border-radius:6px">✕</button>
+        </div>
+      </div>
+      <div id="sensor-lectura-${i}" style="font-size:12px;color:var(--muted);font-family:var(--mono)">Leyendo...</div>
+      ${s.notas?'<div style="font-size:10px;color:var(--dim);margin-top:6px;border-top:0.5px solid var(--border);padding-top:6px">'+s.notas+'</div>':''}
+    </div>
+  `).join('')
+  // leer cada sensor
+  sensores.forEach((s, i) => leerSensor(s, i))
+}
+
+async function leerSensor(s, i) {
+  const statusEl = document.getElementById('sensor-status-'+i)
+  const lectEl   = document.getElementById('sensor-lectura-'+i)
+  if (!statusEl || !lectEl) return
+  try {
+    const r = await fetch('/smartlife-sensor?device_id=' + encodeURIComponent(s.device_id))
+    if (!r.ok) throw new Error()
+    const d = await r.json()
+    if (d.temperatura !== undefined) {
+      statusEl.textContent = '● VIVO'; statusEl.style.color = '#22c55e'
+      const vpd = (0.6108 * Math.exp(17.27*d.temperatura/(d.temperatura+237.3)) * (1 - d.humedad/100)).toFixed(2)
+      lectEl.innerHTML = `<span style="color:#f0b429;font-size:18px;font-weight:700">${d.temperatura.toFixed(1)}°C</span>&nbsp;&nbsp;<span style="color:#22c55e;font-size:18px;font-weight:700">${d.humedad.toFixed(0)}%HR</span>&nbsp;&nbsp;<span style="color:var(--green);font-size:14px">VPD ${vpd} kPa</span>`
+    } else if (d.vwc !== undefined) {
+      statusEl.textContent = '● VIVO'; statusEl.style.color = '#22c55e'
+      lectEl.innerHTML = `<span style="color:#60a5fa;font-size:18px;font-weight:700">${d.vwc}%</span> <span style="color:var(--dim)">VWC</span>${d.ec?'&nbsp;&nbsp;<span style="color:#f0b429;font-size:16px;font-weight:700">'+d.ec+' mS/cm</span>':''}`
+    } else {
+      statusEl.textContent = 'Sin datos'; statusEl.style.color = 'var(--dim)'
+      lectEl.textContent = 'No se recibieron datos del dispositivo'
+    }
+  } catch(e) {
+    if(statusEl){ statusEl.textContent='Sin conexión'; statusEl.style.color='var(--dim)' }
+    if(lectEl)  { lectEl.textContent='No se pudo conectar con el sensor' }
+  }
+}
+
+function eliminarSensor(i) {
+  if (!confirm('¿Eliminar este sensor?')) return
+  const s = getSensores(); s.splice(i,1); saveSensores(s); renderSensores()
+}
+
+/* ══════════════════════════════════════════════
+   CÁMARAS
+══════════════════════════════════════════════ */
+async function renderCamarasInline() {
+  const cont = document.getElementById('lista-camaras-inline')
+  if (!cont) return
+  cont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);font-family:var(--mono);font-size:11px">Cargando...</div>'
+  try {
+    const r = await fetch(SURL + '/rest/v1/camaras?order=created_at.asc', { headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY} })
+    const cams = await r.json()
+    if (!Array.isArray(cams) || !cams.length) { cont.innerHTML='<div class="empty-state">&#128249;<br><br>No hay cámaras configuradas aún.</div>'; return }
+    const tipoLabel = {smartlife:'📱 Smartlife',ip:'🌐 IP',rtsp:'📡 RTSP',otro:'📷 Otro'}
+    cont.innerHTML = cams.map(c => `
+      <div class="card" style="margin-bottom:10px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${c.activa?'#22c55e':'#2d5a32'};display:inline-block;box-shadow:${c.activa?'0 0 8px #22c55e':'none'}"></span>
+              <span style="font-size:14px;font-weight:700;color:var(--text)">${c.nombre}</span>
+            </div>
+            <div style="font-size:10px;color:var(--dim);font-family:var(--mono)">${tipoLabel[c.tipo]||c.tipo||''}${c.ubicacion?' · '+c.ubicacion:''}</div>
+            ${c.stream_url?'<div style="font-size:10px;color:var(--green3);font-family:var(--mono);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.stream_url+'</div>':''}
+            ${c.notas?'<div style="font-size:11px;color:var(--muted);margin-top:6px">'+c.notas+'</div>':''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-left:10px">
+            ${c.stream_url?'<button onclick="verStream(\''+encodeURIComponent(c.stream_url)+'\')" style="width:auto;padding:5px 10px;font-size:11px;background:#0d2318;border:0.5px solid var(--green2);color:var(--green);border-radius:6px">▶ Ver</button>':''}
+            <button onclick="eliminarCamaraInline(\''+c.id+'\')" style="width:auto;padding:5px 10px;font-size:11px;background:rgba(220,38,38,.1);border:0.5px solid rgba(220,38,38,.3);color:#dc2626;border-radius:6px">✕</button>
+          </div>
+        </div>
+      </div>
+    `).join('')
+  } catch(e) { cont.innerHTML='<div class="empty-state">Error cargando cámaras</div>' }
+}
+
+function abrirModalCamaraInline() {
+  const sl = document.getElementById('ci-lote')
+  if (sl && loteActual) sl.innerHTML='<option value="">— Sin lote —</option><option value="'+loteActual.id+'" selected>'+loteActual.nombre+'</option>'
+  ;['ci-nombre','ci-stream','ci-ubicacion','ci-notas'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='' })
+  const m = document.getElementById('modal-camara-inline'); if(m){ m.style.display='flex' }
+}
+function cerrarModalCamaraInline() { const m=document.getElementById('modal-camara-inline'); if(m) m.style.display='none' }
+
+async function guardarCamaraInline() {
+  const nombre = document.getElementById('ci-nombre').value.trim()
+  if (!nombre) { alert('El nombre es obligatorio'); return }
+  const payload = {
+    nombre,
+    tipo: document.getElementById('ci-tipo').value,
+    stream_url: document.getElementById('ci-stream').value.trim() || null,
+    ubicacion: document.getElementById('ci-ubicacion').value.trim() || null,
+    lote_id: document.getElementById('ci-lote').value || null,
+    notas: document.getElementById('ci-notas').value.trim() || null,
+    activa: true
+  }
+  try {
+    await fetch(SURL+'/rest/v1/camaras', { method:'POST', headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'}, body:JSON.stringify(payload) })
+    cerrarModalCamaraInline()
+    renderCamarasInline()
+    mostrarToast('Cámara guardada')
+  } catch(e) { alert('Error guardando cámara') }
+}
+
+async function eliminarCamaraInline(id) {
+  if (!confirm('¿Eliminar esta cámara?')) return
+  try {
+    await fetch(SURL+'/rest/v1/camaras?id=eq.'+id, { method:'DELETE', headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY} })
+    renderCamarasInline()
+    mostrarToast('Cámara eliminada')
+  } catch(e) {}
+}
+
+function verStream(encodedUrl) {
+  const url = decodeURIComponent(encodedUrl)
+  window.open(url, '_blank')
+}
+
 function configurarSmartlife() {
   const deviceId = prompt('Ingresá el Device ID de tu sensor Smartlife/Tuya:'); if (!deviceId) return
   localStorage.setItem('smartlife_device_id', deviceId.trim()); alert('✅ Sensor guardado.'); actualizarSmartlife()
+}
+
+function calcVPD(temp, hr) {
+  const svp = 0.6108 * Math.exp(17.27 * temp / (temp + 237.3))
+  const vpd = svp * (1 - hr / 100)
+  return Math.max(0, vpd).toFixed(2)
+}
+
+function colorVPD(v) {
+  if (v < 0.4) return '#60a5fa'       // muy bajo - azul
+  if (v < 0.8) return '#22c55e'       // bajo - verde
+  if (v <= 1.2) return '#7ecf6a'      // ideal - verde brillante
+  if (v <= 1.6) return '#f0b429'      // alto - amarillo
+  return '#dc2626'                    // muy alto - rojo
 }
 
 async function actualizarSmartlife() {
@@ -746,8 +1051,26 @@ async function actualizarSmartlife() {
     const r = await fetch('/smartlife-sensor?device_id=' + encodeURIComponent(deviceId))
     if (r.ok) {
       const data = await r.json()
-      if (data.temperatura !== undefined) { tempEl.textContent = data.temperatura.toFixed(1); hrEl.textContent = data.humedad.toFixed(0); statusEl.textContent = '● EN VIVO'; statusEl.style.color = '#22c55e' }
-      else { statusEl.textContent = 'Sin datos'; statusEl.style.color = 'var(--dim)' }
+      if (data.temperatura !== undefined) {
+        const temp = data.temperatura, hr = data.humedad
+        tempEl.textContent = temp.toFixed(1)
+        hrEl.textContent = hr.toFixed(0)
+        statusEl.textContent = '● EN VIVO'
+        statusEl.style.color = '#22c55e'
+        // Calcular VPD y actualizar card
+        const vpd = parseFloat(calcVPD(temp, hr))
+        const kpiP = document.getElementById('kpi-proximo')
+        const kpiPn = document.getElementById('kpi-proximo-n')
+        if (kpiP) {
+          kpiP.textContent = vpd.toFixed(2) + ' kPa'
+          kpiP.style.color = colorVPD(vpd)
+          kpiP.style.fontSize = '22px'
+        }
+        if (kpiPn) {
+          const zonas = vpd < 0.4 ? 'Muy bajo' : vpd < 0.8 ? 'Bajo · vegetativo' : vpd <= 1.2 ? '✓ Ideal floración' : vpd <= 1.6 ? 'Alto · vigilar' : '⚠ Muy alto'
+          kpiPn.textContent = zonas + ' · ' + temp.toFixed(1) + '°C ' + hr.toFixed(0) + '%HR'
+        }
+      } else { statusEl.textContent = 'Sin datos'; statusEl.style.color = 'var(--dim)' }
     } else { statusEl.textContent = 'Sin conexión'; statusEl.style.color = 'var(--dim)' }
   } catch(e) { statusEl.textContent = 'Sin conexión'; statusEl.style.color = 'var(--dim)' }
 }
@@ -790,6 +1113,43 @@ async function abrirLote(id, nombre, tipo) {
   document.getElementById('panel-lotes').style.display     = 'none'
   document.getElementById('panel-lote-data').style.display = 'block'
   cargarKpisLote(id, nombre)
+  cargarDNABanner(id)
+}
+
+async function cargarDNABanner(loteId) {
+  const banner = document.getElementById('dna-banner')
+  const cont = document.getElementById('dna-banner-content')
+  if (!banner || !cont) return
+  try {
+    const res = await fetch(SURL + '/rest/v1/lote_dna?lote_id=eq.' + loteId + '&select=datos&limit=1', { headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY} })
+    const rows = await res.json()
+    const d = (rows && rows.length && rows[0].datos) ? rows[0].datos : null
+    // También intentar localStorage
+    const lsKey = 'cropos_dna_' + loteId
+    const local = d || JSON.parse(localStorage.getItem(lsKey) || 'null')
+    if (!local || Object.keys(local).filter(k => local[k]).length < 2) {
+      cont.innerHTML = '<span style="font-size:11px;color:var(--dim);font-family:var(--mono)">Sin perfil configurado — completar DNA Engine</span>'
+      banner.style.display = 'block'
+      return
+    }
+    const faseEmoji = {clonacion:'🌱',vegetativo:'🌿',prefloracion:'🌸',floracion:'🌸',engorde:'⭐',maduracion:'🌾'}
+    const chips = []
+    if (local.variedad) chips.push({ icon: '🧬', val: local.variedad + (local.dominancia ? ' · ' + local.dominancia : '') })
+    if (local.fase) chips.push({ icon: faseEmoji[local.fase] || '📍', val: local.fase.charAt(0).toUpperCase() + local.fase.slice(1) + (local.dias_fase ? ' · Día ' + local.dias_fase : '') })
+    if (local.plantas) chips.push({ icon: '🪴', val: local.plantas + ' plantas' })
+    if (local.sistema) chips.push({ icon: '⚙', val: local.sistema })
+    if (local.sustrato) chips.push({ icon: '🪨', val: local.sustrato })
+    if (local.modelo) chips.push({ icon: '📐', val: local.modelo })
+    cont.innerHTML = chips.map(c =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;background:#091510;border:0.5px solid #1a3d22;border-radius:6px;padding:3px 8px;font-size:11px;color:#a8c8b0;font-family:var(--mono);white-space:nowrap">
+        <span>${c.icon}</span><span>${c.val}</span>
+      </span>`
+    ).join('')
+    banner.style.display = 'block'
+  } catch(e) {
+    banner.style.display = 'none'
+    console.log('dna-banner', e)
+  }
 }
 
 function volverCultivos() {
@@ -818,11 +1178,10 @@ async function cargarKpisLote(loteId, nombre) {
       document.getElementById('kpi-manana-n').textContent = manana.length+' med.'+(manana[0]?' · '+formatFecha(manana[0].fecha):'')
       document.getElementById('kpi-tarde').textContent    = vTar ? vTar+'%' : '--'
       document.getElementById('kpi-tarde-n').textContent  = tarde.length+' med.'+(tarde[0]?' · '+formatFecha(tarde[0].fecha):'')
-      const vActual=parseFloat(vTar||vMan||0), alerta=document.getElementById('alerta-lote'), kpiP=document.getElementById('kpi-proximo'), kpiPn=document.getElementById('kpi-proximo-n')
-      if (vActual>0&&vActual<20) { alerta.style.display='block'; alerta.style.background='#1a0a0a'; alerta.style.borderLeft='3px solid #dc2626'; alerta.innerHTML='⚠️ VWC crítico: '+vActual+'% — Regar urgente'; kpiP.textContent='URGENTE'; kpiP.style.color='#dc2626'; kpiPn.textContent='VWC '+vActual+'%'; document.getElementById('btn-alertas').style.display='flex'; document.getElementById('alertas-texto').textContent='1 alerta crítica' }
-      else if (vActual>0&&vActual<22) { alerta.style.display='block'; alerta.style.background='#1a1200'; alerta.style.borderLeft='3px solid #f0b429'; alerta.innerHTML='⚠️ VWC bajo: '+vActual+'% — Preparar riego'; kpiP.textContent='HOY'; kpiP.style.color='#f0b429'; kpiPn.textContent='VWC '+vActual+'%' }
-      else if (vActual>=28) { alerta.style.display='none'; kpiP.textContent='OK'; kpiP.style.color='#22c55e'; kpiPn.textContent='VWC '+vActual+'%' }
-      else if (vActual>0) { alerta.style.display='none'; kpiP.textContent=vActual+'%'; kpiPn.textContent='monitorear' }
+      const vActual=parseFloat(vTar||vMan||0), alerta=document.getElementById('alerta-lote')
+      if (vActual>0&&vActual<20) { alerta.style.display='block'; alerta.style.background='#1a0a0a'; alerta.style.borderLeft='3px solid #dc2626'; alerta.innerHTML='⚠️ VWC crítico: '+vActual+'% — Regar urgente'; document.getElementById('btn-alertas').style.display='flex'; document.getElementById('alertas-texto').textContent='1 alerta crítica' }
+      else if (vActual>0&&vActual<22) { alerta.style.display='block'; alerta.style.background='#1a1200'; alerta.style.borderLeft='3px solid #f0b429'; alerta.innerHTML='⚠️ VWC bajo: '+vActual+'% — Preparar riego' }
+      else { alerta.style.display='none' }
       renderChartVWC(meds.filter(m=>m.vwc&&parseFloat(m.vwc)>0).slice(0,30).reverse())
       generarDiagnosticoAuto(vActual, nombre)
       document.getElementById('ultimas-mediciones').innerHTML = meds.slice(0,6).map(m => `<div class="medicion-row"><div class="medicion-fecha">${formatFecha(m.fecha)}</div><div class="medicion-vals"><span>VWC <b style="color:#f0b429">${m.vwc||'--'}%</b></span>${m.ec?'<span>EC '+m.ec+'</span>':''}${m.temperatura?'<span>'+m.temperatura+'°C</span>':''}</div></div>`).join('')
@@ -980,7 +1339,68 @@ async function bvAnalizarConIA(){
   }
 }
 
-function bvTab(tab){;['carga','timeline','tablero'].forEach(t=>{document.getElementById('bv-panel-'+t).style.display=t===tab?'block':'none';document.getElementById('btab-'+t).classList.toggle('active',t===tab)});if(tab==='timeline')bvRenderTimeline();if(tab==='tablero')bvRenderTablero()}
+function bvTab(tab){;['carga','timeline','galeria','tablero'].forEach(t=>{document.getElementById('bv-panel-'+t).style.display=t===tab?'block':'none';document.getElementById('btab-'+t).classList.toggle('active',t===tab)});if(tab==='timeline')bvRenderTimeline();if(tab==='tablero')bvRenderTablero();if(tab==='galeria')bvRenderGaleria()}
+
+function bvExtraerTituloIA(r) {
+  const ai = (r.analisis_ia || '').trim()
+  if (!ai) return (r.tipo||'').replace(/_/g,' ')
+  // Quitar emojis del inicio y agarrar primer oración significativa
+  const limpio = ai.replace(/^[\p{Emoji}\s]+/u,'').trim()
+  const oracion = limpio.split(/[.\n!]/)[0].trim()
+  if (oracion.length >= 12 && oracion.length <= 90) return oracion
+  return limpio.slice(0, 72) + (limpio.length > 72 ? '…' : '')
+}
+
+function bvRenderGaleria() {
+  const cont = document.getElementById('bv-galeria-grid'); if (!cont) return
+  const fLote = document.getElementById('bv-gal-lote')?.value || ''
+  const tipoLabel = {seguimiento_general:'Seguimiento',anomalia_visual:'Anomalía visual',pre_riego:'Pre-riego',post_riego:'Post-riego',poda:'Poda',nutricion:'Nutrición',plaga:'Plaga',patogeno:'Patógeno',estres_termico:'Estrés T°',floracion:'Floración',cosecha:'Cosecha',observacion_libre:'Libre'}
+  const sevColor = {baja:'#22c55e',media:'#f0b429',alta:'#f97316',critica:'#dc2626'}
+  // Solo registros que tengan al menos una imagen (url o b64)
+  let regs = bvRegistros.filter(r => r.media && r.media.some(m => m.url || m.b64))
+  if (fLote) regs = regs.filter(r => r.lote_id == fLote)
+  // Orden cronológico (más viejo primero → galería tipo timeline)
+  regs = [...regs].reverse()
+  if (!regs.length) {
+    cont.innerHTML = '<div class="empty-state" style="grid-column:1/-1">&#128444;<br><br>Sin fotos con diagnóstico IA aún.<br><span style="color:var(--muted)">Cargá una observación con imagen y analizala con IA.</span></div>'
+    return
+  }
+  // Poblar selector lotes de galería
+  const galLote = document.getElementById('bv-gal-lote')
+  if (galLote && galLote.options.length <= 1) {
+    const lotes = [...new Set(bvRegistros.map(r=>r.lote_id).filter(Boolean))]
+    const nombres = {}; bvRegistros.forEach(r=>{ if(r.lote_id) nombres[r.lote_id]=r.lote_nombre })
+    galLote.innerHTML = '<option value="">Todos los lotes</option>' + lotes.map(id=>`<option value="${id}">${nombres[id]||id}</option>`).join('')
+    if(fLote) galLote.value = fLote
+  }
+  cont.innerHTML = regs.map(r => {
+    const img = r.media.find(m => m.tipo === 'imagen' && (m.url || m.b64))
+    const src = img ? (img.url || img.b64) : null
+    const titulo = bvExtraerTituloIA(r)
+    const sev = r.severidad || 'baja'
+    const sevC = sevColor[sev] || '#7ecf6a'
+    const hasIA = !!(r.analisis_ia)
+    const fecha = r.fecha ? new Date(r.fecha).toLocaleDateString('es-UY',{day:'2-digit',month:'2-digit',year:'2-digit'}) : ''
+    return `
+      <div onclick="bvAbrirModal('${r.id}')" style="cursor:pointer;border-radius:12px;overflow:hidden;background:#0a1a10;border:0.5px solid #1a3d2b;position:relative;aspect-ratio:3/4;display:flex;flex-direction:column;transition:box-shadow .2s,border-color .2s" onmouseover="this.style.boxShadow='0 0 18px rgba(126,207,106,.22)';this.style.borderColor='#2d7a1f'" onmouseout="this.style.boxShadow='none';this.style.borderColor='#1a3d2b'">
+        <!-- Imagen fondo -->
+        ${src ? `<img src="${src}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85" onerror="this.style.opacity=0">` : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;opacity:.2">📷</div>`}
+        <!-- Gradiente overlay -->
+        <div style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(6,15,10,.1) 0%, rgba(6,15,10,.0) 40%, rgba(6,15,10,.92) 100%)"></div>
+        <!-- Badge severidad -->
+        <div style="position:absolute;top:8px;left:8px;background:${sevC}22;border:0.5px solid ${sevC};color:${sevC};font-size:8px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.06em">${sev}</div>
+        <!-- Badge IA -->
+        ${hasIA ? `<div style="position:absolute;top:8px;right:8px;background:rgba(126,207,106,.15);border:0.5px solid #1a5c32;color:#7ecf6a;font-size:8px;font-family:var(--mono);font-weight:700;padding:2px 6px;border-radius:10px">🤖 IA</div>` : ''}
+        <!-- Info inferior -->
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 10px 12px">
+          <div style="font-size:11px;font-weight:700;color:#e8f0eb;line-height:1.35;margin-bottom:4px">${titulo}</div>
+          <div style="font-size:9px;color:#7ecf6a88;font-family:var(--mono)">${tipoLabel[r.tipo]||r.tipo} · ${fecha}</div>
+          ${r.lote_nombre ? `<div style="font-size:9px;color:#4a7a5a;font-family:var(--mono);margin-top:1px">📍 ${r.lote_nombre}</div>` : ''}
+        </div>
+      </div>
+    `
+  }).join('')
+}
 function bvSelTipo(btn,tipo){document.querySelectorAll('.bv-tipo-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');bvTipoActual=tipo}
 function bvSelSev(btn){document.querySelectorAll('.bv-sev-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');bvSevActual=btn.dataset.sev}
 function toggleBvMetricas(){const panel=document.getElementById('bv-metricas-panel'),chev=document.getElementById('bv-met-chev'),open=panel.style.display==='block';panel.style.display=open?'none':'block';chev.textContent=open?'⌄':'⌃'}
@@ -1077,7 +1497,7 @@ function bvVerImagenGrande(idx){const src=bvModalMediaCache[idx];if(!src)return;
 function bvAbrirModal(id){const r=bvRegistros.find(reg=>reg.id===id);if(!r)return;bvModalActivo=r;document.getElementById('bvm-titulo').textContent=(r.tipo||'').replace(/_/g,' ');document.getElementById('bvm-meta').textContent=formatFecha(r.fecha)+' · '+r.lote_nombre+(r.sector?' · '+r.sector:'');const fotosCont=document.getElementById('bvm-fotos');bvModalMediaCache=(r.media||[]).map(m=>m.url||m.b64||null).filter(Boolean);fotosCont.innerHTML=bvModalMediaCache.length?bvModalMediaCache.map((src,i)=>`<img src="${src}" style="max-height:160px;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;margin-right:6px" onclick="event.stopPropagation();bvVerImagenGrande(${i})" onerror="this.style.opacity=0.3">`).join(''):'' ;document.getElementById('bvm-body').innerHTML=`${r.descripcion?`<div style="margin-bottom:12px">${r.descripcion}</div>`:''}${r.analisis_ia?`<div class="diag-text" style="margin-bottom:12px">${r.analisis_ia}</div>`:''}${r.metricas&&Object.values(r.metricas).some(Boolean)?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;font-family:var(--mono);margin-bottom:12px">${r.metricas.vwc?`<div>VWC: <b>${r.metricas.vwc}%</b></div>`:''}${r.metricas.ec?`<div>EC: <b>${r.metricas.ec}</b></div>`:''}${r.metricas.ph?`<div>pH: <b>${r.metricas.ph}</b></div>`:''}${r.metricas.temp?`<div>T°: <b>${r.metricas.temp}°C</b></div>`:''}${r.metricas.hr?`<div>HR: <b>${r.metricas.hr}%</b></div>`:''}${r.metricas.vpd?`<div>VPD: <b>${r.metricas.vpd} kPa</b></div>`:''}</div>`:''} `;const valBtns=document.getElementById('bvm-val-btns');valBtns.innerHTML=['abierto','en_seguimiento','resuelto'].map(e=>`<button onclick="bvSetEstado('${r.id}','${e}')" style="width:auto;padding:6px 14px;font-size:11px;${r.estado===e?'background:rgba(126,207,106,.2);border-color:var(--green2);color:var(--green)':''}">${e.replace('_',' ')}</button>`).join('');document.getElementById('bv-modal').style.display='flex'}
 function bvSetEstado(id,estado){const idx=bvRegistros.findIndex(r=>r.id===id);if(idx<0)return;bvRegistros[idx].estado=estado;bvModalActivo=bvRegistros[idx];localStorage.setItem(BV_KEY,JSON.stringify(bvRegistros));bvAbrirModal(id)}
 function bvGuardarValidacion(){if(!bvModalActivo)return;const nota=document.getElementById('bvm-nota-val')?.value||'';const idx=bvRegistros.findIndex(r=>r.id===bvModalActivo.id);if(idx>=0){bvRegistros[idx].nota_val=nota;bvRegistros[idx].validacion=new Date().toISOString();localStorage.setItem(BV_KEY,JSON.stringify(bvRegistros));mostrarToast('Validación guardada');bvCerrarModal()}}
-function bvCerrarModal(e){if(e&&e.target!==document.getElementById('bv-modal'))return;document.getElementById('bv-modal').style.display='none';bvRenderTimeline();bvRenderTablero()}
+function bvCerrarModal(e){if(e&&e.target!==document.getElementById('bv-modal'))return;document.getElementById('bv-modal').style.display='none';bvRenderTimeline();bvRenderTablero();if(document.getElementById('bv-panel-galeria')?.style.display!=='none')bvRenderGaleria()}
 
 let diagImagenB64=null,diagImagenFile=null
 
