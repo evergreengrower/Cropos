@@ -827,3 +827,40 @@ Respondé SOLO con este JSON:
     res.json({ ok: false, error: err.message })
   }
 })
+
+// ── KV Store: backup de datos de stock/secadero en Supabase ──────────────────
+// POST /api/store/:key  →  guarda { value: "..." } en tabla kv_store
+app.post('/api/store/:key', async (req, res) => {
+  const { key } = req.params
+  const { value } = req.body
+  if (!key || value === undefined) return res.json({ ok: false, error: 'key/value requeridos' })
+  try {
+    const { error } = await supabase
+      .from('kv_store')
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    if (error) throw error
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[kv store POST]', err.message)
+    res.json({ ok: false, error: err.message })
+  }
+})
+
+// GET /api/store-all?keys=k1,k2,...  →  devuelve { k1: "...", k2: "...", ... }
+app.get('/api/store-all', async (req, res) => {
+  const keys = (req.query.keys || '').split(',').filter(Boolean)
+  if (!keys.length) return res.json({ ok: false, error: 'keys requeridos' })
+  try {
+    const { data, error } = await supabase
+      .from('kv_store')
+      .select('key, value')
+      .in('key', keys)
+    if (error) throw error
+    const result = {}
+    ;(data || []).forEach(row => { result[row.key] = row.value })
+    res.json({ ok: true, data: result })
+  } catch (err) {
+    console.error('[kv store GET]', err.message)
+    res.json({ ok: false, error: err.message })
+  }
+})
