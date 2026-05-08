@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secado · CropOS</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* ── LAYOUT ────────────────────────────────────────────────── */
+    .sec-page { display:flex; flex-direction:column; min-height:100vh; }
+
+    .sec-topbar {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      padding:10px 18px; background:var(--bg2); position:sticky; top:0; z-index:20;
+    }
+    .sec-topbar::after {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,#7ecf6a55,#7ecf6aaa 50%,#7ecf6a55,transparent);
+    }
+    .sec-logo { display:flex; align-items:center; gap:9px; }
+    .sec-logo img { height:30px; filter:drop-shadow(0 0 8px rgba(126,207,106,.35)); }
+    .sec-logo-text { display:flex; flex-direction:column; }
+    .sec-logo-name { font-size:13px; font-weight:700; color:var(--text); }
+    .sec-logo-sub  { font-size:9px; color:var(--dim); font-family:var(--mono); letter-spacing:.06em; }
+
+    .sec-tabs { display:flex; gap:3px; flex:1; flex-wrap:wrap; }
+    .sec-tab {
+      width:auto; padding:7px 13px; font-size:11px; font-weight:600;
+      border-radius:8px; cursor:pointer; border:0.5px solid var(--border);
+      background:transparent; color:var(--muted); transition:all .15s;
+      font-family:var(--sans); position:relative;
+    }
+    .sec-tab:hover { color:var(--text); border-color:var(--border2); }
+    .sec-tab.on { background:#0d2318; color:var(--green); border-color:#1a5c32; }
+
+    .sec-back {
+      width:auto; padding:6px 12px; font-size:11px; background:transparent;
+      border:0.5px solid var(--border); color:var(--muted); border-radius:7px;
+      cursor:pointer; font-family:var(--sans);
+    }
+    .sec-back:hover { color:var(--text); border-color:var(--border2); }
+
+    .sec-content { flex:1; padding:18px; overflow-y:auto; }
+    .sec-panel { display:none; }
+    .sec-panel.on { display:block; }
+
+    /* ── TARJETAS ────────────────────────────────────────────── */
+    .sec-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:16px 18px; margin-bottom:14px;
+    }
+    .sec-card-title {
+      font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;
+      letter-spacing:.08em; margin-bottom:12px; display:flex; align-items:center; gap:8px;
+    }
+    .sec-card-title::after {
+      content:''; flex:1; height:1px;
+      background:linear-gradient(90deg,#1a3d2b,transparent);
+    }
+
+    /* ── KPIs ─────────────────────────────────────────────────── */
+    .sec-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px; }
+    .sec-kpi {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:14px 16px; position:relative; overflow:hidden;
+    }
+    .sec-kpi::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,#7ecf6a44,#7ecf6a88 50%,#7ecf6a44,transparent);
+    }
+    .sec-kpi-icon { font-size:20px; margin-bottom:5px; }
+    .sec-kpi-val { font-size:26px; font-weight:700; color:var(--green); font-family:var(--mono); }
+    .sec-kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:2px; }
+    .sec-kpi.warn .sec-kpi-val { color:#f0b429; }
+    .sec-kpi.red  .sec-kpi-val { color:#dc2626; }
+    .sec-kpi.blue .sec-kpi-val { color:#60a5fa; }
+
+    /* ── ALERTAS ──────────────────────────────────────────────── */
+    .sec-alerta {
+      border-radius:10px; padding:11px 14px; margin-bottom:8px;
+      display:flex; align-items:flex-start; gap:10px;
+    }
+    .sec-alerta.critico   { background:#1a0505; border:0.5px solid #5a1010; }
+    .sec-alerta.advertencia { background:#1a1200; border:0.5px solid #5a3e00; }
+    .sec-alerta.ok        { background:#0a2810; border:0.5px solid #1a5c32; }
+    .sec-alerta-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+    .sec-alerta-body { flex:1; min-width:0; }
+    .sec-alerta-titulo { font-size:12px; font-weight:700; }
+    .sec-alerta.critico   .sec-alerta-titulo { color:#dc2626; }
+    .sec-alerta.advertencia .sec-alerta-titulo { color:#f0b429; }
+    .sec-alerta.ok        .sec-alerta-titulo { color:#22c55e; }
+    .sec-alerta-desc { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.4; }
+    .sec-alerta-hora { font-size:9px; color:var(--dim); font-family:var(--mono); margin-top:4px; }
+
+    /* ── DISPOSITIVOS ─────────────────────────────────────────── */
+    .sec-disp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+    .sec-disp-card {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:10px;
+      padding:14px; display:flex; flex-direction:column; gap:8px;
+      transition:border-color .15s;
+    }
+    .sec-disp-card.encendido { border-color:#1a5c32; box-shadow:0 0 12px rgba(126,207,106,.08); }
+    .sec-disp-card.apagado   { border-color:#5a1010; }
+    .sec-disp-head { display:flex; align-items:center; gap:8px; }
+    .sec-disp-icon { font-size:22px; }
+    .sec-disp-nombre { font-size:12px; font-weight:700; color:var(--text); flex:1; }
+    .sec-disp-tipo { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+    .sec-disp-lectura {
+      font-size:22px; font-weight:700; color:var(--green); font-family:var(--mono); text-align:center;
+      background:#0a1a10; border-radius:7px; padding:8px;
+    }
+    .sec-disp-lectura.warn { color:#f0b429; }
+    .sec-disp-lectura.danger { color:#dc2626; }
+    .sec-disp-sub { font-size:9px; color:var(--muted); text-align:center; margin-top:-4px; }
+    .sec-switch {
+      display:flex; align-items:center; justify-content:space-between;
+      background:#0a1a10; border-radius:8px; padding:8px 12px;
+    }
+    .sec-switch-label { font-size:11px; color:var(--muted); }
+    .sec-switch-btn {
+      width:auto; padding:4px 14px; font-size:11px; border-radius:20px;
+      cursor:pointer; border:none; font-family:var(--sans); font-weight:700;
+      transition:all .2s;
+    }
+    .sec-switch-btn.on  { background:#1a5c32; color:#7ecf6a; }
+    .sec-switch-btn.off { background:#1a0505; color:#dc2626; }
+    .sec-disp-loading { font-size:10px; color:var(--muted); text-align:center; padding:4px; }
+
+    /* ── CALENDARIO DE SECADOS ────────────────────────────────── */
+    .sec-batch-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:14px;
+      padding:18px; margin-bottom:14px; position:relative; overflow:hidden;
+    }
+    .sec-batch-card.activo   { border-color:#1a5c32; }
+    .sec-batch-card.embolsado { border-color:#1a3a5a; }
+    .sec-batch-card.listo    { border-color:#1a5c32; opacity:.7; }
+    .sec-batch-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    }
+    .sec-batch-card.activo::before { background:linear-gradient(90deg,#7ecf6a,transparent); }
+    .sec-batch-card.embolsado::before { background:linear-gradient(90deg,#60a5fa,transparent); }
+    .sec-batch-card.listo::before { background:linear-gradient(90deg,#22c55e,transparent); }
+
+    .sec-batch-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+    .sec-batch-titulo { font-size:15px; font-weight:700; color:var(--text); }
+    .sec-batch-fecha  { font-size:10px; color:var(--muted); margin-top:3px; }
+
+    /* Progress timeline de días */
+    .sec-timeline { display:flex; gap:4px; margin:12px 0; }
+    .sec-day-block {
+      flex:1; border-radius:6px; padding:6px 4px; text-align:center; min-width:36px;
+      position:relative;
+    }
+    .sec-day-block.pasado   { background:#0a1a10; border:0.5px solid #1a5c32; }
+    .sec-day-block.hoy      { background:#1a5c32; border:0.5px solid #7ecf6a; box-shadow:0 0 10px rgba(126,207,106,.2); }
+    .sec-day-block.futuro   { background:#060f0a; border:0.5px solid #0a1a10; }
+    .sec-day-block.bolsa    { background:#050f1a; border:0.5px solid #1a3a5a; }
+    .sec-day-block.done     { background:#0a2810; border:0.5px solid #1a5c32; opacity:.6; }
+    .sec-day-num    { font-size:8px; color:var(--muted); font-family:var(--mono); }
+    .sec-day-icon   { font-size:14px; margin:2px 0; }
+    .sec-day-hr     { font-size:9px; color:var(--green); font-weight:700; }
+    .sec-day-block.hoy .sec-day-num,.sec-day-block.hoy .sec-day-hr { color:#fff; }
+    .sec-day-block.bolsa .sec-day-hr { color:#60a5fa; }
+
+    .sec-batch-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin-top:12px; }
+    .sec-meta-box { background:#060f0a; border-radius:7px; padding:8px 10px; text-align:center; }
+    .sec-meta-val { font-size:16px; font-weight:700; color:var(--green); font-family:var(--mono); }
+    .sec-meta-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+    /* Target HR indicator */
+    .sec-target-row { display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .sec-target-label { font-size:10px; color:var(--muted); white-space:nowrap; }
+    .sec-target-bar-wrap { flex:1; height:8px; background:#060f0a; border-radius:4px; position:relative; }
+    .sec-target-bar { height:100%; border-radius:4px; transition:width .5s; }
+    .sec-target-bar.ok    { background:linear-gradient(90deg,#1a5c32,#7ecf6a); }
+    .sec-target-bar.warn  { background:linear-gradient(90deg,#5a3e00,#f0b429); }
+    .sec-target-bar.danger{ background:linear-gradient(90deg,#5a1010,#dc2626); }
+    .sec-target-line { position:absolute; top:-3px; height:14px; width:2px; background:#7ecf6a; border-radius:1px; }
+    .sec-target-val { font-size:11px; font-family:var(--mono); font-weight:700; }
+    .sec-target-val.ok    { color:#7ecf6a; }
+    .sec-target-val.warn  { color:#f0b429; }
+    .sec-target-val.danger{ color:#dc2626; }
+
+    /* ── EMBOLSADO ────────────────────────────────────────────── */
+    .sec-bolsa-card {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:10px;
+      padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px;
+    }
+    .sec-bolsa-num { font-size:20px; font-weight:800; color:var(--muted); font-family:var(--mono); min-width:32px; }
+    .sec-bolsa-info { flex:1; min-width:0; }
+    .sec-bolsa-titulo { font-size:12px; font-weight:600; color:var(--text); }
+    .sec-bolsa-meta { font-size:10px; color:var(--muted); margin-top:2px; }
+    .sec-bolsa-peso {
+      font-size:18px; font-weight:700; font-family:var(--mono); text-align:right;
+      min-width:50px;
+    }
+    .sec-bolsa-peso.ok   { color:var(--green); }
+    .sec-bolsa-peso.warn { color:#f0b429; }
+    .sec-bolsa-peso.over { color:#dc2626; }
+
+    .sec-fase-badge {
+      display:inline-block; padding:3px 9px; border-radius:12px; font-size:9px; font-weight:700;
+      letter-spacing:.05em; text-transform:uppercase;
+    }
+    .sec-fase-secando   { background:#0a2810; color:#22c55e; border:0.5px solid #1a5c32; }
+    .sec-fase-abierta   { background:#050f1a; color:#60a5fa; border:0.5px solid #1a3a5a; }
+    .sec-fase-cerrada   { background:#1a0d00; color:#f97316; border:0.5px solid #5a2800; }
+    .sec-fase-lista     { background:#1a5c32; color:#fff; border:0.5px solid #7ecf6a; }
+
+    /* ── CÁMARA ───────────────────────────────────────────────── */
+    .sec-cam-wrap {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:12px;
+      overflow:hidden; aspect-ratio:16/9; display:flex; align-items:center;
+      justify-content:center; margin-bottom:12px;
+    }
+    .sec-cam-placeholder {
+      text-align:center; padding:30px; color:var(--muted); font-size:12px;
+    }
+    .sec-cam-placeholder .icon { font-size:48px; margin-bottom:10px; }
+
+    /* ── MODAL ────────────────────────────────────────────────── */
+    .sec-modal {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.88);
+      z-index:400; align-items:flex-end; justify-content:center;
+    }
+    .sec-modal.open { display:flex; }
+    .sec-modal-box {
+      background:#0a1a10; border-radius:16px 16px 0 0; padding:20px 20px 32px;
+      width:100%; max-width:600px; max-height:90vh; overflow-y:auto;
+      border-top:1px solid #1a5c32;
+    }
+    .sec-modal-title {
+      font-size:15px; font-weight:700; color:var(--text); margin-bottom:16px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .sec-close { background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer; width:auto; }
+    .sec-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; display:block; }
+    .sec-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .sec-form-grid .full { grid-column:1/-1; }
+    @media(max-width:600px){ .sec-form-grid { grid-template-columns:1fr; } }
+
+    /* ── BOTONES ──────────────────────────────────────────────── */
+    .btn-sm {
+      width:auto; padding:5px 10px; font-size:11px; border-radius:6px; cursor:pointer;
+      font-family:var(--sans); border:0.5px solid var(--border); background:transparent;
+      color:var(--muted);
+    }
+    .btn-sm:hover { color:var(--text); }
+    .btn-sm.verde  { background:#0a2810; color:#22c55e; border-color:#1a5c32; }
+    .btn-sm.verde:hover { box-shadow:0 0 8px rgba(34,197,94,.2); }
+    .btn-sm.rojo   { background:#1a0505; color:#dc2626; border-color:#5a1010; }
+    .btn-sm.azul   { background:#050f1a; color:#60a5fa; border-color:#1a3a5a; }
+    .btn-primary {
+      width:auto; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
+      border-radius:9px; background:#1a5c32; color:#fff; border:none; font-family:var(--sans);
+      transition:all .15s;
+    }
+    .btn-primary:hover { background:#22c55e; box-shadow:0 0 16px rgba(34,197,94,.3); }
+
+    /* ── TABLA ────────────────────────────────────────────────── */
+    .sec-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .sec-table th {
+      background:#060f0a; color:var(--muted); padding:8px 10px; text-align:left;
+      font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+      border-bottom:1px solid var(--border);
+    }
+    .sec-table td { padding:9px 10px; border-bottom:0.5px solid #0a1a10; vertical-align:middle; }
+    .sec-table tr:hover td { background:#0a1a10; }
+    .sec-table tr:last-child td { border-bottom:none; }
+
+    /* ── BADGE CONTADORES ─────────────────────────────────────── */
+    .tab-badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      background:#dc2626; color:#fff; border-radius:10px;
+      font-size:9px; font-weight:700; padding:1px 5px; margin-left:4px;
+      vertical-align:middle; min-width:16px;
+    }
+
+    /* ── AUTO-REFRESH INDICATOR ───────────────────────────────── */
+    .sec-refresh-dot {
+      width:7px; height:7px; border-radius:50%; background:#1a5c32; display:inline-block;
+      margin-right:5px;
+    }
+    .sec-refresh-dot.pulsing { animation:sec-pulse 1.5s ease-in-out infinite; background:#7ecf6a; }
+    @keyframes sec-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+    /* ── GRID 2 COLS ──────────────────────────────────────────── */
+    .sec-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    @media(max-width:700px){ .sec-grid2 { grid-template-columns:1fr; } }
+
+    /* ── GAUGE CIRCULAR VPD ───────────────────────────────────── */
+    .vpd-gauge { text-align:center; }
+    .vpd-gauge svg { width:90px; height:90px; }
+
+    /* ── HISTORIAL LECTURAS ───────────────────────────────────── */
+    .sec-lectura-row {
+      display:flex; align-items:center; gap:10px; padding:7px 0;
+      border-bottom:0.5px solid #0a1a10; font-size:11px;
+    }
+    .sec-lectura-hora { color:var(--muted); font-family:var(--mono); min-width:55px; font-size:10px; }
+    .sec-lectura-temp { color:#60a5fa; font-family:var(--mono); font-weight:700; min-width:55px; }
+    .sec-lectura-hr   { color:#7ecf6a; font-family:var(--mono); font-weight:700; min-width:55px; }
+    .sec-lectura-vpd  { color:var(--muted); font-family:var(--mono); min-width:55px; }
+    .sec-lectura-status { font-size:11px; }
+  </style>
+</head>
+<body>
+<div class="sec-page">
+
+  <!-- ── TOPBAR ──────────────────────────────────────────────────── -->
+  <div class="sec-topbar">
+    <div class="sec-logo">
+      <img src="/logo.png" alt="CropOS">
+      <div class="sec-logo-text">
+        <span class="sec-logo-name">🏭 Secado</span>
+        <span class="sec-logo-sub">CropOS · control de secadero</span>
+      </div>
+    </div>
+
+    <div class="sec-tabs">
+      <button class="sec-tab on" onclick="secTab('dashboard')" id="tab-dash">📊 Dashboard</button>
+      <button class="sec-tab"   onclick="secTab('secados')"   id="tab-secados">📅 Secados</button>
+      <button class="sec-tab"   onclick="secTab('embolsado')" id="tab-embolsado">📦 Embolsado</button>
+      <button class="sec-tab"   onclick="secTab('alertas')"   id="tab-alertas">🚨 Alertas</button>
+      <button class="sec-tab"   onclick="secTab('camara')"    id="tab-camara">📷 Cámara</button>
+      <button class="sec-tab"   onclick="secTab('dispositivos')">⚙️ Dispositivos</button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+      <span id="sec-auto-dot" class="sec-refresh-dot" title="Actualización automática"></span>
+      <span id="sec-ultima-lec" style="font-size:9px;color:var(--dim);font-family:var(--mono)">Sin datos</span>
+      <button onclick="leerSensores(true)" class="btn-sm" title="Actualizar ahora" style="font-size:12px">🔄</button>
+      <button onclick="location.href='/index.html'" class="sec-back">🏠</button>
+    </div>
+  </div>
+
+  <!-- ── CONTENIDO ─────────────────────────────────────────────── -->
+  <div class="sec-content">
+
+    <!-- ══ DASHBOARD ════════════════════════════════════════════ -->
+    <div class="sec-panel on" id="panel-dashboard">
+
+      <!-- KPIs live -->
+      <div class="sec-kpi-row">
+        <div class="sec-kpi" id="kpi-temp">
+          <div class="sec-kpi-icon">🌡</div>
+          <div class="sec-kpi-val" id="kpi-temp-val">—</div>
+          <div class="sec-kpi-label">Temperatura (°C)</div>
+        </div>
+        <div class="sec-kpi" id="kpi-hr">
+          <div class="sec-kpi-icon">💧</div>
+          <div class="sec-kpi-val" id="kpi-hr-val">—</div>
+          <div class="sec-kpi-label">Humedad relativa (%)</div>
+        </div>
+        <div class="sec-kpi" id="kpi-vpd">
+          <div class="sec-kpi-icon">🌬</div>
+          <div class="sec-kpi-val" id="kpi-vpd-val">—</div>
+          <div class="sec-kpi-label">VPD (kPa)</div>
+        </div>
+        <div class="sec-kpi" id="kpi-secados">
+          <div class="sec-kpi-icon">📅</div>
+          <div class="sec-kpi-val" id="kpi-secados-val">0</div>
+          <div class="sec-kpi-label">Lotes en secado</div>
+        </div>
+        <div class="sec-kpi" id="kpi-bolsas">
+          <div class="sec-kpi-icon">📦</div>
+          <div class="sec-kpi-val" id="kpi-bolsas-val">0</div>
+          <div class="sec-kpi-label">Bolsas activas</div>
+        </div>
+        <div class="sec-kpi red" id="kpi-alertas" style="display:none">
+          <div class="sec-kpi-icon">🚨</div>
+          <div class="sec-kpi-val" id="kpi-alertas-val">0</div>
+          <div class="sec-kpi-label">Alertas activas</div>
+        </div>
+      </div>
+
+      <div class="sec-grid2">
+
+        <!-- Alertas vivas -->
+        <div class="sec-card">
+          <div class="sec-card-title">🚨 Estado del secadero</div>
+          <div id="dash-estado-secadero">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">
+              Sin sensor configurado.<br>
+              <button class="btn-primary" style="margin-top:8px;font-size:11px;padding:6px 14px" onclick="secTab('dispositivos')">Agregar sensor</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controles rápidos de dispositivos -->
+        <div class="sec-card">
+          <div class="sec-card-title">⚡ Control rápido</div>
+          <div id="dash-controles">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">
+              Sin dispositivos configurados.<br>
+              <button class="btn-primary" style="margin-top:8px;font-size:11px;padding:6px 14px" onclick="secTab('dispositivos')">Configurar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lotes activos resumen -->
+        <div class="sec-card">
+          <div class="sec-card-title">📅 Lotes en secado activo</div>
+          <div id="dash-lotes-activos">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">
+              Sin lotes activos.<br>
+              <button class="btn-primary" style="margin-top:8px;font-size:11px;padding:6px 14px" onclick="abrirModalSecado()">+ Nuevo secado</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial de lecturas últimas 10 -->
+        <div class="sec-card">
+          <div class="sec-card-title">📈 Últimas lecturas</div>
+          <div id="dash-historial-lecturas">
+            <div style="color:var(--muted);font-size:11px;text-align:center;padding:15px 0">Sin lecturas aún</div>
+          </div>
+        </div>
+
+      </div><!-- /grid2 -->
+
+      <!-- Dispositivos del secadero (panel completo) -->
+      <div class="sec-card" style="margin-top:4px">
+        <div class="sec-card-title">🔌 Todos los dispositivos</div>
+        <div class="sec-disp-grid" id="dash-todos-disp">
+          <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0;grid-column:1/-1">
+            Sin dispositivos · <button class="btn-sm" onclick="secTab('dispositivos')" style="display:inline">Configurar →</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-dashboard -->
+
+    <!-- ══ SECADOS ACTIVOS ═══════════════════════════════════════ -->
+    <div class="sec-panel" id="panel-secados">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">📅 Calendario de secado</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            Progresión: Día 1 → 65% HR · Días 2-5 → 55% HR · Temp ideal 17°C · Cosecha 2 camellones/día
+          </div>
+        </div>
+        <button class="btn-primary" onclick="abrirModalSecado()">+ Nuevo lote de secado</button>
+      </div>
+      <div id="lista-secados">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">
+          Sin lotes de secado registrados.<br>Cuando coseches, registrá el inicio del secado.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ EMBOLSADO ════════════════════════════════════════════ -->
+    <div class="sec-panel" id="panel-embolsado">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">📦 Gestión de bolsas</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Máx 3 kg/bolsa · 1 día abierta → 24hs cerrada → lista</div>
+        </div>
+        <div style="display:flex;gap:7px">
+          <button class="btn-primary" onclick="abrirModalBolsa()">+ Nueva bolsa</button>
+          <select id="fil-bolsa-secado" onchange="renderEmbolsado()" style="font-size:11px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+            <option value="">Todos los lotes</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Resumen por fases -->
+      <div class="sec-kpi-row" style="margin-bottom:16px">
+        <div class="sec-kpi blue">
+          <div class="sec-kpi-icon">🔄</div>
+          <div class="sec-kpi-val" id="emb-secando">0</div>
+          <div class="sec-kpi-label">Secando</div>
+        </div>
+        <div class="sec-kpi">
+          <div class="sec-kpi-icon">📦</div>
+          <div class="sec-kpi-val" id="emb-abierta">0</div>
+          <div class="sec-kpi-label">Bolsa abierta</div>
+        </div>
+        <div class="sec-kpi warn">
+          <div class="sec-kpi-icon">🔒</div>
+          <div class="sec-kpi-val" id="emb-cerrada">0</div>
+          <div class="sec-kpi-label">Bolsa cerrada 24hs</div>
+        </div>
+        <div class="sec-kpi">
+          <div class="sec-kpi-icon">✅</div>
+          <div class="sec-kpi-val" id="emb-lista">0</div>
+          <div class="sec-kpi-label">Listas</div>
+        </div>
+        <div class="sec-kpi">
+          <div class="sec-kpi-icon">⚖️</div>
+          <div class="sec-kpi-val" id="emb-kg-total">0 kg</div>
+          <div class="sec-kpi-label">Peso total</div>
+        </div>
+      </div>
+
+      <div id="lista-bolsas">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin bolsas registradas.</div>
+      </div>
+    </div>
+
+    <!-- ══ ALERTAS ═══════════════════════════════════════════════ -->
+    <div class="sec-panel" id="panel-alertas">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">🚨 Historial de alertas</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Alertas automáticas por desviación de parámetros ideales</div>
+        </div>
+        <button class="btn-sm rojo" onclick="limpiarAlertas()">🗑 Limpiar</button>
+      </div>
+
+      <!-- Parámetros ideales por día -->
+      <div class="sec-card" style="margin-bottom:14px">
+        <div class="sec-card-title">🎯 Parámetros ideales</div>
+        <div class="sec-table" style="overflow-x:auto">
+          <table class="sec-table">
+            <thead>
+              <tr>
+                <th>Día</th><th>Temp ideal</th><th>HR target</th><th>HR min</th><th>HR max</th><th>Observación</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="font-family:var(--mono);color:var(--green)">Día 1</td><td>17°C</td><td style="color:#60a5fa">65%</td><td>60%</td><td>70%</td><td style="color:var(--muted)">Inicio de secado — HR alta controlada</td></tr>
+              <tr><td style="font-family:var(--mono);color:var(--green)">Días 2-5</td><td>17°C</td><td style="color:#60a5fa">55%</td><td>50%</td><td>60%</td><td style="color:var(--muted)">Secado progresivo — bajar HR gradualmente</td></tr>
+              <tr><td style="font-family:var(--mono);color:var(--green)">Día 6</td><td>17°C</td><td style="color:#f0b429">—</td><td>—</td><td>—</td><td style="color:var(--muted)">Embolsado abierto — revisar cogollos</td></tr>
+              <tr><td style="font-family:var(--mono);color:var(--green)">Día 7</td><td>17°C</td><td style="color:#f0b429">—</td><td>—</td><td>—</td><td style="color:var(--muted)">Bolsa cerrada 24hs — curing inicial</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="lista-alertas">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin alertas registradas</div>
+      </div>
+    </div>
+
+    <!-- ══ CÁMARA ════════════════════════════════════════════════ -->
+    <div class="sec-panel" id="panel-camara">
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">📷 Cámara del secadero</div>
+
+      <div class="sec-cam-wrap" id="cam-contenedor">
+        <div class="sec-cam-placeholder">
+          <div class="icon">📷</div>
+          <div>Sin cámara configurada</div>
+          <div style="font-size:10px;margin-top:5px;color:var(--dim)">Configurá la URL de stream en el panel Dispositivos</div>
+          <button class="btn-primary" style="margin-top:12px;font-size:11px" onclick="secTab('dispositivos')">Configurar cámara</button>
+        </div>
+      </div>
+
+      <div class="sec-card">
+        <div class="sec-card-title">⚙️ Configuración de cámara</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+          Para ver la cámara Smartlife en esta pantalla, configurá la URL de stream MJPEG de tu cámara
+          (disponible en la configuración avanzada de Smartlife / Tuya).
+        </div>
+        <label class="sec-label">URL de stream (MJPEG / HTTP)</label>
+        <input type="text" id="cam-url-input" placeholder="http://192.168.1.100:8080/?action=stream" style="margin-bottom:10px">
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" style="font-size:11px;padding:7px 16px" onclick="guardarCamUrl()">Conectar</button>
+          <button class="btn-sm" onclick="abrirSmartlife()">📱 Abrir Smartlife</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DISPOSITIVOS ══════════════════════════════════════════ -->
+    <div class="sec-panel" id="panel-dispositivos">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">⚙️ Dispositivos del secadero</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Sensores, interruptores wifi y cámara Smartlife</div>
+        </div>
+        <button class="btn-primary" onclick="abrirModalDispositivo()">+ Agregar dispositivo</button>
+      </div>
+
+      <!-- Tipos guía -->
+      <div class="sec-card" style="margin-bottom:14px">
+        <div class="sec-card-title">📋 Tu configuración actual</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted)">
+          <span style="background:#060f0a;border:0.5px solid var(--border);border-radius:7px;padding:5px 10px">3 × Deshumidificador 20L/día</span>
+          <span style="background:#060f0a;border:0.5px solid var(--border);border-radius:7px;padding:5px 10px">2 × Aire acondicionado</span>
+          <span style="background:#060f0a;border:0.5px solid var(--border);border-radius:7px;padding:5px 10px">3 × Ventilador</span>
+          <span style="background:#060f0a;border:0.5px solid var(--border);border-radius:7px;padding:5px 10px">2 × Extractor 2300m³/h</span>
+          <span style="background:#060f0a;border:0.5px solid var(--border);border-radius:7px;padding:5px 10px">1 × Termohigrómetro Smartlife</span>
+          <span style="background:#060f0a;border:0.5px solid var(--border);border-radius:7px;padding:5px 10px">1 × Cámara</span>
+        </div>
+      </div>
+
+      <div class="sec-disp-grid" id="lista-dispositivos">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0;grid-column:1/-1">
+          Sin dispositivos. Agregá el ID de cada dispositivo Smartlife.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sec-content -->
+</div><!-- /sec-page -->
+
+
+<!-- ══ MODAL NUEVO SECADO ════════════════════════════════════════ -->
+<div class="sec-modal" id="modal-secado">
+  <div class="sec-modal-box">
+    <div class="sec-modal-title">
+      <span id="modal-sec-titulo">Nuevo lote de secado</span>
+      <button class="sec-close" onclick="cerrarModal('modal-secado')">✕</button>
+    </div>
+    <input type="hidden" id="sec-id">
+    <div class="sec-form-grid">
+      <div>
+        <label class="sec-label">Fecha de cosecha *</label>
+        <input type="date" id="sec-fecha">
+      </div>
+      <div>
+        <label class="sec-label">Camellones cosechados</label>
+        <input type="text" id="sec-camellones" placeholder="Ej: 1 y 2, o 5-6">
+      </div>
+      <div>
+        <label class="sec-label">Bandejas (cantidad)</label>
+        <input type="number" id="sec-bandejas" placeholder="Ej: 24" min="1">
+      </div>
+      <div>
+        <label class="sec-label">Kg estimados húmedos</label>
+        <input type="number" id="sec-kg-est" placeholder="Ej: 60" step="0.1" min="0">
+      </div>
+      <div class="full">
+        <label class="sec-label">Observaciones</label>
+        <textarea id="sec-obs" style="min-height:60px" placeholder="Estado del cultivo, observaciones de cosecha..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-secado')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarSecado()">Iniciar secado</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL NUEVA BOLSA ══════════════════════════════════════ -->
+<div class="sec-modal" id="modal-bolsa">
+  <div class="sec-modal-box">
+    <div class="sec-modal-title">
+      <span>Nueva bolsa de embolsado</span>
+      <button class="sec-close" onclick="cerrarModal('modal-bolsa')">✕</button>
+    </div>
+    <input type="hidden" id="bolsa-id">
+    <div class="sec-form-grid">
+      <div class="full">
+        <label class="sec-label">Lote de secado *</label>
+        <select id="bolsa-secado-id"></select>
+      </div>
+      <div>
+        <label class="sec-label">N° de bolsa</label>
+        <input type="number" id="bolsa-numero" placeholder="1" min="1">
+      </div>
+      <div>
+        <label class="sec-label">Peso (kg) — Máx 3 kg</label>
+        <input type="number" id="bolsa-peso" placeholder="2.5" step="0.01" min="0.1" max="3.5">
+      </div>
+      <div>
+        <label class="sec-label">Fecha embolsado</label>
+        <input type="date" id="bolsa-fecha">
+      </div>
+      <div>
+        <label class="sec-label">Fase actual</label>
+        <select id="bolsa-fase">
+          <option value="secando">Secando en bandeja</option>
+          <option value="abierta">Bolsa abierta</option>
+          <option value="cerrada">Bolsa cerrada 24hs</option>
+          <option value="lista">Lista</option>
+        </select>
+      </div>
+      <div class="full">
+        <label class="sec-label">Notas</label>
+        <input type="text" id="bolsa-notas" placeholder="Variedad, observaciones...">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-bolsa')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarBolsa()">Guardar bolsa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DISPOSITIVO ══════════════════════════════════════════ -->
+<div class="sec-modal" id="modal-dispositivo">
+  <div class="sec-modal-box">
+    <div class="sec-modal-title">
+      <span id="modal-disp-titulo">Agregar dispositivo</span>
+      <button class="sec-close" onclick="cerrarModal('modal-dispositivo')">✕</button>
+    </div>
+    <input type="hidden" id="disp-id">
+    <div class="sec-form-grid">
+      <div class="full">
+        <label class="sec-label">Nombre del dispositivo *</label>
+        <input type="text" id="disp-nombre" placeholder="Ej: Deshumidificador 1, AC Sur, Sensor Sala">
+      </div>
+      <div class="full">
+        <label class="sec-label">Tipo *</label>
+        <select id="disp-tipo" onchange="dispTipoChange()">
+          <option value="">Seleccionar...</option>
+          <option value="sensor_th">🌡 Termohigrómetro (sensor temp+HR)</option>
+          <option value="switch_deshum">💧 Interruptor — Deshumidificador</option>
+          <option value="switch_ac">❄️ Interruptor — Aire acondicionado</option>
+          <option value="switch_fan">🌀 Interruptor — Ventilador</option>
+          <option value="switch_extractor">💨 Interruptor — Extractor</option>
+          <option value="camara">📷 Cámara</option>
+        </select>
+      </div>
+      <div class="full">
+        <label class="sec-label">Device ID (Smartlife / Tuya)</label>
+        <input type="text" id="disp-device-id" placeholder="Ej: eb65b1c57e5cdf703ejvmj">
+        <div style="font-size:10px;color:var(--dim);margin-top:4px">
+          Encontrá el Device ID en la app Smartlife: Dispositivo → ... → Información del dispositivo
+        </div>
+      </div>
+      <div id="disp-cam-url-wrap" style="display:none" class="full">
+        <label class="sec-label">URL de stream (cámara)</label>
+        <input type="text" id="disp-cam-url" placeholder="http://192.168.1.x:8080/?action=stream">
+      </div>
+      <div>
+        <label class="sec-label">Capacidad / Potencia</label>
+        <input type="text" id="disp-capacidad" placeholder="Ej: 20L/día, 12000BTU, 2300m³/h">
+      </div>
+      <div>
+        <label class="sec-label">Ubicación</label>
+        <input type="text" id="disp-ubicacion" placeholder="Ej: Norte, Centro, Entrada">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-dispositivo')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarDispositivo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// STORAGE
+// ════════════════════════════════════════════════════════════════
+const LS = {
+  get: (k, def=[]) => { try{ return JSON.parse(localStorage.getItem('sec_'+k)) ?? def }catch(e){return def} },
+  set: (k,v) => localStorage.setItem('sec_'+k, JSON.stringify(v))
+}
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6) }
+function hoy(){ return new Date().toISOString().slice(0,10) }
+function fmtFecha(d){ if(!d)return'—'; const [y,m,dd]=d.slice(0,10).split('-'); return `${dd}/${m}/${y}` }
+function fmtHora(iso){ if(!iso)return'—'; return new Date(iso).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) }
+function diffDias(desde){ return Math.floor((Date.now()-new Date(desde).getTime())/86400000)+1 }
+
+function getDisp()   { return LS.get('dispositivos') }
+function getSecados(){ return LS.get('secados') }
+function getBolsas() { return LS.get('bolsas') }
+function getAlertas(){ return LS.get('alertas') }
+function getLecturas(){ return LS.get('lecturas') }
+function saveDisp(d)    { LS.set('dispositivos',d) }
+function saveSecados(d) { LS.set('secados',d) }
+function saveBolsas(d)  { LS.set('bolsas',d) }
+function saveAlertas(d) { LS.set('alertas',d) }
+function saveLecturas(d){ LS.set('lecturas',d) }
+
+// ════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════
+const TABS = ['dashboard','secados','embolsado','alertas','camara','dispositivos']
+
+function secTab(name){
+  TABS.forEach(t=>{
+    document.getElementById('panel-'+t).classList.toggle('on', t===name)
+  })
+  document.querySelectorAll('.sec-tab').forEach((btn,i)=>{
+    btn.classList.toggle('on', TABS[i]===name)
+  })
+  if(name==='dashboard')   renderDashboard()
+  if(name==='secados')     renderSecados()
+  if(name==='embolsado')   renderEmbolsado()
+  if(name==='alertas')     renderAlertas()
+  if(name==='camara')      renderCamara()
+  if(name==='dispositivos') renderDispositivos()
+}
+
+// ════════════════════════════════════════════════════════════════
+// MODALES
+// ════════════════════════════════════════════════════════════════
+function cerrarModal(id){ document.getElementById(id).classList.remove('open') }
+document.querySelectorAll('.sec-modal').forEach(m=>
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open') })
+)
+
+// ════════════════════════════════════════════════════════════════
+// PARÁMETROS IDEALES DE SECADO
+// ════════════════════════════════════════════════════════════════
+const SECADO_PARAMS = {
+  temp_ideal:  17,
+  temp_max:    19,
+  temp_min:    15,
+  temp_warn_max: 18,
+  temp_warn_min: 16,
+  // Por día
+  dia: {
+    1: { hr_target:65, hr_max:70, hr_min:60, hr_warn_max:68, hr_warn_min:62 },
+    // Días 2-5:
+    default: { hr_target:55, hr_max:62, hr_min:48, hr_warn_max:59, hr_warn_min:51 }
+  }
+}
+
+function paramsParaDia(dia){
+  return SECADO_PARAMS.dia[dia] || SECADO_PARAMS.dia.default
+}
+
+// ════════════════════════════════════════════════════════════════
+// LECTURA DE SENSORES (Tuya API)
+// ════════════════════════════════════════════════════════════════
+let ultimaLectura = null
+let autoRefreshTimer = null
+
+async function leerSensores(manual=false){
+  const sensores = getDisp().filter(d=>d.tipo==='sensor_th' && d.device_id)
+  if(!sensores.length) return
+
+  const dot = document.getElementById('sec-auto-dot')
+  if(dot) dot.classList.add('pulsing')
+
+  for(const sensor of sensores){
+    try{
+      const resp = await fetch(`/smartlife-sensor?device_id=${sensor.device_id}`)
+      const data = await resp.json()
+      if(data.ok && data.temperatura !== undefined){
+        const temp = parseFloat(data.temperatura.toFixed(1))
+        const hr   = parseFloat(data.humedad.toFixed(1))
+        const vpd  = data.vpd || calcVPD(temp, hr)
+        const lectura = { fecha:new Date().toISOString(), temp, hr, vpd, device_id:sensor.device_id, nombre:sensor.nombre }
+        ultimaLectura = lectura
+
+        // Guardar en historial (máx 100)
+        const lecturas = getLecturas()
+        lecturas.unshift(lectura)
+        if(lecturas.length > 100) lecturas.length = 100
+        saveLecturas(lecturas)
+
+        // Actualizar KPIs
+        actualizarKPIsLive(temp, hr, vpd)
+
+        // Generar alertas automáticas
+        generarAlertasSensor(temp, hr, lectura.fecha)
+
+        // Actualizar último timestamp
+        const el = document.getElementById('sec-ultima-lec')
+        if(el) el.textContent = fmtHora(lectura.fecha)
+      }
+    }catch(e){
+      console.warn('[sensor]',e)
+    }
+  }
+
+  if(dot) dot.classList.remove('pulsing')
+  renderDashboard()
+}
+
+function calcVPD(temp, hr){
+  const svp = 0.6108 * Math.exp(17.27 * temp / (temp + 237.3))
+  const avp = svp * (hr / 100)
+  return parseFloat((svp - avp).toFixed(3))
+}
+
+function iniciarAutoRefresh(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer)
+  leerSensores()
+  autoRefreshTimer = setInterval(()=> leerSensores(), 120000) // cada 2 min
+}
+
+function actualizarKPIsLive(temp, hr, vpd){
+  const tempEl = document.getElementById('kpi-temp-val')
+  const hrEl   = document.getElementById('kpi-hr-val')
+  const vpdEl  = document.getElementById('kpi-vpd-val')
+  const kpiTemp= document.getElementById('kpi-temp')
+  const kpiHR  = document.getElementById('kpi-hr')
+
+  if(tempEl){ tempEl.textContent = temp+'°' }
+  if(hrEl)  { hrEl.textContent   = hr+'%' }
+  if(vpdEl) { vpdEl.textContent  = vpd }
+
+  // Color según parámetros
+  if(kpiTemp){
+    kpiTemp.className = 'sec-kpi'
+    if(temp > SECADO_PARAMS.temp_max || temp < SECADO_PARAMS.temp_min) kpiTemp.classList.add('red')
+    else if(temp > SECADO_PARAMS.temp_warn_max || temp < SECADO_PARAMS.temp_warn_min) kpiTemp.classList.add('warn')
+  }
+  if(kpiHR){
+    // Color según día promedio de secados activos
+    const secados = getSecados().filter(s=>s.fase==='secando')
+    const diasPromedio = secados.length ? Math.round(secados.reduce((acc,s)=>acc+diffDias(s.fecha_cosecha),0)/secados.length) : 1
+    const params = paramsParaDia(diasPromedio)
+    kpiHR.className = 'sec-kpi'
+    if(hr > params.hr_max || hr < params.hr_min) kpiHR.classList.add('red')
+    else if(hr > params.hr_warn_max || hr < params.hr_warn_min) kpiHR.classList.add('warn')
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// GENERACIÓN DE ALERTAS AUTOMÁTICAS
+// ════════════════════════════════════════════════════════════════
+let alertasRecientes = new Set() // para evitar duplicados en el mismo ciclo
+
+function generarAlertasSensor(temp, hr, fecha){
+  const alertas  = getAlertas()
+  const secados  = getSecados().filter(s=>s.fase==='secando')
+  const nuevas   = []
+
+  // ── Temperatura ──
+  if(temp > SECADO_PARAMS.temp_max){
+    nuevas.push({ id:genId(), fecha, nivel:'critico', icono:'🔴',
+      titulo: `Temperatura crítica: ${temp}°C`,
+      desc: `Supera los ${SECADO_PARAMS.temp_max}°C máx permitidos. Activar AC urgente. Terpenos en riesgo.`,
+      tipo:'temp', valor:temp, target:SECADO_PARAMS.temp_ideal })
+  } else if(temp > SECADO_PARAMS.temp_warn_max){
+    nuevas.push({ id:genId(), fecha, nivel:'advertencia', icono:'🟡',
+      titulo: `Temperatura elevada: ${temp}°C`,
+      desc: `Por encima del ideal de 17°C. Verificar ventilación y AC.`,
+      tipo:'temp', valor:temp, target:SECADO_PARAMS.temp_ideal })
+  } else if(temp < SECADO_PARAMS.temp_min){
+    nuevas.push({ id:genId(), fecha, nivel:'critico', icono:'🔴',
+      titulo: `Temperatura baja: ${temp}°C`,
+      desc: `Bajo el mínimo de ${SECADO_PARAMS.temp_min}°C. El secado se frena. Riesgo de condensación.`,
+      tipo:'temp', valor:temp, target:SECADO_PARAMS.temp_ideal })
+  } else if(temp < SECADO_PARAMS.temp_warn_min){
+    nuevas.push({ id:genId(), fecha, nivel:'advertencia', icono:'🟡',
+      titulo: `Temperatura baja: ${temp}°C`,
+      desc: `Ligeramente bajo el ideal. Monitorear cada 30 minutos.`,
+      tipo:'temp', valor:temp, target:SECADO_PARAMS.temp_ideal })
+  }
+
+  // ── Humedad por lote ──
+  if(secados.length){
+    const diaPromedio = Math.round(secados.reduce((acc,s)=>acc+diffDias(s.fecha_cosecha),0)/secados.length)
+    const params = paramsParaDia(Math.min(diaPromedio, 2))
+    const camellones = secados.map(s=>s.camellones).join(', ')
+
+    if(hr > params.hr_max){
+      nuevas.push({ id:genId(), fecha, nivel:'critico', icono:'🔴',
+        titulo: `HR crítica: ${hr}% (máx ${params.hr_max}%)`,
+        desc: `Lotes ${camellones} · Día ${diaPromedio} de secado. HR muy alta — Riesgo de Botrytis en las bandejas. Activar deshumidificadores al máximo.`,
+        tipo:'hr', valor:hr, target:params.hr_target })
+    } else if(hr > params.hr_warn_max){
+      nuevas.push({ id:genId(), fecha, nivel:'advertencia', icono:'🟡',
+        titulo: `HR elevada: ${hr}% (target ${params.hr_target}%)`,
+        desc: `Lotes ${camellones} · Día ${diaPromedio}. Verificar deshumidificadores.`,
+        tipo:'hr', valor:hr, target:params.hr_target })
+    } else if(hr < params.hr_min){
+      nuevas.push({ id:genId(), fecha, nivel:'critico', icono:'🔴',
+        titulo: `HR baja: ${hr}% (mín ${params.hr_min}%)`,
+        desc: `Lotes ${camellones} · Día ${diaPromedio}. Secado muy rápido — riesgo de sobre-secado y pérdida de terpenos.`,
+        tipo:'hr', valor:hr, target:params.hr_target })
+    } else if(hr < params.hr_warn_min){
+      nuevas.push({ id:genId(), fecha, nivel:'advertencia', icono:'🟡',
+        titulo: `HR algo baja: ${hr}% (target ${params.hr_target}%)`,
+        desc: `Lotes ${camellones} · Día ${diaPromedio}. Monitoreá la velocidad de secado.`,
+        tipo:'hr', valor:hr, target:params.hr_target })
+    }
+  }
+
+  // Verificar si hay bolsas en embolsado cerrado pasadas las 24hs
+  const bolsas = getBolsas()
+  bolsas.filter(b=>b.fase==='cerrada').forEach(b=>{
+    const hs = (Date.now() - new Date(b.fecha_cerrado||b.fecha).getTime()) / 3600000
+    if(hs >= 24){
+      nuevas.push({ id:genId(), fecha, nivel:'ok', icono:'✅',
+        titulo: `Bolsa #${b.numero} lista — 24hs completadas`,
+        desc: `La bolsa #${b.numero} (${b.peso_kg}kg) completó el curing. Revisá y marcá como lista.`,
+        tipo:'bolsa', bolsa_id:b.id })
+    }
+  })
+
+  if(nuevas.length){
+    saveAlertas([...nuevas, ...alertas].slice(0,200))
+    actualizarBadgeAlertas()
+  }
+}
+
+function actualizarBadgeAlertas(){
+  const alertas = getAlertas()
+  const criticas = alertas.filter(a=>a.nivel==='critico').length
+  const tab = document.getElementById('tab-alertas')
+  const kpi = document.getElementById('kpi-alertas')
+  const kpiVal = document.getElementById('kpi-alertas-val')
+  if(!tab) return
+  const existing = tab.querySelector('.tab-badge')
+  if(existing) existing.remove()
+  if(criticas > 0){
+    tab.insertAdjacentHTML('beforeend',`<span class="tab-badge">${criticas}</span>`)
+    if(kpi){ kpi.style.display=''; kpiVal.textContent=criticas }
+  } else {
+    if(kpi) kpi.style.display='none'
+  }
+}
+
+function limpiarAlertas(){
+  if(!confirm('¿Limpiar historial de alertas?')) return
+  saveAlertas([])
+  actualizarBadgeAlertas()
+  renderAlertas()
+}
+
+// ════════════════════════════════════════════════════════════════
+// CONTROL DE INTERRUPTORES (Tuya switch)
+// ════════════════════════════════════════════════════════════════
+const estadoSwitches = {} // device_id → true/false
+
+async function toggleSwitch(dispId, deviceId, btn){
+  const estado = estadoSwitches[deviceId]
+  const encender = !estado
+  btn.textContent = '...'
+  btn.disabled = true
+
+  try{
+    const resp = await fetch('/smartlife-switch', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ device_id: deviceId, encender })
+    })
+    const data = await resp.json()
+    if(data.ok){
+      estadoSwitches[deviceId] = encender
+      actualizarBtnSwitch(btn, encender)
+      // Actualizar estado visual de la tarjeta
+      const card = btn.closest('.sec-disp-card')
+      if(card){
+        card.classList.toggle('encendido', encender)
+        card.classList.toggle('apagado', !encender)
+      }
+    } else {
+      btn.textContent = 'Error'
+      setTimeout(()=> actualizarBtnSwitch(btn, estado), 1500)
+    }
+  }catch(e){
+    btn.textContent = 'Error'
+    setTimeout(()=> actualizarBtnSwitch(btn, estado), 1500)
+  }
+  btn.disabled = false
+}
+
+function actualizarBtnSwitch(btn, on){
+  btn.textContent = on ? 'ON' : 'OFF'
+  btn.className = 'sec-switch-btn ' + (on ? 'on' : 'off')
+}
+
+// ════════════════════════════════════════════════════════════════
+// DISPOSITIVOS
+// ════════════════════════════════════════════════════════════════
+const TIPO_ICON = {
+  sensor_th:       '🌡',
+  switch_deshum:   '💧',
+  switch_ac:       '❄️',
+  switch_fan:      '🌀',
+  switch_extractor:'💨',
+  camara:          '📷'
+}
+const TIPO_LABEL = {
+  sensor_th:       'Sensor temp+HR',
+  switch_deshum:   'Deshumidificador',
+  switch_ac:       'Aire acondicionado',
+  switch_fan:      'Ventilador',
+  switch_extractor:'Extractor',
+  camara:          'Cámara'
+}
+
+function abrirModalDispositivo(id=null){
+  const d = id ? getDisp().find(x=>x.id===id) : null
+  document.getElementById('modal-disp-titulo').textContent = id ? 'Editar dispositivo' : 'Agregar dispositivo'
+  document.getElementById('disp-id').value          = d?.id || ''
+  document.getElementById('disp-nombre').value      = d?.nombre || ''
+  document.getElementById('disp-tipo').value        = d?.tipo || ''
+  document.getElementById('disp-device-id').value   = d?.device_id || ''
+  document.getElementById('disp-cam-url').value     = d?.cam_url || ''
+  document.getElementById('disp-capacidad').value   = d?.capacidad || ''
+  document.getElementById('disp-ubicacion').value   = d?.ubicacion || ''
+  dispTipoChange()
+  document.getElementById('modal-dispositivo').classList.add('open')
+}
+
+function dispTipoChange(){
+  const tipo = document.getElementById('disp-tipo').value
+  document.getElementById('disp-cam-url-wrap').style.display = tipo==='camara' ? '' : 'none'
+}
+
+function guardarDispositivo(){
+  const nombre = document.getElementById('disp-nombre').value.trim()
+  const tipo   = document.getElementById('disp-tipo').value
+  if(!nombre || !tipo){ alert('Completá nombre y tipo'); return }
+  const id = document.getElementById('disp-id').value || genId()
+  const all = getDisp().filter(x=>x.id!==id)
+  all.push({
+    id, nombre, tipo,
+    device_id:  document.getElementById('disp-device-id').value.trim(),
+    cam_url:    document.getElementById('disp-cam-url').value.trim(),
+    capacidad:  document.getElementById('disp-capacidad').value.trim(),
+    ubicacion:  document.getElementById('disp-ubicacion').value.trim()
+  })
+  saveDisp(all)
+  cerrarModal('modal-dispositivo')
+  renderDispositivos()
+  renderDashboard()
+  // Si se agregó sensor, iniciar refresh
+  if(tipo==='sensor_th') iniciarAutoRefresh()
+}
+
+function eliminarDispositivo(id){
+  if(!confirm('¿Eliminar este dispositivo?')) return
+  saveDisp(getDisp().filter(x=>x.id!==id))
+  renderDispositivos()
+  renderDashboard()
+}
+
+function renderDispositivos(){
+  const disps = getDisp()
+  const cont  = document.getElementById('lista-dispositivos')
+  if(!cont) return
+  if(!disps.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0;grid-column:1/-1">Sin dispositivos. Agregá el ID de cada dispositivo Smartlife.</div>`
+    return
+  }
+  cont.innerHTML = disps.map(d=>`
+    <div class="sec-disp-card" id="disp-card-${d.id}">
+      <div class="sec-disp-head">
+        <span class="sec-disp-icon">${TIPO_ICON[d.tipo]||'⚙️'}</span>
+        <div>
+          <div class="sec-disp-nombre">${d.nombre}</div>
+          <div class="sec-disp-tipo">${TIPO_LABEL[d.tipo]||d.tipo}${d.capacidad?' · '+d.capacidad:''}${d.ubicacion?' · '+d.ubicacion:''}</div>
+        </div>
+      </div>
+      ${d.device_id ? `<div style="font-size:9px;color:var(--dim);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis">ID: ${d.device_id}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button class="btn-sm" onclick="abrirModalDispositivo('${d.id}')">✏️ Editar</button>
+        <button class="btn-sm rojo" onclick="eliminarDispositivo('${d.id}')">🗑</button>
+      </div>
+    </div>`).join('')
+}
+
+// ════════════════════════════════════════════════════════════════
+// SECADOS
+// ════════════════════════════════════════════════════════════════
+function abrirModalSecado(id=null){
+  const s = id ? getSecados().find(x=>x.id===id) : null
+  document.getElementById('modal-sec-titulo').textContent = id ? 'Editar lote' : 'Nuevo lote de secado'
+  document.getElementById('sec-id').value         = s?.id || ''
+  document.getElementById('sec-fecha').value      = s?.fecha_cosecha || hoy()
+  document.getElementById('sec-camellones').value = s?.camellones || ''
+  document.getElementById('sec-bandejas').value   = s?.bandejas || ''
+  document.getElementById('sec-kg-est').value     = s?.kg_estimado || ''
+  document.getElementById('sec-obs').value        = s?.obs || ''
+  document.getElementById('modal-secado').classList.add('open')
+}
+
+function guardarSecado(){
+  const fecha = document.getElementById('sec-fecha').value
+  if(!fecha){ alert('Ingresá la fecha de cosecha'); return }
+  const id = document.getElementById('sec-id').value || genId()
+  const all = getSecados().filter(x=>x.id!==id)
+  all.unshift({
+    id,
+    fecha_cosecha: fecha,
+    camellones:    document.getElementById('sec-camellones').value.trim(),
+    bandejas:      parseInt(document.getElementById('sec-bandejas').value)||0,
+    kg_estimado:   parseFloat(document.getElementById('sec-kg-est').value)||0,
+    obs:           document.getElementById('sec-obs').value.trim(),
+    fase:          'secando'
+  })
+  saveSecados(all)
+  cerrarModal('modal-secado')
+  renderSecados()
+  renderDashboard()
+  actualizarBadgeAlertas()
+}
+
+function avanzarFaseSecado(id, nuevaFase){
+  const all = getSecados()
+  const s = all.find(x=>x.id===id)
+  if(s){
+    s.fase = nuevaFase
+    if(nuevaFase==='listo') s.fecha_fin = new Date().toISOString()
+  }
+  saveSecados(all)
+  renderSecados()
+  renderDashboard()
+}
+
+function eliminarSecado(id){
+  if(!confirm('¿Eliminar este lote de secado?')) return
+  saveSecados(getSecados().filter(x=>x.id!==id))
+  renderSecados()
+  renderDashboard()
+}
+
+function renderSecados(){
+  const secados = getSecados()
+  const cont    = document.getElementById('lista-secados')
+  if(!cont) return
+  if(!secados.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin lotes registrados.</div>`
+    return
+  }
+
+  const HR_IDEAL  = ultimaLectura?.hr  || null
+  const TEMP_LIVE = ultimaLectura?.temp || null
+
+  cont.innerHTML = secados.map(s=>{
+    const dia     = diffDias(s.fecha_cosecha)
+    const params  = paramsParaDia(dia)
+    const esFase  = { secando:s.fase==='secando', embolsado:s.fase==='embolsado', listo:s.fase==='listo' }
+
+    // Timeline 7 días
+    const timelineHtml = Array.from({length:7},(_,i)=>{
+      const d = i+1
+      const esPasado = d < dia
+      const esHoy    = d === dia
+      const esFuturo = d > dia && d <= 5
+      const esBolsa  = d === 6
+      const esCerrada= d === 7
+
+      let cls = 'futuro'
+      if(esPasado) cls='pasado'
+      if(esHoy && s.fase==='secando') cls='hoy'
+      if((d===6||d===7) && s.fase==='embolsado') cls='bolsa'
+      if(s.fase==='listo') cls='done'
+
+      const hrTarget = d===1 ? 65 : d<=5 ? 55 : '—'
+      const icon     = d<=5 ? '🍃' : d===6 ? '📦' : '🔒'
+
+      return `<div class="sec-day-block ${cls}">
+        <div class="sec-day-num">D${d}</div>
+        <div class="sec-day-icon">${icon}</div>
+        <div class="sec-day-hr">${hrTarget !== '—' ? hrTarget+'%' : d===6?'Abta':d===7?'Crrd':''}</div>
+      </div>`
+    }).join('')
+
+    // HR actual vs target
+    let hrBarHtml = ''
+    if(HR_IDEAL !== null && s.fase==='secando'){
+      const pct = Math.min(100, Math.round((HR_IDEAL/100)*100))
+      const targetPct = Math.round((params.hr_target/100)*100)
+      let barClass = 'ok'
+      if(HR_IDEAL > params.hr_max || HR_IDEAL < params.hr_min) barClass='danger'
+      else if(HR_IDEAL > params.hr_warn_max || HR_IDEAL < params.hr_warn_min) barClass='warn'
+
+      hrBarHtml = `
+        <div class="sec-target-row">
+          <div class="sec-target-label">HR actual</div>
+          <div class="sec-target-bar-wrap">
+            <div class="sec-target-bar ${barClass}" style="width:${pct}%"></div>
+            <div class="sec-target-line" style="left:${targetPct}%;"></div>
+          </div>
+          <div class="sec-target-val ${barClass}">${HR_IDEAL}% <span style="font-size:9px;opacity:.7">/ target ${params.hr_target}%</span></div>
+        </div>`
+    }
+
+    return `<div class="sec-batch-card ${s.fase}">
+      <div class="sec-batch-head">
+        <div>
+          <div class="sec-batch-titulo">
+            ${s.fase==='listo'?'✅':s.fase==='embolsado'?'📦':'🍃'} Camellones ${s.camellones||'—'}
+            ${s.fase==='secando' ? `<span style="font-size:11px;font-family:var(--mono);color:var(--green)"> · Día ${dia}</span>` : ''}
+          </div>
+          <div class="sec-batch-fecha">📅 Cosecha: ${fmtFecha(s.fecha_cosecha)} ${s.obs?'· '+s.obs.slice(0,50):''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${s.fase==='secando' ? `<button class="btn-sm azul" onclick="avanzarFaseSecado('${s.id}','embolsado')">📦 Embolsar</button>` : ''}
+          ${s.fase==='embolsado' ? `<button class="btn-sm verde" onclick="avanzarFaseSecado('${s.id}','listo')">✅ Listo</button>` : ''}
+          <button class="btn-sm" onclick="abrirModalSecado('${s.id}')">✏️</button>
+          <button class="btn-sm rojo" onclick="eliminarSecado('${s.id}')">🗑</button>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="sec-timeline">${timelineHtml}</div>
+
+      <!-- Barra HR -->
+      ${hrBarHtml}
+
+      <!-- Métricas -->
+      <div class="sec-batch-meta">
+        <div class="sec-meta-box"><div class="sec-meta-val">${s.bandejas||'—'}</div><div class="sec-meta-lbl">Bandejas</div></div>
+        <div class="sec-meta-box"><div class="sec-meta-val">${s.kg_estimado||'—'} kg</div><div class="sec-meta-lbl">Kg húmedos</div></div>
+        <div class="sec-meta-box"><div class="sec-meta-val">${TEMP_LIVE !== null ? TEMP_LIVE+'°C' : '—'}</div><div class="sec-meta-lbl">Temp live</div></div>
+        <div class="sec-meta-box"><div class="sec-meta-val">${dia <= 5 ? params.hr_target+'%' : dia===6?'Bolsa abta':'Bolsa crrd'}</div><div class="sec-meta-lbl">HR target hoy</div></div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// ════════════════════════════════════════════════════════════════
+// EMBOLSADO / BOLSAS
+// ════════════════════════════════════════════════════════════════
+function abrirModalBolsa(id=null){
+  // Llenar selector de secados
+  const secados = getSecados()
+  const sel = document.getElementById('bolsa-secado-id')
+  sel.innerHTML = '<option value="">Seleccionar lote...</option>' +
+    secados.map(s=>`<option value="${s.id}">Camellones ${s.camellones||s.id.slice(0,6)} · ${fmtFecha(s.fecha_cosecha)}</option>`).join('')
+
+  const b = id ? getBolsas().find(x=>x.id===id) : null
+  document.getElementById('bolsa-id').value        = b?.id || ''
+  document.getElementById('bolsa-secado-id').value = b?.secado_id || ''
+  document.getElementById('bolsa-numero').value    = b?.numero || (getBolsas().length + 1)
+  document.getElementById('bolsa-peso').value      = b?.peso_kg || ''
+  document.getElementById('bolsa-fecha').value     = b?.fecha || hoy()
+  document.getElementById('bolsa-fase').value      = b?.fase || 'secando'
+  document.getElementById('bolsa-notas').value     = b?.notas || ''
+  document.getElementById('modal-bolsa').classList.add('open')
+}
+
+function guardarBolsa(){
+  const peso = parseFloat(document.getElementById('bolsa-peso').value)
+  if(!peso){ alert('Ingresá el peso de la bolsa'); return }
+  if(peso > 3.5){ alert('⚠️ El peso supera los 3 kg máximos recomendados'); }
+  const fase  = document.getElementById('bolsa-fase').value
+  const id    = document.getElementById('bolsa-id').value || genId()
+  const fecha = document.getElementById('bolsa-fecha').value
+
+  const obj = {
+    id, peso_kg:peso, fase,
+    secado_id: document.getElementById('bolsa-secado-id').value,
+    numero:    parseInt(document.getElementById('bolsa-numero').value)||1,
+    fecha:     fecha,
+    notas:     document.getElementById('bolsa-notas').value.trim()
+  }
+  if(fase === 'cerrada' && !obj.fecha_cerrado) obj.fecha_cerrado = new Date().toISOString()
+
+  const all = getBolsas().filter(x=>x.id!==id)
+  all.unshift(obj)
+  saveBolsas(all)
+  cerrarModal('modal-bolsa')
+  renderEmbolsado()
+}
+
+function avanzarFaseBolsa(id){
+  const all = getBolsas()
+  const b   = all.find(x=>x.id===id)
+  if(!b) return
+  const fases = ['secando','abierta','cerrada','lista']
+  const idx   = fases.indexOf(b.fase)
+  if(idx < fases.length-1){
+    b.fase = fases[idx+1]
+    if(b.fase === 'cerrada') b.fecha_cerrado = new Date().toISOString()
+    if(b.fase === 'lista')   b.fecha_lista   = new Date().toISOString()
+  }
+  saveBolsas(all)
+  renderEmbolsado()
+}
+
+function eliminarBolsa(id){
+  if(!confirm('¿Eliminar esta bolsa?')) return
+  saveBolsas(getBolsas().filter(x=>x.id!==id))
+  renderEmbolsado()
+}
+
+function renderEmbolsado(){
+  const filSecado = document.getElementById('fil-bolsa-secado')?.value || ''
+  let bolsas = getBolsas()
+  if(filSecado) bolsas = bolsas.filter(b=>b.secado_id===filSecado)
+
+  const secados = getSecados()
+
+  // Actualizar selector
+  const sel = document.getElementById('fil-bolsa-secado')
+  if(sel){
+    const curVal = sel.value
+    sel.innerHTML = '<option value="">Todos los lotes</option>' +
+      secados.map(s=>`<option value="${s.id}" ${s.id===curVal?'selected':''}>Camellones ${s.camellones||s.id.slice(0,6)}</option>`).join('')
+  }
+
+  // KPIs
+  const fases = { secando:0, abierta:0, cerrada:0, lista:0 }
+  let kgTotal = 0
+  bolsas.forEach(b=>{ fases[b.fase]=(fases[b.fase]||0)+1; kgTotal+=b.peso_kg||0 })
+  document.getElementById('emb-secando').textContent = fases.secando||0
+  document.getElementById('emb-abierta').textContent = fases.abierta||0
+  document.getElementById('emb-cerrada').textContent = fases.cerrada||0
+  document.getElementById('emb-lista').textContent   = fases.lista||0
+  document.getElementById('emb-kg-total').textContent= kgTotal.toFixed(1)+' kg'
+
+  const cont = document.getElementById('lista-bolsas')
+  if(!cont) return
+  if(!bolsas.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin bolsas registradas.</div>`
+    return
+  }
+
+  const FASE_LABEL = { secando:'🔄 Secando', abierta:'📦 Abierta', cerrada:'🔒 Cerrada 24hs', lista:'✅ Lista' }
+
+  // Agrupar por fase
+  const grupos = [
+    { key:'cerrada', titulo:'🔒 Bolsas cerradas — curing 24hs' },
+    { key:'abierta', titulo:'📦 Bolsas abiertas — embolsado' },
+    { key:'secando', titulo:'🔄 Secando en bandeja' },
+    { key:'lista',   titulo:'✅ Listas' }
+  ]
+
+  cont.innerHTML = grupos.map(g=>{
+    const items = bolsas.filter(b=>b.fase===g.key)
+    if(!items.length) return ''
+    const itemsHtml = items.map(b=>{
+      const sec      = secados.find(s=>s.id===b.secado_id)
+      const pesoClass= b.peso_kg > 3 ? 'over' : b.peso_kg > 2.5 ? 'warn' : 'ok'
+      const hsEnFase = b.fecha_cerrado ? Math.round((Date.now()-new Date(b.fecha_cerrado).getTime())/3600000) : null
+      const alerta24 = b.fase==='cerrada' && hsEnFase !== null && hsEnFase >= 24
+
+      return `<div class="sec-bolsa-card" style="${alerta24?'border-color:#7ecf6a;box-shadow:0 0 10px rgba(126,207,106,.2)':''}">
+        <div class="sec-bolsa-num">#${b.numero}</div>
+        <div class="sec-bolsa-info">
+          <div class="sec-bolsa-titulo">${b.notas||'Bolsa '+b.numero}
+            ${alerta24?'<span style="color:#7ecf6a;font-size:10px;margin-left:6px">✅ 24hs completadas</span>':''}
+          </div>
+          <div class="sec-bolsa-meta">
+            <span class="sec-fase-badge sec-fase-${b.fase}">${FASE_LABEL[b.fase]}</span>
+            ${sec?' · Lote: Cam. '+sec.camellones:''}
+            ${b.fecha?' · '+fmtFecha(b.fecha):''}
+            ${hsEnFase!==null?' · '+hsEnFase+'hs en bolsa':''}
+          </div>
+        </div>
+        <div class="sec-bolsa-peso ${pesoClass}">${b.peso_kg}kg</div>
+        <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+          ${b.fase!=='lista'?`<button class="btn-sm verde" onclick="avanzarFaseBolsa('${b.id}')" style="white-space:nowrap">${b.fase==='secando'?'→ Embolsar':b.fase==='abierta'?'→ Cerrar':b.fase==='cerrada'?'→ Lista':''}</button>`:''}
+          <button class="btn-sm" onclick="abrirModalBolsa('${b.id}')">✏️</button>
+          <button class="btn-sm rojo" onclick="eliminarBolsa('${b.id}')">🗑</button>
+        </div>
+      </div>`
+    }).join('')
+
+    return `<div style="margin-bottom:18px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">${g.titulo}</div>
+      ${itemsHtml}
+    </div>`
+  }).join('')
+}
+
+// ════════════════════════════════════════════════════════════════
+// ALERTAS
+// ════════════════════════════════════════════════════════════════
+function renderAlertas(){
+  const alertas = getAlertas()
+  const cont    = document.getElementById('lista-alertas')
+  if(!cont) return
+  if(!alertas.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin alertas registradas — todo en orden ✔️</div>`
+    return
+  }
+  cont.innerHTML = alertas.map(a=>`
+    <div class="sec-alerta ${a.nivel||'advertencia'}">
+      <div class="sec-alerta-icon">${a.icono||'⚠️'}</div>
+      <div class="sec-alerta-body">
+        <div class="sec-alerta-titulo">${a.titulo}</div>
+        <div class="sec-alerta-desc">${a.desc}</div>
+        <div class="sec-alerta-hora">🕐 ${new Date(a.fecha).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})}</div>
+      </div>
+    </div>`).join('')
+}
+
+// ════════════════════════════════════════════════════════════════
+// CÁMARA
+// ════════════════════════════════════════════════════════════════
+function renderCamara(){
+  const camDisp = getDisp().find(d=>d.tipo==='camara')
+  const savedUrl= localStorage.getItem('sec_cam_url') || camDisp?.cam_url || ''
+  const cont    = document.getElementById('cam-contenedor')
+  const input   = document.getElementById('cam-url-input')
+  if(input) input.value = savedUrl
+
+  if(savedUrl && cont){
+    cont.innerHTML = `<img src="${savedUrl}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='<div class=sec-cam-placeholder><div class=icon>⚠️</div><div>No se pudo cargar el stream<br><span style=font-size:10px;color:var(--dim)>${savedUrl}</span></div></div>'">`
+  } else if(cont){
+    cont.innerHTML = `<div class="sec-cam-placeholder"><div class="icon">📷</div><div>Sin stream configurado</div></div>`
+  }
+}
+
+function guardarCamUrl(){
+  const url = document.getElementById('cam-url-input').value.trim()
+  localStorage.setItem('sec_cam_url', url)
+  renderCamara()
+}
+
+function abrirSmartlife(){
+  window.open('https://smart.life/', '_blank')
+}
+
+// ════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const disps   = getDisp()
+  const secados = getSecados()
+  const bolsas  = getBolsas()
+
+  // KPI lotes y bolsas
+  document.getElementById('kpi-secados-val').textContent = secados.filter(s=>s.fase==='secando').length
+  document.getElementById('kpi-bolsas-val').textContent  = bolsas.filter(b=>b.fase!=='lista').length
+
+  // Estado del secadero
+  renderEstadoSecadero()
+
+  // Controles rápidos
+  renderControlesRapidos(disps)
+
+  // Todos los dispositivos
+  renderTodosDispDash(disps)
+
+  // Lotes activos
+  renderLotesActivosDash(secados)
+
+  // Últimas lecturas
+  renderUltimasLecturas()
+
+  // Badges
+  actualizarBadgeAlertas()
+}
+
+function renderEstadoSecadero(){
+  const cont = document.getElementById('dash-estado-secadero')
+  if(!cont) return
+
+  const tienesSensor = getDisp().some(d=>d.tipo==='sensor_th')
+  if(!tienesSensor){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin sensor de temp+HR configurado.<br><button class="btn-primary" style="margin-top:8px;font-size:11px;padding:6px 14px" onclick="secTab('dispositivos')">Agregar sensor</button></div>`
+    return
+  }
+
+  if(!ultimaLectura){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Esperando primera lectura...<br><button class="btn-sm" onclick="leerSensores(true)" style="margin-top:8px">🔄 Leer ahora</button></div>`
+    return
+  }
+
+  const { temp, hr, vpd } = ultimaLectura
+  const secados = getSecados().filter(s=>s.fase==='secando')
+  const alertas = []
+
+  if(temp > SECADO_PARAMS.temp_max) alertas.push({nivel:'critico',icono:'🔴',txt:`Temperatura ${temp}°C — supera los 19°C máximos. Activar AC urgente.`})
+  else if(temp > SECADO_PARAMS.temp_warn_max) alertas.push({nivel:'advertencia',icono:'🟡',txt:`Temperatura ${temp}°C — levemente alta. Ideal: 17°C.`})
+  else if(temp < SECADO_PARAMS.temp_min) alertas.push({nivel:'critico',icono:'🔴',txt:`Temperatura ${temp}°C — bajo el mínimo. Secado frenado.`})
+  else alertas.push({nivel:'ok',icono:'✅',txt:`Temperatura ${temp}°C — dentro del rango ideal`})
+
+  if(secados.length){
+    const dia = Math.round(secados.reduce((a,s)=>a+diffDias(s.fecha_cosecha),0)/secados.length)
+    const p   = paramsParaDia(dia)
+    if(hr > p.hr_max) alertas.push({nivel:'critico',icono:'🔴',txt:`HR ${hr}% — crítica para día ${dia}. Target: ${p.hr_target}%. Botrytis en riesgo.`})
+    else if(hr > p.hr_warn_max) alertas.push({nivel:'advertencia',icono:'🟡',txt:`HR ${hr}% — algo alta para día ${dia}. Target: ${p.hr_target}%.`})
+    else if(hr < p.hr_min) alertas.push({nivel:'critico',icono:'🔴',txt:`HR ${hr}% — muy baja para día ${dia}. Sobre-secado en curso.`})
+    else alertas.push({nivel:'ok',icono:'✅',txt:`HR ${hr}% — correcta para día ${dia} (target ${p.hr_target}%)`})
+  } else {
+    alertas.push({nivel:'ok',icono:'✅',txt:`HR ${hr}% — sin lotes activos para evaluar`})
+  }
+
+  cont.innerHTML = alertas.map(a=>`
+    <div class="sec-alerta ${a.nivel}" style="margin-bottom:6px">
+      <div class="sec-alerta-icon">${a.icono}</div>
+      <div class="sec-alerta-desc">${a.txt}</div>
+    </div>`).join('')
+}
+
+function renderControlesRapidos(disps){
+  const cont = document.getElementById('dash-controles')
+  if(!cont) return
+  const switches = disps.filter(d=>d.tipo.startsWith('switch_'))
+  if(!switches.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:15px 0">Sin interruptores configurados.</div>`
+    return
+  }
+  cont.innerHTML = switches.map(d=>`
+    <div class="sec-switch">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${TIPO_ICON[d.tipo]} ${d.nombre}</div>
+        ${d.capacidad?`<div style="font-size:9px;color:var(--muted)">${d.capacidad}</div>`:''}
+      </div>
+      ${d.device_id ?
+        `<button id="sbtn-${d.id}" class="sec-switch-btn off" onclick="toggleSwitch('${d.id}','${d.device_id}',this)">OFF</button>` :
+        `<span style="font-size:10px;color:var(--dim)">Sin ID</span>`
+      }
+    </div>`).join('')
+}
+
+function renderTodosDispDash(disps){
+  const cont = document.getElementById('dash-todos-disp')
+  if(!cont) return
+  if(!disps.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0;grid-column:1/-1">Sin dispositivos · <button class="btn-sm" onclick="secTab('dispositivos')" style="display:inline">Configurar →</button></div>`
+    return
+  }
+  cont.innerHTML = disps.map(d=>{
+    const isSensor  = d.tipo==='sensor_th'
+    const isSwitch  = d.tipo.startsWith('switch_')
+    const lectura   = ultimaLectura && d.tipo==='sensor_th' && d.device_id===ultimaLectura.device_id ? ultimaLectura : null
+
+    let body = ''
+    if(isSensor && lectura){
+      const tempClass = lectura.temp > SECADO_PARAMS.temp_max || lectura.temp < SECADO_PARAMS.temp_min ? 'danger' : lectura.temp > SECADO_PARAMS.temp_warn_max ? 'warn' : ''
+      body = `<div class="sec-disp-lectura ${tempClass}">${lectura.temp}° / ${lectura.hr}%</div>
+              <div class="sec-disp-sub">VPD: ${lectura.vpd} kPa</div>`
+    } else if(isSensor){
+      body = `<div class="sec-disp-lectura" style="font-size:12px;padding:6px">Sin datos</div>
+              <button class="btn-sm" onclick="leerSensores(true)" style="text-align:center">🔄 Leer</button>`
+    } else if(isSwitch && d.device_id){
+      const on = estadoSwitches[d.device_id] || false
+      body = `<div class="sec-switch">
+        <span class="sec-switch-label">${on?'Encendido':'Apagado'}</span>
+        <button id="dbtn-${d.id}" class="sec-switch-btn ${on?'on':'off'}" onclick="toggleSwitch('${d.id}','${d.device_id}',this)">${on?'ON':'OFF'}</button>
+      </div>`
+    }
+
+    return `<div class="sec-disp-card" id="disp-dash-${d.id}">
+      <div class="sec-disp-head">
+        <span class="sec-disp-icon">${TIPO_ICON[d.tipo]||'⚙️'}</span>
+        <div>
+          <div class="sec-disp-nombre">${d.nombre}</div>
+          <div class="sec-disp-tipo">${TIPO_LABEL[d.tipo]||d.tipo}${d.ubicacion?' · '+d.ubicacion:''}</div>
+        </div>
+      </div>
+      ${body}
+    </div>`
+  }).join('')
+}
+
+function renderLotesActivosDash(secados){
+  const cont    = document.getElementById('dash-lotes-activos')
+  if(!cont) return
+  const activos = secados.filter(s=>s.fase==='secando')
+  if(!activos.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:15px 0">Sin lotes activos.<br><button class="btn-primary" style="margin-top:8px;font-size:11px;padding:6px 14px" onclick="abrirModalSecado()">+ Nuevo secado</button></div>`
+    return
+  }
+  cont.innerHTML = activos.map(s=>{
+    const dia    = diffDias(s.fecha_cosecha)
+    const params = paramsParaDia(dia)
+    const hrLive = ultimaLectura?.hr || null
+    const hrOk   = hrLive !== null ? (hrLive >= params.hr_min && hrLive <= params.hr_max) : null
+    return `<div style="padding:9px 0;border-bottom:0.5px solid #0a1a10">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🍃 Cam. ${s.camellones||'—'}</div>
+          <div style="font-size:10px;color:var(--muted)">📅 ${fmtFecha(s.fecha_cosecha)} · ${s.bandejas||0} bandejas</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:700;color:var(--green);font-family:var(--mono)">Día ${dia}</div>
+          <div style="font-size:9px;color:var(--muted)">HR target: ${params.hr_target}%</div>
+          ${hrLive!==null ? `<div style="font-size:10px;color:${hrOk?'#7ecf6a':'#dc2626'}">HR live: ${hrLive}% ${hrOk?'✓':'⚠'}</div>` : ''}
+        </div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+function renderUltimasLecturas(){
+  const lecturas = getLecturas().slice(0,10)
+  const cont     = document.getElementById('dash-historial-lecturas')
+  if(!cont) return
+  if(!lecturas.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:11px;text-align:center;padding:15px 0">Sin lecturas aún</div>`
+    return
+  }
+  cont.innerHTML = lecturas.map(l=>{
+    const params = paramsParaDia(1) // uso día genérico para colorear
+    const hrStatus = l.hr > params.hr_max ? '🔴' : l.hr > params.hr_warn_max ? '🟡' : l.hr < params.hr_min ? '🔴' : '🟢'
+    const tStatus  = l.temp > SECADO_PARAMS.temp_max ? '🔴' : l.temp > SECADO_PARAMS.temp_warn_max ? '🟡' : l.temp < SECADO_PARAMS.temp_min ? '🔴' : '🟢'
+    return `<div class="sec-lectura-row">
+      <div class="sec-lectura-hora">${fmtHora(l.fecha)}</div>
+      <div class="sec-lectura-temp">${tStatus} ${l.temp}°C</div>
+      <div class="sec-lectura-hr">${hrStatus} ${l.hr}%</div>
+      <div class="sec-lectura-vpd">VPD ${l.vpd}</div>
+    </div>`
+  }).join('')
+}
+
+// ════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  renderDashboard()
+  iniciarAutoRefresh()
+  actualizarBadgeAlertas()
+})
+</script>
+</body>
+</html>

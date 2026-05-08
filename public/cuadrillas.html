@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuadrillas & Operaciones · CropOS</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* ── LAYOUT ────────────────────────────────────────────────── */
+    .cq-page { display:flex; flex-direction:column; min-height:100vh; }
+
+    .cq-topbar {
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      padding:10px 20px; background:var(--bg2); position:sticky; top:0; z-index:20;
+      position:relative;
+    }
+    .cq-topbar::after {
+      content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,#7ecf6a55,#7ecf6aaa 50%,#7ecf6a55,transparent);
+    }
+    .cq-logo { display:flex; align-items:center; gap:9px; }
+    .cq-logo img { height:32px; filter:drop-shadow(0 0 8px rgba(126,207,106,.35)); }
+    .cq-logo-text { display:flex; flex-direction:column; }
+    .cq-logo-name { font-size:13px; font-weight:700; color:var(--text); }
+    .cq-logo-sub  { font-size:9px; color:var(--dim); font-family:var(--mono); letter-spacing:.06em; }
+
+    /* Tabs */
+    .cq-tabs { display:flex; gap:3px; flex:1; flex-wrap:wrap; }
+    .cq-tab {
+      width:auto; padding:7px 14px; font-size:11px; font-weight:600;
+      border-radius:8px; cursor:pointer; border:0.5px solid var(--border);
+      background:transparent; color:var(--muted); transition:all .15s;
+      font-family:var(--sans);
+    }
+    .cq-tab:hover { color:var(--text); border-color:var(--border2); }
+    .cq-tab.on { background:#0d2318; color:var(--green); border-color:#1a5c32; }
+
+    .cq-topbar-spacer { flex:1; min-width:8px; }
+    .cq-back {
+      width:auto; padding:6px 12px; font-size:11px; background:transparent;
+      border:0.5px solid var(--border); color:var(--muted); border-radius:7px; cursor:pointer;
+    }
+    .cq-back:hover { color:var(--text); border-color:var(--border2); box-shadow:none; }
+
+    /* ── CONTENIDO ──────────────────────────────────────────────── */
+    .cq-content { flex:1; padding:20px; overflow-y:auto; }
+    .cq-panel { display:none; }
+    .cq-panel.on { display:block; }
+
+    /* ── GRID DE KPIS ───────────────────────────────────────────── */
+    .cq-kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px; }
+    .cq-kpi {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:14px 16px; position:relative; overflow:hidden;
+    }
+    .cq-kpi::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,#7ecf6a44,#7ecf6a88 50%,#7ecf6a44,transparent);
+    }
+    .cq-kpi-icon { font-size:20px; margin-bottom:6px; }
+    .cq-kpi-val { font-size:26px; font-weight:700; color:var(--green); font-family:var(--mono); }
+    .cq-kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:2px; }
+    .cq-kpi.warn .cq-kpi-val { color:#f0b429; }
+    .cq-kpi.red  .cq-kpi-val { color:#dc2626; }
+
+    /* ── GRID 2 COLUMNAS ────────────────────────────────────────── */
+    .cq-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media(max-width:700px){ .cq-grid2 { grid-template-columns:1fr; } }
+
+    /* ── TARJETA ────────────────────────────────────────────────── */
+    .cq-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:16px; margin-bottom:16px;
+    }
+    .cq-card-title {
+      font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;
+      letter-spacing:.08em; margin-bottom:12px; display:flex; align-items:center; gap:8px;
+    }
+    .cq-card-title::after {
+      content:''; flex:1; height:1px;
+      background:linear-gradient(90deg,#1a3d2b,transparent);
+    }
+
+    /* ── TABLA ──────────────────────────────────────────────────── */
+    .cq-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .cq-table th {
+      background:#060f0a; color:var(--muted); padding:8px 10px; text-align:left;
+      font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+      border-bottom:1px solid var(--border);
+    }
+    .cq-table td { padding:9px 10px; border-bottom:0.5px solid #0a1a10; vertical-align:middle; }
+    .cq-table tr:hover td { background:#0a1a10; }
+    .cq-table tr:last-child td { border-bottom:none; }
+
+    /* ── BADGES ─────────────────────────────────────────────────── */
+    .badge {
+      display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px;
+      font-weight:600; letter-spacing:.04em;
+    }
+    .badge-verde    { background:#0a2810; color:#22c55e; border:0.5px solid #1a5c32; }
+    .badge-gris     { background:#111; color:#6b7280; border:0.5px solid #333; }
+    .badge-amarillo { background:#1a1200; color:#f0b429; border:0.5px solid #5a3e00; }
+    .badge-rojo     { background:#1a0505; color:#dc2626; border:0.5px solid #5a1010; }
+    .badge-azul     { background:#050f1a; color:#60a5fa; border:0.5px solid #1a3a5a; }
+    .badge-naranja  { background:#1a0d00; color:#f97316; border:0.5px solid #5a2800; }
+
+    /* ── BOTONES ACCIÓN ─────────────────────────────────────────── */
+    .btn-sm {
+      width:auto; padding:5px 10px; font-size:11px; border-radius:6px; cursor:pointer;
+      font-family:var(--sans); border:0.5px solid var(--border); background:transparent;
+      color:var(--muted);
+    }
+    .btn-sm:hover { color:var(--text); }
+    .btn-sm.verde  { background:#0a2810; color:#22c55e; border-color:#1a5c32; }
+    .btn-sm.verde:hover  { box-shadow:0 0 8px rgba(34,197,94,.25); }
+    .btn-sm.rojo   { background:#1a0505; color:#dc2626; border-color:#5a1010; }
+    .btn-sm.rojo:hover   { box-shadow:0 0 8px rgba(220,38,38,.2); }
+    .btn-primary {
+      width:auto; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
+      border-radius:9px; background:#1a5c32; color:#fff; border:none; font-family:var(--sans);
+      transition:all .15s;
+    }
+    .btn-primary:hover { background:#22c55e; box-shadow:0 0 16px rgba(34,197,94,.3); }
+
+    /* ── FORMULARIO ─────────────────────────────────────────────── */
+    .cq-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media(max-width:600px){ .cq-form-grid { grid-template-columns:1fr; } }
+    .cq-form-grid .full { grid-column:1/-1; }
+    .cq-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; display:block; }
+
+    /* ── MODAL ──────────────────────────────────────────────────── */
+    .cq-modal {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.85);
+      z-index:300; align-items:flex-end; justify-content:center;
+    }
+    .cq-modal.open { display:flex; }
+    .cq-modal-box {
+      background:#0a1a10; border-radius:16px 16px 0 0; padding:20px 20px 32px;
+      width:100%; max-width:600px; max-height:90vh; overflow-y:auto;
+      border-top:1px solid #1a5c32;
+    }
+    .cq-modal-title {
+      font-size:15px; font-weight:700; color:var(--text); margin-bottom:16px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .cq-close { background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer; width:auto; }
+
+    /* ── KANBAN TAREAS ──────────────────────────────────────────── */
+    .cq-kanban { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    @media(max-width:900px){ .cq-kanban { grid-template-columns:1fr 1fr; } }
+    @media(max-width:500px){ .cq-kanban { grid-template-columns:1fr; } }
+    .cq-kanban-col {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:10px;
+      padding:10px;
+    }
+    .cq-kanban-col-title {
+      font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+      color:var(--muted); margin-bottom:8px; text-align:center;
+    }
+    .cq-tarea-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:8px;
+      padding:10px; margin-bottom:6px; cursor:pointer;
+      transition:border-color .15s, box-shadow .15s;
+    }
+    .cq-tarea-card:hover { border-color:#1a5c32; box-shadow:0 0 8px rgba(126,207,106,.1); }
+    .cq-tarea-titulo { font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; }
+    .cq-tarea-meta { font-size:10px; color:var(--muted); }
+
+    /* ── ALERTAS ────────────────────────────────────────────────── */
+    .cq-alerta {
+      background:#1a0505; border:0.5px solid #5a1010; border-radius:8px;
+      padding:10px 14px; margin-bottom:6px; display:flex; align-items:center; gap:10px;
+    }
+    .cq-alerta-icon { font-size:16px; }
+    .cq-alerta-text { font-size:12px; color:#dc2626; }
+
+    /* ── RANKING ─────────────────────────────────────────────────── */
+    .cq-rank-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:0.5px solid #0a1a10; }
+    .cq-rank-pos { font-size:18px; font-weight:800; color:var(--border2); font-family:var(--mono); min-width:28px; }
+    .cq-rank-pos.gold   { color:#f0b429; }
+    .cq-rank-pos.silver { color:#9ca3af; }
+    .cq-rank-pos.bronze { color:#b45309; }
+    .cq-rank-name { flex:1; font-size:13px; color:var(--text); }
+    .cq-rank-bar-wrap { width:90px; height:6px; background:#0a1a10; border-radius:3px; }
+    .cq-rank-bar { height:100%; background:var(--green); border-radius:3px; transition:width .4s; }
+    .cq-rank-val { font-size:11px; color:var(--green); font-family:var(--mono); min-width:40px; text-align:right; }
+
+    /* ── CONSULTOR IA ────────────────────────────────────────────── */
+    .cia-step { display:none; }
+    .cia-step.on { display:block; }
+
+    /* Selector de tipo */
+    .cia-tipo-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-bottom:20px;
+    }
+    .cia-tipo-btn {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:10px;
+      padding:14px 10px; text-align:center; cursor:pointer; transition:all .15s;
+      font-size:12px; color:var(--muted); font-family:var(--sans);
+    }
+    .cia-tipo-btn:hover { border-color:#1a5c32; color:var(--text); background:#0a1a10; }
+    .cia-tipo-btn.sel { border-color:var(--green); background:#0a2810; color:var(--green); box-shadow:0 0 12px rgba(126,207,106,.15); }
+    .cia-tipo-icon { font-size:22px; margin-bottom:6px; }
+
+    /* Pregunta card */
+    .cia-pregunta {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:16px 18px; margin-bottom:12px; transition:border-color .15s;
+    }
+    .cia-pregunta.respondida { border-color:#1a5c32; }
+    .cia-pregunta-num { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; font-family:var(--mono); }
+    .cia-pregunta-texto { font-size:14px; font-weight:600; color:var(--text); margin-bottom:12px; }
+    .cia-opciones { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+    @media(max-width:600px){ .cia-opciones { grid-template-columns:1fr; } }
+    .cia-opcion {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:8px;
+      padding:10px 12px; font-size:12px; color:var(--muted); cursor:pointer;
+      text-align:center; transition:all .15s; font-family:var(--sans);
+    }
+    .cia-opcion:hover { border-color:#1a5c32; color:var(--text); background:#0a1a10; }
+    .cia-opcion.sel { background:#0a2810; border-color:var(--green); color:var(--green); font-weight:600; }
+
+    /* Progress bar */
+    .cia-progress-wrap { background:#060f0a; border-radius:10px; height:6px; margin-bottom:20px; overflow:hidden; }
+    .cia-progress-bar  { height:100%; background:linear-gradient(90deg,#1a5c32,var(--green)); border-radius:10px; transition:width .4s; }
+
+    /* Loading spinner */
+    .cia-loading {
+      text-align:center; padding:48px 20px;
+    }
+    .cia-spinner {
+      width:44px; height:44px; border:3px solid #1a3d22;
+      border-top-color:var(--green); border-radius:50%;
+      animation:spin .8s linear infinite; margin:0 auto 14px;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .cia-loading-txt { font-size:12px; color:var(--muted); font-family:var(--mono); }
+    .cia-loading-sub { font-size:10px; color:var(--dim); margin-top:4px; }
+
+    /* Planes */
+    .cia-planes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    @media(max-width:900px){ .cia-planes-grid { grid-template-columns:1fr; } }
+    .cia-plan-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:14px;
+      padding:18px; position:relative; overflow:hidden;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .cia-plan-card:hover { border-color:#1a5c32; box-shadow:0 0 18px rgba(126,207,106,.1); }
+    .cia-plan-card.destacado { border-color:#1a5c32; }
+    .cia-plan-card.destacado::before {
+      content:'RECOMENDADO'; position:absolute; top:0; right:0;
+      background:var(--green); color:#000; font-size:9px; font-weight:800;
+      padding:3px 10px; border-radius:0 14px 0 8px; letter-spacing:.06em;
+    }
+    .cia-plan-titulo { font-size:14px; font-weight:700; color:var(--green); margin-bottom:6px; }
+    .cia-plan-enfoque { font-size:11px; color:var(--muted); margin-bottom:14px; line-height:1.5; }
+    .cia-plan-row { display:flex; gap:8px; margin-bottom:8px; font-size:12px; }
+    .cia-plan-icon { font-size:14px; flex-shrink:0; }
+    .cia-plan-key { color:var(--muted); min-width:90px; flex-shrink:0; }
+    .cia-plan-val { color:var(--text); flex:1; }
+    .cia-plan-section { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin:12px 0 6px; }
+    .cia-plan-list { list-style:none; padding:0; margin:0; }
+    .cia-plan-list li { font-size:11px; color:var(--text); padding:3px 0; padding-left:14px; position:relative; }
+    .cia-plan-list li::before { content:'·'; position:absolute; left:0; color:var(--green); }
+    .cia-plan-list.rojo li::before { color:#dc2626; }
+    .cia-crono-item {
+      background:#060f0a; border-radius:6px; padding:6px 10px;
+      font-size:11px; color:var(--text); margin-bottom:4px; border-left:2px solid #1a5c32;
+    }
+
+    /* ── DIAGNÓSTICOS ───────────────────────────────────────────── */
+    .diag-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:16px 18px; margin-bottom:12px; transition:border-color .15s;
+    }
+    .diag-card:hover { border-color:#1a5c32; }
+    .diag-card-head { display:flex; align-items:flex-start; gap:12px; margin-bottom:10px; }
+    .diag-card-icon { font-size:26px; flex-shrink:0; }
+    .diag-card-meta { flex:1; min-width:0; }
+    .diag-card-tipo { font-size:14px; font-weight:700; color:var(--green); }
+    .diag-card-fecha { font-size:10px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+    .diag-card-resumen { font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4; }
+    .diag-card-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .diag-badge-plan {
+      display:inline-block; background:#060f0a; border:0.5px solid #1a3d2b;
+      border-radius:6px; padding:3px 9px; font-size:10px; color:var(--muted); margin:2px;
+    }
+    /* Badge con contador en tab */
+    .tab-badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      background:#1a5c32; color:#fff; border-radius:10px;
+      font-size:9px; font-weight:700; padding:1px 5px; margin-left:4px;
+      vertical-align:middle; min-width:16px;
+    }
+
+    /* ── PORTAPAPELES ────────────────────────────────────────────── */
+    .clip-card {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:10px;
+      padding:14px 16px; margin-bottom:10px; position:relative;
+    }
+    .clip-card:hover { border-color:#1a5c32; }
+    .clip-card-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .clip-card-titulo { font-size:12px; font-weight:700; color:var(--text); flex:1; }
+    .clip-card-fecha { font-size:10px; color:var(--muted); font-family:var(--mono); }
+    .clip-card-origen { font-size:9px; padding:2px 7px; border-radius:10px; }
+    .clip-card-origen.diag { background:#0a2810; color:#22c55e; border:0.5px solid #1a5c32; }
+    .clip-card-origen.manual { background:#060f0a; color:var(--muted); border:0.5px solid var(--border); }
+    .clip-card-texto {
+      font-size:11px; color:var(--muted); background:#060f0a; border-radius:6px;
+      padding:8px 10px; line-height:1.5; white-space:pre-wrap; word-break:break-word;
+      max-height:100px; overflow-y:auto;
+    }
+
+    /* ── MIC RECORDING ──────────────────────────────────────────── */
+    @keyframes cia-blink {
+      0%,100% { opacity:1; box-shadow:0 0 0 rgba(220,38,38,0); }
+      50%      { opacity:.3; box-shadow:0 0 6px rgba(220,38,38,.6); }
+    }
+    #cia-mic-btn.recording {
+      background:#1a0505; border-color:#dc2626; color:#dc2626;
+      box-shadow:0 0 12px rgba(220,38,38,.25);
+    }
+    #cia-mic-btn.recording #cia-mic-icon { animation:cia-blink .8s ease-in-out infinite; }
+
+    /* ── FOTOS CONTEXTO IA ──────────────────────────────────────────── */
+    .cia-foto-upload-area {
+      border:1.5px dashed #1a5c32; border-radius:10px;
+      padding:12px; margin-top:8px; cursor:pointer;
+      transition:border-color .15s, background .15s;
+      text-align:center;
+    }
+    .cia-foto-upload-area:hover { border-color:var(--green); background:#0a1a10; }
+    .cia-foto-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .cia-foto-thumb {
+      position:relative; width:80px; height:80px; border-radius:8px;
+      overflow:hidden; border:1px solid #1a5c32; flex-shrink:0;
+    }
+    .cia-foto-thumb img { width:100%; height:100%; object-fit:cover; }
+    .cia-foto-remove {
+      position:absolute; top:2px; right:2px; background:rgba(0,0,0,.8);
+      border:none; color:#dc2626; font-size:12px; width:18px; height:18px;
+      border-radius:50%; cursor:pointer; display:flex; align-items:center;
+      justify-content:center; padding:0; line-height:1;
+    }
+
+    /* ── HISTORIAL ──────────────────────────────────────────────────── */
+    .hist-event {
+      background:var(--bg2); border:0.5px solid var(--border); border-radius:12px;
+      padding:16px 18px; margin-bottom:12px; transition:border-color .15s;
+    }
+    .hist-event:hover { border-color:#1a5c32; }
+    .hist-event-head { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+    .hist-event-icon { font-size:22px; flex-shrink:0; }
+    .hist-event-meta { flex:1; min-width:0; }
+    .hist-event-titulo { font-size:13px; font-weight:700; color:var(--text); }
+    .hist-event-info { font-size:10px; color:var(--muted); margin-top:2px; font-family:var(--mono); }
+    .hist-fotos-grid { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+    .hist-foto-item {
+      width:72px; height:72px; border-radius:8px; overflow:hidden;
+      border:0.5px solid #1a5c32; cursor:pointer; flex-shrink:0;
+    }
+    .hist-foto-item img { width:100%; height:100%; object-fit:cover; }
+    .hist-foto-upload-btn {
+      width:72px; height:72px; border-radius:8px; border:1.5px dashed #1a5c32;
+      background:#060f0a; cursor:pointer; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:3px; flex-shrink:0;
+      transition:all .15s; color:var(--muted); font-size:10px; font-family:var(--sans);
+    }
+    .hist-foto-upload-btn:hover { border-color:var(--green); color:var(--green); background:#0a1a10; }
+
+    /* ── RENDIMIENTO METRICAS ────────────────────────────────────── */
+    .cq-metric-box {
+      background:#060f0a; border:0.5px solid var(--border); border-radius:8px;
+      padding:10px 14px; text-align:center;
+    }
+    .cq-metric-val { font-size:22px; font-weight:700; color:var(--green); font-family:var(--mono); }
+    .cq-metric-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:2px; }
+    .cq-metrics-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin-bottom:14px; }
+  </style>
+</head>
+<body>
+<div class="cq-page">
+
+  <!-- ── TOPBAR ──────────────────────────────────────────────────── -->
+  <div class="cq-topbar">
+    <div class="cq-logo">
+      <img src="/logo.png" alt="CropOS">
+      <div class="cq-logo-text">
+        <span class="cq-logo-name">Cuadrillas &amp; Operaciones</span>
+        <span class="cq-logo-sub">CropOS · gestión de personal y tareas</span>
+      </div>
+    </div>
+
+    <div class="cq-tabs">
+      <button class="cq-tab on" onclick="cqTab('dashboard')">📊 Dashboard</button>
+      <button class="cq-tab"   onclick="cqTab('personal')">👷 Personal</button>
+      <button class="cq-tab"   onclick="cqTab('cuadrillas')">👥 Cuadrillas</button>
+      <button class="cq-tab"   onclick="cqTab('tareas')">✅ Tareas</button>
+      <button class="cq-tab"   onclick="cqTab('consultor')">🤖 Consultor IA</button>
+      <button class="cq-tab"   onclick="cqTab('diagnosticos')" id="tab-diagnosticos">📁 Diagnósticos</button>
+      <button class="cq-tab"   onclick="cqTab('portapapeles')" id="tab-portapapeles">📋 Portapapeles</button>
+      <button class="cq-tab"   onclick="cqTab('historial')" id="tab-historial">📂 Historial</button>
+      <button class="cq-tab"   onclick="cqTab('jornales')">⏱ Jornales</button>
+      <button class="cq-tab"   onclick="cqTab('rendimiento')">📈 Rendimiento</button>
+    </div>
+
+    <div class="cq-topbar-spacer"></div>
+    <button onclick="location.href='/index.html'" class="cq-back">🏠 Dashboard</button>
+  </div>
+
+  <!-- ── CONTENIDO ───────────────────────────────────────────────── -->
+  <div class="cq-content">
+
+    <!-- ══ DASHBOARD ═══════════════════════════════════════════════ -->
+    <div class="cq-panel on" id="panel-dashboard">
+
+      <div class="cq-kpi-row" id="dash-kpis">
+        <div class="cq-kpi">
+          <div class="cq-kpi-icon">👷</div>
+          <div class="cq-kpi-val" id="dash-personal-activo">—</div>
+          <div class="cq-kpi-label">Personal activo</div>
+        </div>
+        <div class="cq-kpi" id="dash-kpi-presentes">
+          <div class="cq-kpi-icon">✅</div>
+          <div class="cq-kpi-val" id="dash-presentes">—</div>
+          <div class="cq-kpi-label">Presentes hoy</div>
+        </div>
+        <div class="cq-kpi warn">
+          <div class="cq-kpi-icon">⏳</div>
+          <div class="cq-kpi-val" id="dash-tareas-pend">—</div>
+          <div class="cq-kpi-label">Tareas pendientes</div>
+        </div>
+        <div class="cq-kpi">
+          <div class="cq-kpi-icon">✔️</div>
+          <div class="cq-kpi-val" id="dash-tareas-ok">—</div>
+          <div class="cq-kpi-label">Completadas hoy</div>
+        </div>
+        <div class="cq-kpi">
+          <div class="cq-kpi-icon">💰</div>
+          <div class="cq-kpi-val" id="dash-costo">$—</div>
+          <div class="cq-kpi-label">Costo laboral hoy</div>
+        </div>
+        <div class="cq-kpi red" id="dash-kpi-criticas" style="display:none">
+          <div class="cq-kpi-icon">🚨</div>
+          <div class="cq-kpi-val" id="dash-criticas">—</div>
+          <div class="cq-kpi-label">Tareas críticas</div>
+        </div>
+      </div>
+
+      <div class="cq-grid2">
+
+        <!-- Cuadrilla del día -->
+        <div class="cq-card">
+          <div class="cq-card-title">👥 Cuadrilla activa hoy</div>
+          <div id="dash-cuadrilla-hoy">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">
+              Sin cuadrilla registrada para hoy.<br>
+              <button class="btn-primary" style="margin-top:10px;font-size:11px;padding:6px 14px" onclick="cqTab('cuadrillas')">Crear cuadrilla</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas críticas -->
+        <div class="cq-card">
+          <div class="cq-card-title">🚨 Alertas y tareas críticas</div>
+          <div id="dash-alertas">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin alertas activas ✔️</div>
+          </div>
+        </div>
+
+        <!-- Tareas pendientes -->
+        <div class="cq-card">
+          <div class="cq-card-title">📋 Tareas del día</div>
+          <div id="dash-tareas-lista">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin tareas registradas</div>
+          </div>
+        </div>
+
+        <!-- Ranking rendimiento -->
+        <div class="cq-card">
+          <div class="cq-card-title">🏆 Ranking de rendimiento</div>
+          <div id="dash-ranking">
+            <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin datos de rendimiento</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ PERSONAL ══════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-personal">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Gestión de personal</div>
+        <button class="btn-primary" onclick="abrirModalPersonal()">+ Agregar trabajador</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="fil-personal-rol" onchange="renderPersonal()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+          <option value="">Todos los roles</option>
+          <option>Regador</option><option>Podador</option><option>Cosechador</option>
+          <option>Trimmer</option><option>Encargado</option><option>Sanitarista</option>
+          <option>Limpieza</option><option>Operario general</option>
+        </select>
+        <select id="fil-personal-estado" onchange="renderPersonal()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+          <option value="">Todos</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Inactivos</option>
+        </select>
+      </div>
+
+      <div class="cq-card" style="padding:0;overflow:hidden">
+        <table class="cq-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>$/Jornal</th>
+              <th>$/Hora</th>
+              <th>Contacto</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-personal"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ CUADRILLAS ════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-cuadrillas">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Cuadrillas de trabajo</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Organizá equipos por día y lote</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="cq-fecha-cuadrilla" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px" onchange="renderCuadrillas()">
+          <button class="btn-primary" onclick="abrirModalCuadrilla()">+ Nueva cuadrilla</button>
+        </div>
+      </div>
+      <div id="lista-cuadrillas">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin cuadrillas para esta fecha</div>
+      </div>
+    </div>
+
+    <!-- ══ TAREAS ═════════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-tareas">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Tareas operativas</div>
+        <button class="btn-primary" onclick="abrirModalTarea()">+ Nueva tarea</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <select id="fil-tarea-prio" onchange="renderTareas()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+          <option value="">Toda prioridad</option>
+          <option value="critica">🔴 Crítica</option>
+          <option value="alta">🟠 Alta</option>
+          <option value="media">🟡 Media</option>
+          <option value="baja">🟢 Baja</option>
+        </select>
+        <select id="fil-tarea-tipo" onchange="renderTareas()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+          <option value="">Todos los tipos</option>
+          <option>Riego</option><option>Poda</option><option>Desfoliación</option>
+          <option>Aplicación foliar</option><option>Cosecha</option><option>Trimming</option>
+          <option>Secado</option><option>Limpieza</option><option>Medición</option>
+          <option>Revisión sanitaria</option><option>Otro</option>
+        </select>
+        <input type="date" id="fil-tarea-fecha" onchange="renderTareas()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px" placeholder="Filtrar fecha">
+      </div>
+
+      <div class="cq-kanban" id="kanban-tareas">
+        <div class="cq-kanban-col">
+          <div class="cq-kanban-col-title" style="color:#6b7280">⏳ Pendiente</div>
+          <div id="col-pendiente"></div>
+        </div>
+        <div class="cq-kanban-col">
+          <div class="cq-kanban-col-title" style="color:#60a5fa">▶ En progreso</div>
+          <div id="col-progreso"></div>
+        </div>
+        <div class="cq-kanban-col">
+          <div class="cq-kanban-col-title" style="color:#f0b429">⏸ Pausada</div>
+          <div id="col-pausada"></div>
+        </div>
+        <div class="cq-kanban-col">
+          <div class="cq-kanban-col-title" style="color:#22c55e">✓ Completada</div>
+          <div id="col-completada"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CONSULTOR IA ══════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-consultor">
+
+      <!-- PASO 1: elegir tipo de tarea -->
+      <div class="cia-step on" id="cia-paso1">
+        <div class="cq-card">
+          <div class="cq-card-title">🤖 Consultor IA · Optimización de Operaciones</div>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 16px;line-height:1.6">
+            Seleccioná el tipo de operación que querés planificar. La IA generará <strong style="color:var(--green)">10 preguntas estratégicas</strong> sobre escala, infraestructura, cuadrilla, presupuesto, estado del cultivo y logística — y luego te presentará <strong style="color:var(--green)">3 planes detallados</strong> con tiempos, personal, rendimiento estimado y costos.
+          </p>
+
+          <div class="cia-tipo-grid" id="cia-tipo-grid">
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Riego')"><div class="cia-tipo-icon">💧</div>Riego</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Poda')"><div class="cia-tipo-icon">✂️</div>Poda</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Desfoliación')"><div class="cia-tipo-icon">🍃</div>Desfoliación</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Aplicación foliar')"><div class="cia-tipo-icon">🌿</div>Aplicación foliar</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Cosecha')"><div class="cia-tipo-icon">🌾</div>Cosecha</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Trimming')"><div class="cia-tipo-icon">✂️</div>Trimming</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Secado')"><div class="cia-tipo-icon">🏭</div>Secado</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Limpieza')"><div class="cia-tipo-icon">🧹</div>Limpieza</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Medición')"><div class="cia-tipo-icon">📏</div>Medición</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Revisión sanitaria')"><div class="cia-tipo-icon">🔬</div>Revisión sanitaria</div>
+            <div class="cia-tipo-btn" onclick="ciaSelTipo('Otro')"><div class="cia-tipo-icon">⚙️</div>Otro</div>
+          </div>
+
+          <div id="cia-tipo-otro-wrap" style="display:none;margin-bottom:14px">
+            <label class="cq-label">Describí la operación</label>
+            <input type="text" id="cia-tipo-otro-txt" placeholder="Ej: Repicado de plántulas, Instalación de tutores..." style="margin-top:4px">
+          </div>
+
+          <!-- CONTEXTO + MICRÓFONO -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="cq-label" style="margin:0">Contexto adicional (opcional)</label>
+              <div style="display:flex;align-items:center;gap:7px">
+                <!-- Indicador grabando -->
+                <div id="cia-rec-wrap" style="display:none;align-items:center;gap:5px">
+                  <span id="cia-rec-dot" style="width:8px;height:8px;border-radius:50%;background:#dc2626;display:inline-block;animation:cia-blink .8s ease-in-out infinite"></span>
+                  <span style="font-size:10px;color:#dc2626;font-family:var(--mono)">Grabando...</span>
+                </div>
+                <!-- Botón micrófono -->
+                <button id="cia-mic-btn" onclick="ciaMicToggle()" title="Grabar contexto por voz"
+                  style="width:auto;padding:6px 12px;font-size:11px;border-radius:8px;cursor:pointer;
+                         border:0.5px solid var(--border);background:#060f0a;color:var(--muted);
+                         display:flex;align-items:center;gap:5px;font-family:var(--sans);transition:all .2s">
+                  <span id="cia-mic-icon" style="font-size:15px">🎤</span>
+                  <span id="cia-mic-label">Hablar</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Transcripción en tiempo real -->
+            <div id="cia-interim-box" style="display:none;background:#060f0a;border:0.5px solid #1a3d2b;
+              border-radius:8px;padding:8px 12px;font-size:11px;color:#7ecf6a;
+              font-style:italic;margin-bottom:6px;min-height:32px;line-height:1.5;
+              border-left:3px solid #7ecf6a">
+              <span style="font-size:9px;color:var(--muted);display:block;margin-bottom:3px;font-style:normal">🎙 Transcribiendo en tiempo real...</span>
+              <span id="cia-interim-txt"></span>
+            </div>
+
+            <textarea id="cia-contexto"
+              placeholder="Escribí o grabá por voz — Ej: Tenemos 400 plantas en floración semana 5, 3 operarios disponibles, presupuesto ajustado este mes..."
+              style="min-height:80px;font-size:12px"></textarea>
+
+            <div id="cia-mic-hint" style="font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5">
+              💡 Pulsá <strong>Hablar</strong> y describí el contexto en voz alta — cuanto más detalle des, más preciso será el diagnóstico IA.
+            </div>
+            <div id="cia-mic-error" style="display:none;font-size:11px;color:#dc2626;margin-top:5px;
+              background:#1a0505;border-radius:6px;padding:6px 10px"></div>
+
+            <!-- FOTOS CONTEXTO -->
+            <div style="margin-top:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label class="cq-label" style="margin:0">Fotos del contexto (opcional)</label>
+                <span id="cia-foto-count" style="font-size:10px;color:var(--green)"></span>
+              </div>
+              <input type="file" id="cia-foto-input" accept="image/*" multiple style="display:none" onchange="ciaAgregarFotos(this)">
+              <div class="cia-foto-upload-area" onclick="document.getElementById('cia-foto-input').click()">
+                <div style="font-size:22px;margin-bottom:4px">📷</div>
+                <div style="font-size:11px;color:var(--muted)">Tocá para agregar fotos del cultivo, síntomas o equipamiento</div>
+                <div style="font-size:10px;color:var(--dim);margin-top:3px">La IA analizará las imágenes junto al contexto · Máx 4 fotos</div>
+              </div>
+              <div class="cia-foto-grid" id="cia-foto-grid"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;text-align:center">
+            <button class="btn-primary" id="cia-btn-iniciar" onclick="ciaIniciarConsulta()" style="padding:10px 28px;font-size:13px" disabled>
+              🤖 Generar diagnóstico IA
+            </button>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px">Seleccioná un tipo de operación para continuar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASO 2: loading preguntas -->
+      <div class="cia-step" id="cia-paso2">
+        <div class="cia-loading">
+          <div class="cia-spinner"></div>
+          <div class="cia-loading-txt">Analizando operación...</div>
+          <div class="cia-loading-sub">La IA está generando las 10 preguntas estratégicas para tu diagnóstico</div>
+        </div>
+      </div>
+
+      <!-- PASO 3: preguntas -->
+      <div class="cia-step" id="cia-paso3">
+        <div class="cq-card">
+          <div class="cq-card-title">📋 Diagnóstico contextual</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+            Tipo de operación: <strong id="cia-tipo-display" style="color:var(--green)">—</strong>
+          </div>
+          <!-- Progress -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="font-size:10px;color:var(--muted);white-space:nowrap">Progreso:</div>
+            <div class="cia-progress-wrap" style="flex:1">
+              <div class="cia-progress-bar" id="cia-progress" style="width:0%"></div>
+            </div>
+            <div style="font-size:10px;color:var(--muted);white-space:nowrap" id="cia-progress-txt">0 / 5</div>
+          </div>
+
+          <div id="cia-preguntas-container"></div>
+
+          <div style="margin-top:16px;text-align:center">
+            <button class="btn-primary" id="cia-btn-plan" onclick="ciaGenerarPlan()" disabled style="padding:10px 28px;font-size:13px;opacity:.5">
+              ✨ Generar 3 planes de trabajo
+            </button>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px" id="cia-respondidas-txt">Respondé las 10 preguntas para continuar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASO 4: loading planes -->
+      <div class="cia-step" id="cia-paso4">
+        <div class="cia-loading">
+          <div class="cia-spinner"></div>
+          <div class="cia-loading-txt">Elaborando planes de trabajo...</div>
+          <div class="cia-loading-sub">La IA está diseñando 3 alternativas personalizadas para tu operación</div>
+        </div>
+      </div>
+
+      <!-- PASO 5: planes -->
+      <div class="cia-step" id="cia-paso5">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--text)">Planes de trabajo · <span id="cia-planes-tipo" style="color:var(--green)">—</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">3 alternativas generadas por IA según tu contexto</div>
+          </div>
+          <button class="btn-sm" onclick="ciaReiniciar()">← Nueva consulta</button>
+        </div>
+        <div class="cia-planes-grid" id="cia-planes-container"></div>
+        <div style="margin-top:14px;text-align:center">
+          <button class="btn-sm verde" onclick="ciaCopiarResumen()">📋 Copiar resumen</button>
+          <button class="btn-sm verde" style="margin-left:4px" onclick="ciaGuardarDiagnostico()">💾 Guardar diagnóstico</button>
+          <button class="btn-sm" style="margin-left:6px" onclick="ciaReiniciar()">🔄 Nueva consulta</button>
+        </div>
+      </div>
+
+    </div><!-- /panel-consultor -->
+
+    <!-- ══ DIAGNÓSTICOS ══════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-diagnosticos">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">📁 Diagnósticos guardados</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Historial de consultas al Consultor IA · exportables</div>
+        </div>
+        <button class="btn-sm rojo" onclick="limpiarDiagnosticos()">🗑 Limpiar todos</button>
+      </div>
+      <div id="lista-diagnosticos">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin diagnósticos guardados.<br>Generá un plan en el Consultor IA para que aparezca aquí.</div>
+      </div>
+    </div>
+
+    <!-- ══ PORTAPAPELES ════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-portapapeles">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">📋 Portapapeles</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Textos copiados y notas rápidas</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-primary" style="font-size:11px;padding:7px 14px" onclick="clipAgregarManual()">+ Nota rápida</button>
+          <button class="btn-sm rojo" onclick="limpiarPortapapeles()">🗑 Limpiar</button>
+        </div>
+      </div>
+
+      <!-- Nueva nota inline -->
+      <div id="clip-nueva-wrap" style="display:none;margin-bottom:14px">
+        <div class="cq-card" style="padding:14px">
+          <input type="text" id="clip-nueva-titulo" placeholder="Título de la nota..." style="margin-bottom:8px">
+          <textarea id="clip-nueva-txt" placeholder="Escribí o pegá tu texto aquí..." style="min-height:80px;font-size:12px;margin-bottom:8px"></textarea>
+          <div style="display:flex;gap:6px">
+            <button class="btn-primary" style="font-size:11px;padding:6px 14px" onclick="clipGuardarManual()">Guardar</button>
+            <button class="btn-sm" onclick="document.getElementById('clip-nueva-wrap').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="lista-portapapeles">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin elementos en el portapapeles.<br>Copiá un plan desde el Consultor IA o agregá una nota.</div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORIAL ════════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-historial">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">📂 Historial de operaciones</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Todas las tareas cronológicas con evidencia fotográfica</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="fil-hist-tipo" onchange="renderHistorial()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+            <option value="">Todos los tipos</option>
+            <option>Riego</option><option>Poda</option><option>Desfoliación</option>
+            <option>Aplicación foliar</option><option>Cosecha</option><option>Trimming</option>
+            <option>Secado</option><option>Limpieza</option><option>Medición</option>
+            <option>Revisión sanitaria</option><option>Otro</option>
+          </select>
+          <input type="date" id="fil-hist-fecha" onchange="renderHistorial()" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px">
+        </div>
+      </div>
+      <div id="lista-historial">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin tareas registradas.<br>Creá tareas en el módulo <strong>Tareas</strong> y aparecerán aquí.</div>
+      </div>
+    </div>
+
+    <!-- ══ JORNALES ═══════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-jornales">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Jornales y asistencia</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="jor-fecha" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px" onchange="renderJornales()">
+          <button class="btn-primary" onclick="abrirModalJornal()">+ Registrar asistencia</button>
+        </div>
+      </div>
+
+      <!-- Resumen del día -->
+      <div class="cq-metrics-row" id="jor-resumen">
+        <div class="cq-metric-box"><div class="cq-metric-val" id="jor-tot-personas">0</div><div class="cq-metric-label">Presentes</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="jor-tot-horas">0</div><div class="cq-metric-label">Horas totales</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="jor-tot-extra">0</div><div class="cq-metric-label">Horas extra</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="jor-tot-costo">$0</div><div class="cq-metric-label">Costo del día</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="jor-tot-adelantos">$0</div><div class="cq-metric-label">Adelantos</div></div>
+      </div>
+
+      <div class="cq-card" style="padding:0;overflow:hidden">
+        <table class="cq-table">
+          <thead>
+            <tr>
+              <th>Trabajador</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Horas</th>
+              <th>Hs extra</th>
+              <th>Jornal</th>
+              <th>Adelanto</th>
+              <th>Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-jornales"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ RENDIMIENTO ════════════════════════════════════════════════ -->
+    <div class="cq-panel" id="panel-rendimiento">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Rendimiento operativo</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="date" id="rend-fecha" style="font-size:12px;background:#060f0a;border:0.5px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px" onchange="renderRendimiento()">
+          <button class="btn-primary" onclick="abrirModalRendimiento()">+ Registrar rendimiento</button>
+        </div>
+      </div>
+
+      <!-- Totales -->
+      <div class="cq-metrics-row" id="rend-totales">
+        <div class="cq-metric-box"><div class="cq-metric-val" id="rend-tot-plantas">0</div><div class="cq-metric-label">Plantas trab.</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="rend-tot-metros">0</div><div class="cq-metric-label">Metros lineales</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="rend-tot-kgh">0 kg</div><div class="cq-metric-label">Kg húmedos</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="rend-tot-kgs">0 kg</div><div class="cq-metric-label">Kg secos</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="rend-tot-bandejas">0</div><div class="cq-metric-label">Bandejas/bolsas</div></div>
+        <div class="cq-metric-box"><div class="cq-metric-val" id="rend-costo-g">$—</div><div class="cq-metric-label">Costo/g seco</div></div>
+      </div>
+
+      <div class="cq-card" style="padding:0;overflow:hidden">
+        <table class="cq-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Trabajador</th>
+              <th>Lote</th>
+              <th>Plantas</th>
+              <th>Metros</th>
+              <th>Kg húm.</th>
+              <th>Kg seco</th>
+              <th>Bandejas</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-rendimiento"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /cq-content -->
+</div><!-- /cq-page -->
+
+
+<!-- ══ MODAL PERSONAL ═══════════════════════════════════════════════ -->
+<div class="cq-modal" id="modal-personal">
+  <div class="cq-modal-box">
+    <div class="cq-modal-title">
+      <span id="modal-personal-titulo">Nuevo trabajador</span>
+      <button class="cq-close" onclick="cerrarModal('modal-personal')">✕</button>
+    </div>
+    <input type="hidden" id="p-id">
+    <div class="cq-form-grid">
+      <div class="full">
+        <label class="cq-label">Nombre completo *</label>
+        <input type="text" id="p-nombre" placeholder="Ej: Juan García">
+      </div>
+      <div>
+        <label class="cq-label">Rol principal *</label>
+        <select id="p-rol">
+          <option value="">Seleccionar...</option>
+          <option>Regador</option><option>Podador</option><option>Cosechador</option>
+          <option>Trimmer</option><option>Encargado</option><option>Sanitarista</option>
+          <option>Limpieza</option><option>Operario general</option>
+        </select>
+      </div>
+      <div>
+        <label class="cq-label">Estado</label>
+        <select id="p-estado">
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
+      </div>
+      <div>
+        <label class="cq-label">Costo por jornal ($)</label>
+        <input type="number" id="p-costo-jornal" placeholder="0">
+      </div>
+      <div>
+        <label class="cq-label">Costo por hora ($)</label>
+        <input type="number" id="p-costo-hora" placeholder="0">
+      </div>
+      <div>
+        <label class="cq-label">Contacto (tel / WhatsApp)</label>
+        <input type="text" id="p-contacto" placeholder="+54 9 ...">
+      </div>
+      <div class="full">
+        <label class="cq-label">Roles secundarios (separados por coma)</label>
+        <input type="text" id="p-roles-sec" placeholder="Ej: Trimmer, Limpieza">
+      </div>
+      <div class="full">
+        <label class="cq-label">Observaciones</label>
+        <textarea id="p-obs" style="min-height:60px" placeholder="Notas adicionales..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-personal')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarPersonal()">Guardar trabajador</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CUADRILLA ══════════════════════════════════════════════ -->
+<div class="cq-modal" id="modal-cuadrilla">
+  <div class="cq-modal-box">
+    <div class="cq-modal-title">
+      <span id="modal-cuadrilla-titulo">Nueva cuadrilla</span>
+      <button class="cq-close" onclick="cerrarModal('modal-cuadrilla')">✕</button>
+    </div>
+    <input type="hidden" id="cq-id">
+    <div class="cq-form-grid">
+      <div>
+        <label class="cq-label">Nombre de la cuadrilla</label>
+        <input type="text" id="cq-nombre" placeholder="Ej: Cuadrilla A">
+      </div>
+      <div>
+        <label class="cq-label">Fecha</label>
+        <input type="date" id="cq-fecha">
+      </div>
+      <div>
+        <label class="cq-label">Encargado *</label>
+        <select id="cq-encargado"></select>
+      </div>
+      <div>
+        <label class="cq-label">Lote / Sala / Invernadero</label>
+        <input type="text" id="cq-lote" placeholder="Ej: Lote A, Sala 2">
+      </div>
+      <div class="full">
+        <label class="cq-label">Trabajadores asignados (Ctrl+click para múltiples)</label>
+        <select id="cq-trabajadores" multiple size="5" style="min-height:100px"></select>
+      </div>
+      <div class="full">
+        <label class="cq-label">Observaciones</label>
+        <textarea id="cq-obs" style="min-height:50px" placeholder="Notas del día..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-cuadrilla')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarCuadrilla()">Guardar cuadrilla</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL TAREA ══════════════════════════════════════════════════ -->
+<div class="cq-modal" id="modal-tarea">
+  <div class="cq-modal-box">
+    <div class="cq-modal-title">
+      <span id="modal-tarea-titulo">Nueva tarea</span>
+      <button class="cq-close" onclick="cerrarModal('modal-tarea')">✕</button>
+    </div>
+    <input type="hidden" id="t-id">
+    <div class="cq-form-grid">
+      <div class="full">
+        <label class="cq-label">Título de la tarea *</label>
+        <input type="text" id="t-titulo" placeholder="Ej: Desfoliación Sala 2">
+      </div>
+      <div>
+        <label class="cq-label">Tipo de tarea *</label>
+        <select id="t-tipo">
+          <option value="">Seleccionar...</option>
+          <option>Riego</option><option>Poda</option><option>Desfoliación</option>
+          <option>Aplicación foliar</option><option>Cosecha</option><option>Trimming</option>
+          <option>Secado</option><option>Limpieza</option><option>Medición</option>
+          <option>Revisión sanitaria</option><option>Otro</option>
+        </select>
+      </div>
+      <div>
+        <label class="cq-label">Prioridad *</label>
+        <select id="t-prioridad">
+          <option value="baja">🟢 Baja</option>
+          <option value="media" selected>🟡 Media</option>
+          <option value="alta">🟠 Alta</option>
+          <option value="critica">🔴 Crítica</option>
+        </select>
+      </div>
+      <div>
+        <label class="cq-label">Estado</label>
+        <select id="t-estado">
+          <option value="pendiente">Pendiente</option>
+          <option value="en_progreso">En progreso</option>
+          <option value="pausada">Pausada</option>
+          <option value="completada">Completada</option>
+        </select>
+      </div>
+      <div>
+        <label class="cq-label">Responsable</label>
+        <select id="t-responsable"></select>
+      </div>
+      <div>
+        <label class="cq-label">Lote / Área</label>
+        <input type="text" id="t-lote" placeholder="Ej: Lote A, Sala 3">
+      </div>
+      <div>
+        <label class="cq-label">Fecha y hora inicio</label>
+        <input type="datetime-local" id="t-inicio">
+      </div>
+      <div>
+        <label class="cq-label">Fecha y hora fin estimado</label>
+        <input type="datetime-local" id="t-fin">
+      </div>
+      <div class="full">
+        <label class="cq-label">Descripción / Comentarios</label>
+        <textarea id="t-comentarios" style="min-height:60px" placeholder="Detalles de la tarea..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-tarea')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarTarea()">Guardar tarea</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL JORNAL ═════════════════════════════════════════════════ -->
+<div class="cq-modal" id="modal-jornal">
+  <div class="cq-modal-box">
+    <div class="cq-modal-title">
+      <span>Registrar asistencia</span>
+      <button class="cq-close" onclick="cerrarModal('modal-jornal')">✕</button>
+    </div>
+    <input type="hidden" id="jor-id">
+    <div class="cq-form-grid">
+      <div>
+        <label class="cq-label">Trabajador *</label>
+        <select id="jor-trabajador" onchange="precargarJornal()"></select>
+      </div>
+      <div>
+        <label class="cq-label">Fecha</label>
+        <input type="date" id="jor-fecha-reg">
+      </div>
+      <div>
+        <label class="cq-label">Hora entrada</label>
+        <input type="time" id="jor-entrada" oninput="calcJornal()">
+      </div>
+      <div>
+        <label class="cq-label">Hora salida</label>
+        <input type="time" id="jor-salida" oninput="calcJornal()">
+      </div>
+      <div>
+        <label class="cq-label">Horas trabajadas (auto)</label>
+        <input type="number" id="jor-horas" step="0.5" placeholder="0" oninput="calcJornal()">
+      </div>
+      <div>
+        <label class="cq-label">Horas extra</label>
+        <input type="number" id="jor-extra" step="0.5" value="0" oninput="calcJornal()">
+      </div>
+      <div>
+        <label class="cq-label">Pago por jornal ($, auto)</label>
+        <input type="number" id="jor-pago-jornal" step="0.01" placeholder="0">
+      </div>
+      <div>
+        <label class="cq-label">Adelanto ($)</label>
+        <input type="number" id="jor-adelanto" value="0" step="0.01" oninput="calcJornal()">
+      </div>
+      <div class="full" style="background:#060f0a;border:0.5px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Total a pagar</div>
+        <div style="font-size:28px;font-weight:700;color:#f0b429;font-family:var(--mono)" id="jor-total-disp">$0.00</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-jornal')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarJornal()">Guardar jornal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL RENDIMIENTO ════════════════════════════════════════════ -->
+<div class="cq-modal" id="modal-rendimiento">
+  <div class="cq-modal-box">
+    <div class="cq-modal-title">
+      <span>Registrar rendimiento</span>
+      <button class="cq-close" onclick="cerrarModal('modal-rendimiento')">✕</button>
+    </div>
+    <input type="hidden" id="rend-id">
+    <div class="cq-form-grid">
+      <div>
+        <label class="cq-label">Trabajador</label>
+        <select id="rend-trabajador"></select>
+      </div>
+      <div>
+        <label class="cq-label">Fecha</label>
+        <input type="date" id="rend-fecha-reg">
+      </div>
+      <div>
+        <label class="cq-label">Lote / Área</label>
+        <input type="text" id="rend-lote" placeholder="Ej: Lote A">
+      </div>
+      <div>
+        <label class="cq-label">Plantas trabajadas</label>
+        <input type="number" id="rend-plantas" value="0">
+      </div>
+      <div>
+        <label class="cq-label">Metros lineales</label>
+        <input type="number" id="rend-metros" value="0">
+      </div>
+      <div>
+        <label class="cq-label">Kg húmedos cosechados</label>
+        <input type="number" id="rend-kgh" value="0" step="0.01">
+      </div>
+      <div>
+        <label class="cq-label">Kg secos procesados</label>
+        <input type="number" id="rend-kgs" value="0" step="0.01">
+      </div>
+      <div>
+        <label class="cq-label">Bandejas / bolsas</label>
+        <input type="number" id="rend-bandejas" value="0">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-sm" onclick="cerrarModal('modal-rendimiento')">Cancelar</button>
+      <button class="btn-primary" onclick="guardarRendimiento()">Guardar rendimiento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DETALLE TAREA ══════════════════════════════════════════ -->
+<div class="cq-modal" id="modal-tarea-detalle">
+  <div class="cq-modal-box">
+    <div class="cq-modal-title">
+      <span id="det-titulo">Detalle de tarea</span>
+      <button class="cq-close" onclick="cerrarModal('modal-tarea-detalle')">✕</button>
+    </div>
+    <div id="det-body"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn-sm verde"  onclick="cambiarEstadoTarea('en_progreso')">▶ En progreso</button>
+      <button class="btn-sm"        onclick="cambiarEstadoTarea('pausada')">⏸ Pausar</button>
+      <button class="btn-sm verde"  onclick="cambiarEstadoTarea('completada')">✓ Completar</button>
+      <div style="flex:1"></div>
+      <button class="btn-sm" onclick="editarTareaActual()">✏️ Editar</button>
+      <button class="btn-sm rojo"   onclick="eliminarTareaActual()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════════════════════════════
+const LS = {
+  get: k => { try{ return JSON.parse(localStorage.getItem('coq_'+k)||'[]') }catch(e){return []} },
+  set: (k,v) => localStorage.setItem('coq_'+k, JSON.stringify(v))
+}
+
+function genId(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,6)
+}
+
+function hoy(){
+  return new Date().toISOString().slice(0,10)
+}
+
+function fmtFecha(d){
+  if(!d) return '—'
+  const [y,m,dd] = d.slice(0,10).split('-')
+  return `${dd}/${m}/${y}`
+}
+
+function fmtHora(dt){
+  if(!dt) return '—'
+  return dt.length > 10 ? dt.slice(11,16) : dt
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════════════════
+const PANELS = ['dashboard','personal','cuadrillas','tareas','consultor','diagnosticos','portapapeles','historial','jornales','rendimiento']
+
+function cqTab(name){
+  PANELS.forEach(p => {
+    document.getElementById('panel-'+p).classList.toggle('on', p===name)
+  })
+  document.querySelectorAll('.cq-tab').forEach((btn,i) => {
+    btn.classList.toggle('on', PANELS[i]===name)
+  })
+  if(name==='dashboard')   renderDashboard()
+  if(name==='personal')    renderPersonal()
+  if(name==='cuadrillas')  renderCuadrillas()
+  if(name==='tareas')      renderTareas()
+  if(name==='consultor')   ciaReiniciar()
+  if(name==='diagnosticos') renderDiagnosticos()
+  if(name==='portapapeles') renderPortapapeles()
+  if(name==='historial')   renderHistorial()
+  if(name==='jornales')    renderJornales()
+  if(name==='rendimiento') renderRendimiento()
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODALES
+// ══════════════════════════════════════════════════════════════════
+function cerrarModal(id){ document.getElementById(id).classList.remove('open') }
+
+document.querySelectorAll('.cq-modal').forEach(m =>
+  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open') })
+)
+
+// ══════════════════════════════════════════════════════════════════
+// PERSONAL
+// ══════════════════════════════════════════════════════════════════
+function getPersonal(){ return LS.get('personal') }
+function savePersonal(d){ LS.set('personal',d) }
+
+function abrirModalPersonal(id=null){
+  document.getElementById('modal-personal-titulo').textContent = id ? 'Editar trabajador' : 'Nuevo trabajador'
+  const all = getPersonal()
+  const p = id ? all.find(x=>x.id===id) : null
+  document.getElementById('p-id').value        = p?.id || ''
+  document.getElementById('p-nombre').value    = p?.nombre || ''
+  document.getElementById('p-rol').value       = p?.rol || ''
+  document.getElementById('p-estado').value    = p?.estado || 'activo'
+  document.getElementById('p-costo-jornal').value = p?.costo_jornal || ''
+  document.getElementById('p-costo-hora').value   = p?.costo_hora || ''
+  document.getElementById('p-contacto').value  = p?.contacto || ''
+  document.getElementById('p-roles-sec').value = (p?.roles_sec||[]).join(', ')
+  document.getElementById('p-obs').value       = p?.obs || ''
+  document.getElementById('modal-personal').classList.add('open')
+}
+
+function guardarPersonal(){
+  const nombre = document.getElementById('p-nombre').value.trim()
+  if(!nombre){ alert('Ingresá el nombre del trabajador'); return }
+  const id = document.getElementById('p-id').value || genId()
+  const all = getPersonal().filter(x=>x.id!==id)
+  all.push({
+    id, nombre,
+    rol:         document.getElementById('p-rol').value,
+    estado:      document.getElementById('p-estado').value,
+    costo_jornal:parseFloat(document.getElementById('p-costo-jornal').value)||0,
+    costo_hora:  parseFloat(document.getElementById('p-costo-hora').value)||0,
+    contacto:    document.getElementById('p-contacto').value.trim(),
+    roles_sec:   document.getElementById('p-roles-sec').value.split(',').map(s=>s.trim()).filter(Boolean),
+    obs:         document.getElementById('p-obs').value.trim(),
+    fecha_alta:  hoy()
+  })
+  savePersonal(all)
+  cerrarModal('modal-personal')
+  renderPersonal()
+  renderDashboard()
+}
+
+function eliminarPersonal(id){
+  if(!confirm('¿Eliminar este trabajador?')) return
+  savePersonal(getPersonal().filter(x=>x.id!==id))
+  renderPersonal()
+  renderDashboard()
+}
+
+const BADGE_ESTADO = { activo:'badge-verde', inactivo:'badge-gris' }
+
+function renderPersonal(){
+  const rol    = document.getElementById('fil-personal-rol')?.value || ''
+  const estado = document.getElementById('fil-personal-estado')?.value || ''
+  let data = getPersonal()
+  if(rol)    data = data.filter(p => p.rol===rol || (p.roles_sec||[]).includes(rol))
+  if(estado) data = data.filter(p => p.estado===estado)
+
+  const tb = document.getElementById('tbody-personal')
+  if(!tb) return
+  if(!data.length){
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px">Sin trabajadores registrados</td></tr>`
+    return
+  }
+  tb.innerHTML = data.map(p=>`
+    <tr>
+      <td><strong style="color:var(--text)">${p.nombre}</strong>${p.roles_sec?.length?`<br><span style="font-size:10px;color:var(--muted)">${p.roles_sec.join(', ')}</span>`:''}</td>
+      <td>${p.rol||'—'}</td>
+      <td><span class="badge ${BADGE_ESTADO[p.estado]||'badge-gris'}">${p.estado}</span></td>
+      <td style="font-family:var(--mono);color:#f0b429">${p.costo_jornal?'$'+p.costo_jornal.toLocaleString():'—'}</td>
+      <td style="font-family:var(--mono)">${p.costo_hora?'$'+p.costo_hora:'—'}</td>
+      <td style="color:var(--muted)">${p.contacto||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm" onclick="abrirModalPersonal('${p.id}')">✏️</button>
+        <button class="btn-sm rojo" onclick="eliminarPersonal('${p.id}')">🗑</button>
+      </td>
+    </tr>`).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CUADRILLAS
+// ══════════════════════════════════════════════════════════════════
+function getCuadrillas(){ return LS.get('cuadrillas') }
+function saveCuadrillas(d){ LS.set('cuadrillas',d) }
+
+function llenarSelectPersonal(selId, valor=''){
+  const sel = document.getElementById(selId)
+  if(!sel) return
+  const activos = getPersonal().filter(p=>p.estado==='activo')
+  sel.innerHTML = '<option value="">Sin asignar</option>' +
+    activos.map(p=>`<option value="${p.id}" ${p.id===valor?'selected':''}>${p.nombre} · ${p.rol}</option>`).join('')
+}
+
+function abrirModalCuadrilla(id=null){
+  document.getElementById('modal-cuadrilla-titulo').textContent = id ? 'Editar cuadrilla' : 'Nueva cuadrilla'
+  llenarSelectPersonal('cq-encargado')
+  const activos = getPersonal().filter(p=>p.estado==='activo')
+  document.getElementById('cq-trabajadores').innerHTML =
+    activos.map(p=>`<option value="${p.id}">${p.nombre} · ${p.rol}</option>`).join('')
+
+  const cq = id ? getCuadrillas().find(x=>x.id===id) : null
+  document.getElementById('cq-id').value      = cq?.id || ''
+  document.getElementById('cq-nombre').value  = cq?.nombre || ''
+  document.getElementById('cq-fecha').value   = cq?.fecha || document.getElementById('cq-fecha-cuadrilla').value || hoy()
+  document.getElementById('cq-lote').value    = cq?.lote || ''
+  document.getElementById('cq-obs').value     = cq?.obs || ''
+  if(cq?.encargado_id) document.getElementById('cq-encargado').value = cq.encargado_id
+  if(cq?.trabajadores){
+    const opts = document.getElementById('cq-trabajadores').options
+    for(let i=0;i<opts.length;i++) opts[i].selected = cq.trabajadores.includes(opts[i].value)
+  }
+  document.getElementById('modal-cuadrilla').classList.add('open')
+}
+
+function guardarCuadrilla(){
+  const id = document.getElementById('cq-id').value || genId()
+  const trabajadoresSeleccionados = Array.from(document.getElementById('cq-trabajadores').selectedOptions).map(o=>o.value)
+  const all = getCuadrillas().filter(x=>x.id!==id)
+  all.push({
+    id,
+    nombre:      document.getElementById('cq-nombre').value.trim() || 'Cuadrilla',
+    fecha:       document.getElementById('cq-fecha').value,
+    encargado_id:document.getElementById('cq-encargado').value,
+    trabajadores: trabajadoresSeleccionados,
+    lote:        document.getElementById('cq-lote').value.trim(),
+    obs:         document.getElementById('cq-obs').value.trim()
+  })
+  saveCuadrillas(all)
+  cerrarModal('modal-cuadrilla')
+  renderCuadrillas()
+  renderDashboard()
+}
+
+function eliminarCuadrilla(id){
+  if(!confirm('¿Eliminar esta cuadrilla?')) return
+  saveCuadrillas(getCuadrillas().filter(x=>x.id!==id))
+  renderCuadrillas()
+  renderDashboard()
+}
+
+function renderCuadrillas(){
+  const fecha = document.getElementById('cq-fecha-cuadrilla')?.value || hoy()
+  const data  = getCuadrillas().filter(c=>c.fecha===fecha)
+  const personal = getPersonal()
+  const cont = document.getElementById('lista-cuadrillas')
+  if(!cont) return
+
+  if(!data.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">
+      Sin cuadrillas para el ${fmtFecha(fecha)}</div>`
+    return
+  }
+
+  cont.innerHTML = data.map(cq=>{
+    const enc  = personal.find(p=>p.id===cq.encargado_id)
+    const miembros = (cq.trabajadores||[]).map(id=>personal.find(p=>p.id===id)).filter(Boolean)
+    const costoEstimado = miembros.reduce((s,p)=>s+(p.costo_jornal||0),0) + (enc?.costo_jornal||0)
+
+    return `<div class="cq-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${cq.nombre}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">📍 ${cq.lote||'Sin lote asignado'} · 📅 ${fmtFecha(cq.fecha)}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm" onclick="abrirModalCuadrilla('${cq.id}')">✏️ Editar</button>
+          <button class="btn-sm rojo" onclick="eliminarCuadrilla('${cq.id}')">🗑</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px">
+        <div class="cq-metric-box">
+          <div class="cq-metric-val">${(cq.trabajadores||[]).length + (cq.encargado_id?1:0)}</div>
+          <div class="cq-metric-label">Personas</div>
+        </div>
+        <div class="cq-metric-box">
+          <div class="cq-metric-val" style="color:#f0b429">$${costoEstimado.toLocaleString()}</div>
+          <div class="cq-metric-label">Costo estimado</div>
+        </div>
+        <div class="cq-metric-box">
+          <div class="cq-metric-val" style="font-size:14px">${enc?.nombre||'—'}</div>
+          <div class="cq-metric-label">Encargado</div>
+        </div>
+      </div>
+
+      ${miembros.length ? `
+      <div style="margin-top:12px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Trabajadores</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          ${miembros.map(m=>`<span class="badge badge-verde">${m.nombre}</span>`).join('')}
+        </div>
+      </div>` : ''}
+      ${cq.obs?`<div style="margin-top:10px;font-size:11px;color:var(--muted);background:#060f0a;padding:8px;border-radius:6px">${cq.obs}</div>`:''}
+    </div>`
+  }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TAREAS
+// ══════════════════════════════════════════════════════════════════
+function getTareas(){ return LS.get('tareas') }
+function saveTareas(d){ LS.set('tareas',d) }
+
+let tareaActualId = null
+
+const PRIORIDAD_BADGE = {
+  baja:    ['badge-verde','🟢'],
+  media:   ['badge-amarillo','🟡'],
+  alta:    ['badge-naranja','🟠'],
+  critica: ['badge-rojo','🔴']
+}
+
+const ESTADO_BADGE = {
+  pendiente:   ['badge-gris','⏳'],
+  en_progreso: ['badge-azul','▶'],
+  pausada:     ['badge-amarillo','⏸'],
+  completada:  ['badge-verde','✓']
+}
+
+function abrirModalTarea(id=null){
+  llenarSelectPersonal('t-responsable')
+  document.getElementById('t-responsable').innerHTML =
+    '<option value="">Sin asignar</option>' + document.getElementById('t-responsable').innerHTML.replace('<option value="">Sin asignar</option>','')
+
+  const t = id ? getTareas().find(x=>x.id===id) : null
+  document.getElementById('modal-tarea-titulo').textContent = id ? 'Editar tarea' : 'Nueva tarea'
+  document.getElementById('t-id').value          = t?.id || ''
+  document.getElementById('t-titulo').value      = t?.titulo || ''
+  document.getElementById('t-tipo').value        = t?.tipo || ''
+  document.getElementById('t-prioridad').value   = t?.prioridad || 'media'
+  document.getElementById('t-estado').value      = t?.estado || 'pendiente'
+  document.getElementById('t-responsable').value = t?.responsable_id || ''
+  document.getElementById('t-lote').value        = t?.lote || ''
+  document.getElementById('t-inicio').value      = t?.inicio || ''
+  document.getElementById('t-fin').value         = t?.fin || ''
+  document.getElementById('t-comentarios').value = t?.comentarios || ''
+  document.getElementById('modal-tarea').classList.add('open')
+}
+
+function guardarTarea(){
+  const titulo = document.getElementById('t-titulo').value.trim()
+  if(!titulo){ alert('Ingresá el título de la tarea'); return }
+  const id = document.getElementById('t-id').value || genId()
+  const all = getTareas().filter(x=>x.id!==id)
+  all.push({
+    id, titulo,
+    tipo:          document.getElementById('t-tipo').value,
+    prioridad:     document.getElementById('t-prioridad').value,
+    estado:        document.getElementById('t-estado').value,
+    responsable_id:document.getElementById('t-responsable').value,
+    lote:          document.getElementById('t-lote').value.trim(),
+    inicio:        document.getElementById('t-inicio').value,
+    fin:           document.getElementById('t-fin').value,
+    comentarios:   document.getElementById('t-comentarios').value.trim(),
+    creada:        new Date().toISOString()
+  })
+  saveTareas(all)
+  cerrarModal('modal-tarea')
+  renderTareas()
+  renderDashboard()
+}
+
+function abrirDetalleTarea(id){
+  tareaActualId = id
+  const t = getTareas().find(x=>x.id===id)
+  if(!t) return
+  const pers = getPersonal()
+  const resp = pers.find(p=>p.id===t.responsable_id)
+  const [pb, pi] = PRIORIDAD_BADGE[t.prioridad] || ['badge-gris','']
+  const [eb, ei] = ESTADO_BADGE[t.estado] || ['badge-gris','']
+
+  document.getElementById('det-titulo').textContent = t.titulo
+  document.getElementById('det-body').innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge ${pb}">${pi} ${t.prioridad}</span>
+      <span class="badge ${eb}">${ei} ${t.estado}</span>
+      <span class="badge badge-gris">${t.tipo||'Sin tipo'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;margin-bottom:12px">
+      <div><span style="color:var(--muted)">Responsable: </span>${resp?.nombre||'Sin asignar'}</div>
+      <div><span style="color:var(--muted)">Lote: </span>${t.lote||'—'}</div>
+      <div><span style="color:var(--muted)">Inicio: </span>${t.inicio?fmtFecha(t.inicio)+' '+fmtHora(t.inicio):'—'}</div>
+      <div><span style="color:var(--muted)">Fin est.: </span>${t.fin?fmtFecha(t.fin)+' '+fmtHora(t.fin):'—'}</div>
+    </div>
+    ${t.comentarios?`<div style="background:#060f0a;border-radius:8px;padding:10px;font-size:12px;color:var(--text)">${t.comentarios}</div>`:''}
+  `
+  document.getElementById('modal-tarea-detalle').classList.add('open')
+}
+
+function cambiarEstadoTarea(estado){
+  if(!tareaActualId) return
+  const all = getTareas()
+  const t = all.find(x=>x.id===tareaActualId)
+  if(t) t.estado = estado
+  saveTareas(all)
+  cerrarModal('modal-tarea-detalle')
+  renderTareas()
+  renderDashboard()
+}
+
+function editarTareaActual(){
+  cerrarModal('modal-tarea-detalle')
+  abrirModalTarea(tareaActualId)
+}
+
+function eliminarTareaActual(){
+  if(!confirm('¿Eliminar esta tarea?')) return
+  saveTareas(getTareas().filter(x=>x.id!==tareaActualId))
+  cerrarModal('modal-tarea-detalle')
+  renderTareas()
+  renderDashboard()
+}
+
+function renderTareas(){
+  const prio  = document.getElementById('fil-tarea-prio')?.value || ''
+  const tipo  = document.getElementById('fil-tarea-tipo')?.value || ''
+  const fecha = document.getElementById('fil-tarea-fecha')?.value || ''
+  let data = getTareas()
+  if(prio)  data = data.filter(t=>t.prioridad===prio)
+  if(tipo)  data = data.filter(t=>t.tipo===tipo)
+  if(fecha) data = data.filter(t=>t.inicio?.slice(0,10)===fecha)
+
+  const personal = getPersonal()
+  const ESTADOS = ['pendiente','en_progreso','pausada','completada']
+  const COL_IDS = ['col-pendiente','col-progreso','col-pausada','col-completada']
+
+  ESTADOS.forEach((est,i)=>{
+    const col = document.getElementById(COL_IDS[i])
+    if(!col) return
+    const items = data.filter(t=>t.estado===est)
+    if(!items.length){ col.innerHTML = `<div style="color:var(--muted);font-size:11px;text-align:center;padding:10px">Sin tareas</div>`; return }
+    col.innerHTML = items.map(t=>{
+      const [pb,pi] = PRIORIDAD_BADGE[t.prioridad]||['badge-gris','']
+      const resp = personal.find(p=>p.id===t.responsable_id)
+      return `<div class="cq-tarea-card" onclick="abrirDetalleTarea('${t.id}')">
+        <div class="cq-tarea-titulo">${pi} ${t.titulo}</div>
+        <div class="cq-tarea-meta" style="margin-bottom:5px">${t.tipo||''} ${t.lote?'· '+t.lote:''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="badge ${pb}" style="font-size:9px">${t.prioridad}</span>
+          <span style="font-size:10px;color:var(--muted)">${resp?.nombre||''}</span>
+        </div>
+      </div>`
+    }).join('')
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════
+// JORNALES
+// ══════════════════════════════════════════════════════════════════
+function getJornales(){ return LS.get('jornales') }
+function saveJornales(d){ LS.set('jornales',d) }
+
+function abrirModalJornal(id=null){
+  llenarSelectPersonal('jor-trabajador')
+  const j = id ? getJornales().find(x=>x.id===id) : null
+  const fechaSel = document.getElementById('jor-fecha')?.value || hoy()
+  document.getElementById('jor-id').value         = j?.id || ''
+  document.getElementById('jor-fecha-reg').value  = j?.fecha || fechaSel
+  document.getElementById('jor-entrada').value    = j?.entrada || ''
+  document.getElementById('jor-salida').value     = j?.salida || ''
+  document.getElementById('jor-horas').value      = j?.horas || ''
+  document.getElementById('jor-extra').value      = j?.extra || 0
+  document.getElementById('jor-pago-jornal').value= j?.pago_jornal || ''
+  document.getElementById('jor-adelanto').value   = j?.adelanto || 0
+  document.getElementById('jor-trabajador').value = j?.trabajador_id || ''
+  if(j) precargarJornal()
+  calcJornal()
+  document.getElementById('modal-jornal').classList.add('open')
+}
+
+function precargarJornal(){
+  const tid = document.getElementById('jor-trabajador').value
+  const p = getPersonal().find(x=>x.id===tid)
+  if(p && p.costo_jornal) document.getElementById('jor-pago-jornal').value = p.costo_jornal
+  calcJornal()
+}
+
+function calcJornal(){
+  const entrada = document.getElementById('jor-entrada').value
+  const salida  = document.getElementById('jor-salida').value
+  let horas = 0
+  if(entrada && salida){
+    const [eh,em] = entrada.split(':').map(Number)
+    const [sh,sm] = salida.split(':').map(Number)
+    horas = ((sh*60+sm)-(eh*60+em))/60
+    if(horas<0) horas += 24
+    document.getElementById('jor-horas').value = horas.toFixed(1)
+  } else {
+    horas = parseFloat(document.getElementById('jor-horas').value)||0
+  }
+  const extra    = parseFloat(document.getElementById('jor-extra').value)||0
+  const jornal   = parseFloat(document.getElementById('jor-pago-jornal').value)||0
+  const adelanto = parseFloat(document.getElementById('jor-adelanto').value)||0
+  const tid      = document.getElementById('jor-trabajador').value
+  const p        = getPersonal().find(x=>x.id===tid)
+  const costoExtra = (p?.costo_hora||0) * extra
+  const total    = Math.max(0, jornal + costoExtra - adelanto)
+  document.getElementById('jor-total-disp').textContent = '$'+total.toFixed(2)
+}
+
+function guardarJornal(){
+  const tid = document.getElementById('jor-trabajador').value
+  if(!tid){ alert('Seleccioná un trabajador'); return }
+  const entrada  = document.getElementById('jor-entrada').value
+  const salida   = document.getElementById('jor-salida').value
+  const extra    = parseFloat(document.getElementById('jor-extra').value)||0
+  const jornal   = parseFloat(document.getElementById('jor-pago-jornal').value)||0
+  const adelanto = parseFloat(document.getElementById('jor-adelanto').value)||0
+  const horas    = parseFloat(document.getElementById('jor-horas').value)||0
+  const p        = getPersonal().find(x=>x.id===tid)
+  const costoExtra = (p?.costo_hora||0)*extra
+  const total    = Math.max(0, jornal+costoExtra-adelanto)
+  const id = document.getElementById('jor-id').value || genId()
+  const all = getJornales().filter(x=>x.id!==id)
+  all.push({
+    id, trabajador_id:tid,
+    fecha:    document.getElementById('jor-fecha-reg').value,
+    entrada, salida, horas, extra,
+    pago_jornal: jornal, adelanto, total
+  })
+  saveJornales(all)
+  cerrarModal('modal-jornal')
+  renderJornales()
+  renderDashboard()
+}
+
+function eliminarJornal(id){
+  if(!confirm('¿Eliminar este registro?')) return
+  saveJornales(getJornales().filter(x=>x.id!==id))
+  renderJornales()
+  renderDashboard()
+}
+
+function renderJornales(){
+  const fecha = document.getElementById('jor-fecha')?.value || hoy()
+  const data  = getJornales().filter(j=>j.fecha===fecha)
+  const pers  = getPersonal()
+  const tb    = document.getElementById('tbody-jornales')
+  if(!tb) return
+
+  const totPersonas = data.length
+  const totHoras    = data.reduce((s,j)=>s+j.horas,0)
+  const totExtra    = data.reduce((s,j)=>s+j.extra,0)
+  const totCosto    = data.reduce((s,j)=>s+j.total,0)
+  const totAdelanto = data.reduce((s,j)=>s+j.adelanto,0)
+
+  document.getElementById('jor-tot-personas').textContent = totPersonas
+  document.getElementById('jor-tot-horas').textContent    = totHoras.toFixed(1)+'h'
+  document.getElementById('jor-tot-extra').textContent    = totExtra.toFixed(1)+'h'
+  document.getElementById('jor-tot-costo').textContent    = '$'+totCosto.toFixed(0)
+  document.getElementById('jor-tot-adelantos').textContent= '$'+totAdelanto.toFixed(0)
+
+  if(!data.length){
+    tb.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Sin registros para el ${fmtFecha(fecha)}</td></tr>`
+    return
+  }
+  tb.innerHTML = data.map(j=>{
+    const p = pers.find(x=>x.id===j.trabajador_id)
+    return `<tr>
+      <td><strong style="color:var(--text)">${p?.nombre||'—'}</strong><br><span style="font-size:10px;color:var(--muted)">${p?.rol||''}</span></td>
+      <td style="font-family:var(--mono)">${j.entrada||'—'}</td>
+      <td style="font-family:var(--mono)">${j.salida||'—'}</td>
+      <td style="font-family:var(--mono)">${j.horas?.toFixed(1)||0}h</td>
+      <td style="font-family:var(--mono);color:#60a5fa">${j.extra?j.extra+'h':'—'}</td>
+      <td style="font-family:var(--mono);color:#f0b429">$${j.pago_jornal?.toFixed(0)||0}</td>
+      <td style="font-family:var(--mono);color:#dc2626">${j.adelanto?'$'+j.adelanto:'-'}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:var(--green)">$${j.total?.toFixed(0)||0}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm" onclick="abrirModalJornal('${j.id}')">✏️</button>
+        <button class="btn-sm rojo" onclick="eliminarJornal('${j.id}')">🗑</button>
+      </td>
+    </tr>`
+  }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDIMIENTO
+// ══════════════════════════════════════════════════════════════════
+function getRendimiento(){ return LS.get('rendimiento') }
+function saveRendimiento(d){ LS.set('rendimiento',d) }
+
+function abrirModalRendimiento(id=null){
+  llenarSelectPersonal('rend-trabajador')
+  document.getElementById('rend-trabajador').innerHTML =
+    '<option value="">Cuadrilla completa</option>' + document.getElementById('rend-trabajador').innerHTML.replace('<option value="">Sin asignar</option>','')
+  const fechaSel = document.getElementById('rend-fecha')?.value || hoy()
+  const r = id ? getRendimiento().find(x=>x.id===id) : null
+  document.getElementById('rend-id').value          = r?.id || ''
+  document.getElementById('rend-trabajador').value  = r?.trabajador_id || ''
+  document.getElementById('rend-fecha-reg').value   = r?.fecha || fechaSel
+  document.getElementById('rend-lote').value        = r?.lote || ''
+  document.getElementById('rend-plantas').value     = r?.plantas || 0
+  document.getElementById('rend-metros').value      = r?.metros || 0
+  document.getElementById('rend-kgh').value         = r?.kgh || 0
+  document.getElementById('rend-kgs').value         = r?.kgs || 0
+  document.getElementById('rend-bandejas').value    = r?.bandejas || 0
+  document.getElementById('modal-rendimiento').classList.add('open')
+}
+
+function guardarRendimiento(){
+  const id = document.getElementById('rend-id').value || genId()
+  const all = getRendimiento().filter(x=>x.id!==id)
+  all.push({
+    id,
+    trabajador_id: document.getElementById('rend-trabajador').value,
+    fecha:    document.getElementById('rend-fecha-reg').value,
+    lote:     document.getElementById('rend-lote').value.trim(),
+    plantas:  parseFloat(document.getElementById('rend-plantas').value)||0,
+    metros:   parseFloat(document.getElementById('rend-metros').value)||0,
+    kgh:      parseFloat(document.getElementById('rend-kgh').value)||0,
+    kgs:      parseFloat(document.getElementById('rend-kgs').value)||0,
+    bandejas: parseFloat(document.getElementById('rend-bandejas').value)||0
+  })
+  saveRendimiento(all)
+  cerrarModal('modal-rendimiento')
+  renderRendimiento()
+  renderDashboard()
+}
+
+function eliminarRend(id){
+  if(!confirm('¿Eliminar este registro?')) return
+  saveRendimiento(getRendimiento().filter(x=>x.id!==id))
+  renderRendimiento()
+}
+
+function renderRendimiento(){
+  const fecha = document.getElementById('rend-fecha')?.value || ''
+  let data    = getRendimiento()
+  if(fecha) data = data.filter(r=>r.fecha===fecha)
+  const pers  = getPersonal()
+  const tb    = document.getElementById('tbody-rendimiento')
+  if(!tb) return
+
+  const totPlantas  = data.reduce((s,r)=>s+r.plantas,0)
+  const totMetros   = data.reduce((s,r)=>s+r.metros,0)
+  const totKgh      = data.reduce((s,r)=>s+r.kgh,0)
+  const totKgs      = data.reduce((s,r)=>s+r.kgs,0)
+  const totBandejas = data.reduce((s,r)=>s+r.bandejas,0)
+
+  document.getElementById('rend-tot-plantas').textContent  = totPlantas
+  document.getElementById('rend-tot-metros').textContent   = totMetros.toFixed(1)
+  document.getElementById('rend-tot-kgh').textContent      = totKgh.toFixed(1)+' kg'
+  document.getElementById('rend-tot-kgs').textContent      = totKgs.toFixed(1)+' kg'
+  document.getElementById('rend-tot-bandejas').textContent = totBandejas
+
+  // Costo laboral del período filtrado
+  const jorns = fecha ? getJornales().filter(j=>j.fecha===fecha) : getJornales()
+  const costolaboral = jorns.reduce((s,j)=>s+j.total,0)
+  const costoG = totKgs>0 ? (costolaboral/(totKgs*1000)).toFixed(2) : '—'
+  document.getElementById('rend-costo-g').textContent = costoG!=='—' ? '$'+costoG : '$—'
+
+  if(!data.length){
+    tb.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Sin registros${fecha?' para '+fmtFecha(fecha):''}</td></tr>`
+    return
+  }
+  tb.innerHTML = data.map(r=>{
+    const p = pers.find(x=>x.id===r.trabajador_id)
+    return `<tr>
+      <td style="font-family:var(--mono);color:var(--muted);font-size:11px">${fmtFecha(r.fecha)}</td>
+      <td><strong style="color:var(--text)">${p?.nombre||'Cuadrilla'}</strong></td>
+      <td><span class="badge badge-gris">${r.lote||'—'}</span></td>
+      <td style="font-family:var(--mono)">${r.plantas||0}</td>
+      <td style="font-family:var(--mono)">${r.metros||0}</td>
+      <td style="font-family:var(--mono);color:#60a5fa">${r.kgh||0}</td>
+      <td style="font-family:var(--mono);color:#f0b429;font-weight:700">${r.kgs||0}</td>
+      <td style="font-family:var(--mono)">${r.bandejas||0}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm" onclick="abrirModalRendimiento('${r.id}')">✏️</button>
+        <button class="btn-sm rojo" onclick="eliminarRend('${r.id}')">🗑</button>
+      </td>
+    </tr>`
+  }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MICRÓFONO — Web Speech API
+// ══════════════════════════════════════════════════════════════════
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
+let micActive        = false
+let micRec           = null
+let micFinalText     = ''   // texto confirmado acumulado
+let micRestartPending= false
+
+function ciaMicToggle(){
+  if(!SpeechRec){
+    const err = document.getElementById('cia-mic-error')
+    err.style.display = ''
+    err.textContent = '⚠️ Tu navegador no soporta reconocimiento de voz. Usá Chrome en Android o Safari iOS 14+.'
+    return
+  }
+  micActive ? ciaMicStop() : ciaMicStart()
+}
+
+function ciaMicStart(){
+  // Guardar texto ya escrito
+  micFinalText = document.getElementById('cia-contexto').value.trim()
+  if(micFinalText) micFinalText += ' '
+
+  micRec          = new SpeechRec()
+  micRec.lang     = 'es-AR'
+  micRec.continuous      = true
+  micRec.interimResults  = true
+  micRec.maxAlternatives = 1
+
+  micRec.onstart = () => {
+    micActive = true
+    micSetUI(true)
+    document.getElementById('cia-mic-error').style.display = 'none'
+    document.getElementById('cia-interim-box').style.display = ''
+  }
+
+  micRec.onresult = (e) => {
+    let interim = ''
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const transcript = e.results[i][0].transcript
+      if(e.results[i].isFinal){
+        micFinalText += transcript + ' '
+      } else {
+        interim += transcript
+      }
+    }
+    // Actualizar textarea con final + interim
+    const textarea = document.getElementById('cia-contexto')
+    textarea.value = micFinalText + interim
+    textarea.scrollTop = textarea.scrollHeight
+
+    // Mostrar solo el interim en el box de preview
+    const box = document.getElementById('cia-interim-txt')
+    box.textContent = interim
+  }
+
+  micRec.onerror = (e) => {
+    const msgs = {
+      'not-allowed' : 'Permiso de micrófono denegado. Habilitalo en la configuración del navegador.',
+      'no-speech'   : 'No se detectó audio. Hablá más cerca del micrófono.',
+      'network'     : 'Error de red. Verificá la conexión a internet.',
+      'audio-capture':'No se encontró micrófono. Verificá que esté conectado.'
+    }
+    const err = document.getElementById('cia-mic-error')
+    err.style.display = ''
+    err.textContent = '⚠️ ' + (msgs[e.error] || 'Error: ' + e.error)
+    if(e.error !== 'no-speech') ciaMicStop()
+  }
+
+  micRec.onend = () => {
+    // Auto-reiniciar si sigue activo (SpeechRec se corta sola en algunos browsers)
+    if(micActive && !micRestartPending){
+      micRestartPending = true
+      setTimeout(() => {
+        micRestartPending = false
+        if(micActive && micRec){
+          try { micRec.start() } catch(e){}
+        }
+      }, 200)
+    }
+  }
+
+  try {
+    micRec.start()
+  } catch(e){
+    const err = document.getElementById('cia-mic-error')
+    err.style.display = ''
+    err.textContent = '⚠️ No se pudo iniciar el micrófono: ' + e.message
+  }
+}
+
+function ciaMicStop(){
+  micActive = false
+  micRestartPending = false
+  if(micRec){
+    try { micRec.stop() } catch(e){}
+    micRec = null
+  }
+  micSetUI(false)
+
+  // Limpiar interim y dejar solo el texto final en textarea
+  const textarea = document.getElementById('cia-contexto')
+  textarea.value = micFinalText.trim()
+  document.getElementById('cia-interim-box').style.display = 'none'
+  document.getElementById('cia-interim-txt').textContent = ''
+}
+
+function micSetUI(recording){
+  const btn   = document.getElementById('cia-mic-btn')
+  const label = document.getElementById('cia-mic-label')
+  const icon  = document.getElementById('cia-mic-icon')
+  const wrap  = document.getElementById('cia-rec-wrap')
+
+  if(recording){
+    btn.classList.add('recording')
+    label.textContent = 'Detener'
+    icon.textContent  = '⏹'
+    wrap.style.display = 'flex'
+  } else {
+    btn.classList.remove('recording')
+    label.textContent = 'Hablar'
+    icon.textContent  = '🎤'
+    wrap.style.display = 'none'
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CONSULTOR IA
+// ══════════════════════════════════════════════════════════════════
+let ciaTipoActual    = ''
+let ciaPreguntasData = []  // [{pregunta, opciones}]
+let ciaRespuestas    = []  // [0|1|2, ...]  índice de opción elegida
+let ciaPlanesActuales = [] // planes generados en el paso 5
+let ciaFotosContexto  = [] // [{data:base64, media_type, nombre}]
+
+function ciaSelTipo(tipo){
+  ciaTipoActual = tipo
+  // Marcar selección visual
+  document.querySelectorAll('.cia-tipo-btn').forEach(b=>{
+    b.classList.toggle('sel', b.textContent.trim()===tipo || b.querySelector('.cia-tipo-icon')?.nextSibling?.textContent?.trim()===tipo)
+  })
+  // Mostrar campo libre si es "Otro"
+  document.getElementById('cia-tipo-otro-wrap').style.display = tipo==='Otro' ? '' : 'none'
+  // Habilitar botón
+  const btn = document.getElementById('cia-btn-iniciar')
+  btn.disabled = false
+  btn.style.opacity = '1'
+  btn.closest('.cq-card').querySelector('div:last-child div').textContent = `Operación seleccionada: ${tipo}`
+}
+
+async function ciaIniciarConsulta(){
+  let tipo = ciaTipoActual
+  if(tipo==='Otro'){
+    const txt = document.getElementById('cia-tipo-otro-txt').value.trim()
+    if(!txt){ alert('Describí la operación en el campo de texto'); return }
+    tipo = txt
+    ciaTipoActual = txt
+  }
+  const contexto = document.getElementById('cia-contexto').value.trim()
+
+  ciaPaso(2) // loading
+  ciaPreguntasData = []
+  ciaRespuestas    = []
+
+  try {
+    const resp = await fetch('/api/consultor-preguntas', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ tipo, contexto_extra: contexto, fotos: ciaFotosContexto })
+    })
+    const data = await resp.json()
+    if(!data.ok || !data.preguntas?.length) throw new Error(data.error || 'Sin preguntas')
+
+    ciaPreguntasData = data.preguntas
+    ciaRespuestas    = new Array(data.preguntas.length).fill(null)
+    renderCiaPreguntas()
+    document.getElementById('cia-tipo-display').textContent = tipo
+    ciaPaso(3)
+  } catch(err) {
+    ciaPaso(1)
+    alert('Error al generar preguntas: ' + err.message)
+  }
+}
+
+function renderCiaPreguntas(){
+  const cont = document.getElementById('cia-preguntas-container')
+  cont.innerHTML = ciaPreguntasData.map((p, qi)=>`
+    <div class="cia-pregunta" id="cia-preg-${qi}">
+      <div class="cia-pregunta-num">Pregunta ${qi+1} de ${ciaPreguntasData.length}</div>
+      <div class="cia-pregunta-texto">${p.pregunta}</div>
+      <div class="cia-opciones">
+        ${p.opciones.map((op, oi)=>`
+          <div class="cia-opcion" id="cia-op-${qi}-${oi}" onclick="ciaResponder(${qi},${oi})">
+            ${op}
+          </div>`).join('')}
+      </div>
+    </div>`).join('')
+  actualizarProgresoCia()
+}
+
+function ciaResponder(qi, oi){
+  ciaRespuestas[qi] = oi
+  // UI: marcar opción seleccionada
+  const p = ciaPreguntasData[qi]
+  for(let i=0;i<p.opciones.length;i++){
+    document.getElementById(`cia-op-${qi}-${i}`)?.classList.toggle('sel', i===oi)
+  }
+  document.getElementById(`cia-preg-${qi}`)?.classList.add('respondida')
+  actualizarProgresoCia()
+}
+
+function actualizarProgresoCia(){
+  const respondidas = ciaRespuestas.filter(r=>r!==null).length
+  const total       = ciaPreguntasData.length
+  const pct         = total > 0 ? Math.round(respondidas/total*100) : 0
+
+  document.getElementById('cia-progress').style.width = pct+'%'
+  document.getElementById('cia-progress-txt').textContent = `${respondidas} / ${total}`
+
+  const listo = respondidas === total
+  const btn = document.getElementById('cia-btn-plan')
+  btn.disabled = !listo
+  btn.style.opacity = listo ? '1' : '.5'
+  document.getElementById('cia-respondidas-txt').textContent = listo
+    ? '¡Listo! Generá los 3 planes de trabajo'
+    : `Respondé las 10 preguntas para continuar (${total-respondidas} restante${total-respondidas!==1?'s':''})`
+}
+
+async function ciaGenerarPlan(){
+  const tipo = ciaTipoActual
+  ciaPaso(4) // loading planes
+
+  try {
+    const resp = await fetch('/api/consultor-plan', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        tipo,
+        preguntas: ciaPreguntasData,
+        respuestas: ciaRespuestas,
+        fotos: ciaFotosContexto
+      })
+    })
+    const data = await resp.json()
+    if(!data.ok || !data.planes?.length) throw new Error(data.error || 'Sin planes')
+
+    renderCiaPlanes(data.planes, tipo)
+    ciaPaso(5)
+  } catch(err) {
+    ciaPaso(3)
+    alert('Error al generar planes: ' + err.message)
+  }
+}
+
+function renderCiaPlanes(planes, tipo){
+  ciaPlanesActuales = planes  // guardar para ciaGuardarDiagnostico()
+  document.getElementById('cia-planes-tipo').textContent = tipo
+  const cont = document.getElementById('cia-planes-container')
+  cont.innerHTML = planes.map((plan, i)=>{
+    const destacado = i===1 // Plan equilibrado = recomendado
+    const crono = Array.isArray(plan.cronograma) ? plan.cronograma : []
+    const ventajas  = Array.isArray(plan.ventajas)    ? plan.ventajas    : []
+    const limitaciones = Array.isArray(plan.limitaciones) ? plan.limitaciones : []
+
+    return `<div class="cia-plan-card${destacado?' destacado':''}">
+      <div class="cia-plan-titulo">${plan.titulo}</div>
+      <div class="cia-plan-enfoque">${plan.enfoque}</div>
+
+      <div class="cia-plan-row"><span class="cia-plan-icon">👥</span><span class="cia-plan-key">Personal:</span><span class="cia-plan-val">${plan.personal_necesario||'—'}</span></div>
+      <div class="cia-plan-row"><span class="cia-plan-icon">⏱</span><span class="cia-plan-key">Duración:</span><span class="cia-plan-val">${plan.duracion_total||'—'}</span></div>
+      <div class="cia-plan-row"><span class="cia-plan-icon">📈</span><span class="cia-plan-key">Rendimiento:</span><span class="cia-plan-val">${plan.rendimiento_estimado||'—'}</span></div>
+      <div class="cia-plan-row"><span class="cia-plan-icon">💰</span><span class="cia-plan-key">Costo personal:</span><span class="cia-plan-val" style="color:#f0b429">${plan.costo_estimado_personal||'—'}</span></div>
+      <div class="cia-plan-row"><span class="cia-plan-icon">🔧</span><span class="cia-plan-key">Materiales:</span><span class="cia-plan-val">${plan.materiales_insumos||'—'}</span></div>
+
+      ${crono.length ? `
+      <div class="cia-plan-section">📅 Cronograma</div>
+      ${crono.map(paso=>`<div class="cia-crono-item">${paso}</div>`).join('')}` : ''}
+
+      ${ventajas.length ? `
+      <div class="cia-plan-section">✅ Ventajas</div>
+      <ul class="cia-plan-list">
+        ${ventajas.map(v=>`<li>${v}</li>`).join('')}
+      </ul>` : ''}
+
+      ${limitaciones.length ? `
+      <div class="cia-plan-section" style="color:#dc2626">⚠️ Limitaciones</div>
+      <ul class="cia-plan-list rojo">
+        ${limitaciones.map(l=>`<li>${l}</li>`).join('')}
+      </ul>` : ''}
+    </div>`
+  }).join('')
+}
+
+function ciaPaso(n){
+  for(let i=1;i<=5;i++){
+    const el = document.getElementById('cia-paso'+i)
+    if(el) el.classList.toggle('on', i===n)
+  }
+}
+
+function ciaReiniciar(){
+  // Detener micrófono si estaba activo
+  if(micActive) ciaMicStop()
+  micFinalText = ''
+
+  ciaTipoActual     = ''
+  ciaPreguntasData  = []
+  ciaRespuestas     = []
+  ciaPlanesActuales = []
+  ciaFotosContexto  = []
+  document.querySelectorAll('.cia-tipo-btn').forEach(b=>b.classList.remove('sel'))
+  document.getElementById('cia-tipo-otro-wrap').style.display = 'none'
+  document.getElementById('cia-contexto').value = ''
+  document.getElementById('cia-mic-error').style.display = 'none'
+  document.getElementById('cia-interim-box').style.display = 'none'
+  const fotoGrid = document.getElementById('cia-foto-grid')
+  if(fotoGrid) fotoGrid.innerHTML = ''
+  const fotoCount = document.getElementById('cia-foto-count')
+  if(fotoCount) fotoCount.textContent = ''
+  const fotoInput = document.getElementById('cia-foto-input')
+  if(fotoInput) fotoInput.value = ''
+  const btn = document.getElementById('cia-btn-iniciar')
+  btn.disabled = true; btn.style.opacity = '.5'
+  ciaPaso(1)
+}
+
+function ciaCopiarResumen(){
+  const planes = document.querySelectorAll('.cia-plan-card')
+  let txt = `PLANES DE TRABAJO · ${ciaTipoActual}\n${'='.repeat(50)}\n\n`
+  planes.forEach((card, i)=>{
+    txt += card.innerText + '\n\n' + '-'.repeat(40) + '\n\n'
+  })
+  navigator.clipboard.writeText(txt).then(()=>alert('Resumen copiado al portapapeles ✔️')).catch(()=>alert('No se pudo copiar automáticamente'))
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DIAGNÓSTICOS
+// ══════════════════════════════════════════════════════════════════
+function getDiagnosticos(){ return LS.get('diagnosticos') }
+function saveDiagnosticos(d){ LS.set('diagnosticos', d) }
+
+// Guardado manual desde el botón en paso 5
+function ciaGuardarDiagnostico(){
+  if(!ciaPlanesActuales?.length){ alert('Sin planes para guardar'); return }
+  const id = genId()
+  const diag = {
+    id,
+    fecha:    new Date().toISOString(),
+    tipo:     ciaTipoActual,
+    contexto: document.getElementById('cia-contexto')?.value || '',
+    preguntas: ciaPreguntasData,
+    respuestas: ciaRespuestas,
+    planes:   ciaPlanesActuales
+  }
+  const all = getDiagnosticos()
+  all.unshift(diag)   // más reciente primero
+  saveDiagnosticos(all)
+  actualizarBadgesDiag()
+  // Feedback visual
+  const btn = event?.target
+  if(btn){ const t = btn.textContent; btn.textContent='✅ Guardado'; setTimeout(()=>btn.textContent=t,2000) }
+}
+
+function limpiarDiagnosticos(){
+  if(!confirm('¿Eliminar todos los diagnósticos guardados?')) return
+  saveDiagnosticos([])
+  actualizarBadgesDiag()
+  renderDiagnosticos()
+}
+
+function eliminarDiagnostico(id){
+  saveDiagnosticos(getDiagnosticos().filter(d=>d.id!==id))
+  actualizarBadgesDiag()
+  renderDiagnosticos()
+}
+
+function exportarDiagnostico(id){
+  const d = getDiagnosticos().find(x=>x.id===id)
+  if(!d) return
+  const fecha = new Date(d.fecha)
+  const fmtd  = fecha.toLocaleDateString('es-AR') + ' ' + fecha.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
+
+  let txt = `DIAGNÓSTICO OPERATIVO · CropOS\n`
+  txt += `${'═'.repeat(50)}\n`
+  txt += `Operación : ${d.tipo}\n`
+  txt += `Fecha     : ${fmtd}\n`
+  if(d.contexto) txt += `Contexto  : ${d.contexto}\n`
+  txt += `\n${'─'.repeat(50)}\nDIAGNÓSTICO (preguntas y respuestas)\n${'─'.repeat(50)}\n\n`
+
+  d.preguntas.forEach((p,i)=>{
+    const ri = d.respuestas[i] ?? 0
+    txt += `${i+1}. ${p.pregunta}\n   → ${p.opciones[ri]}\n\n`
+  })
+
+  txt += `${'─'.repeat(50)}\nPLANES DE TRABAJO\n${'─'.repeat(50)}\n\n`
+  d.planes.forEach((plan,i)=>{
+    txt += `${plan.titulo}\n${'·'.repeat(40)}\n`
+    txt += `Enfoque       : ${plan.enfoque}\n`
+    txt += `Personal      : ${plan.personal_necesario||'—'}\n`
+    txt += `Duración      : ${plan.duracion_total||'—'}\n`
+    txt += `Rendimiento   : ${plan.rendimiento_estimado||'—'}\n`
+    txt += `Costo personal: ${plan.costo_estimado_personal||'—'}\n`
+    txt += `Materiales    : ${plan.materiales_insumos||'—'}\n`
+    if(plan.cronograma?.length){
+      txt += `\nCronograma:\n`
+      plan.cronograma.forEach(paso=> txt+=`  ${paso}\n`)
+    }
+    if(plan.ventajas?.length){
+      txt += `\nVentajas:\n`
+      plan.ventajas.forEach(v=> txt+=`  + ${v}\n`)
+    }
+    if(plan.limitaciones?.length){
+      txt += `\nLimitaciones:\n`
+      plan.limitaciones.forEach(l=> txt+=`  - ${l}\n`)
+    }
+    txt += '\n'
+  })
+  txt += `\nGenerado con CropOS · Evergreen AI\n`
+
+  // Descargar como .txt
+  const blob = new Blob([txt], {type:'text/plain;charset=utf-8'})
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `diagnostico_${d.tipo.replace(/\s+/g,'_')}_${new Date(d.fecha).toISOString().slice(0,10)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function copiarDiagnosticoAlPortapapeles(id){
+  const d = getDiagnosticos().find(x=>x.id===id)
+  if(!d) return
+  const resumen = d.planes.map(p=>`${p.titulo}\n${p.enfoque}\nPersonal: ${p.personal_necesario||'—'} · Duración: ${p.duracion_total||'—'} · Rendimiento: ${p.rendimiento_estimado||'—'}`).join('\n\n')
+  const contenido = `Operación: ${d.tipo}\n\n${resumen}`
+  clipAgregarItem(`Diagnóstico · ${d.tipo}`, contenido, 'diag')
+  actualizarBadgesClip()
+  const btn = event?.target
+  if(btn){ const t=btn.textContent; btn.textContent='✅ Agregado'; setTimeout(()=>btn.textContent=t,1500) }
+}
+
+function renderDiagnosticos(){
+  const data = getDiagnosticos()
+  const cont = document.getElementById('lista-diagnosticos')
+  if(!cont) return
+
+  if(!data.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin diagnósticos guardados.<br>Generá un plan en el <strong>Consultor IA</strong> y presioná 💾 Guardar diagnóstico.</div>`
+    return
+  }
+
+  const ICONOS = {Riego:'💧',Poda:'✂️',Desfoliación:'🍃','Aplicación foliar':'🌿',Cosecha:'🌾',Trimming:'✂️',Secado:'🏭',Limpieza:'🧹',Medición:'📏','Revisión sanitaria':'🔬'}
+
+  cont.innerHTML = data.map(d=>{
+    const fecha = new Date(d.fecha)
+    const fmtd  = fecha.toLocaleDateString('es-AR') + ' · ' + fecha.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
+    const icono = ICONOS[d.tipo] || '⚙️'
+    const resumenContexto = d.contexto ? d.contexto.slice(0,80)+(d.contexto.length>80?'...':'') : ''
+    const planesNombres   = (d.planes||[]).map(p=>`<span class="diag-badge-plan">${p.titulo?.split(':')[0]||'Plan'}</span>`).join('')
+
+    return `<div class="diag-card">
+      <div class="diag-card-head">
+        <div class="diag-card-icon">${icono}</div>
+        <div class="diag-card-meta">
+          <div class="diag-card-tipo">${d.tipo}</div>
+          <div class="diag-card-fecha">📅 ${fmtd}</div>
+          ${resumenContexto?`<div class="diag-card-resumen">${resumenContexto}</div>`:''}
+        </div>
+      </div>
+      <div style="margin-bottom:8px">${planesNombres}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+        ${d.preguntas?.length||0} preguntas respondidas · ${d.planes?.length||0} planes generados
+      </div>
+      <div class="diag-card-actions">
+        <button class="btn-sm verde" onclick="exportarDiagnostico('${d.id}')">⬇ Exportar .txt</button>
+        <button class="btn-sm" onclick="verDiagnostico('${d.id}')">👁 Ver completo</button>
+        <button class="btn-sm" onclick="copiarDiagnosticoAlPortapapeles('${d.id}')">📋 Al portapapeles</button>
+        <button class="btn-sm rojo" onclick="eliminarDiagnostico('${d.id}')">🗑</button>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// Modal simple para ver diagnóstico completo
+function verDiagnostico(id){
+  const d = getDiagnosticos().find(x=>x.id===id)
+  if(!d) return
+  let html = `<div style="max-width:700px;margin:0 auto;background:#0a1a10;border-radius:12px;padding:20px;font-size:12px;line-height:1.6;color:var(--text)">`
+  html += `<div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:4px">${d.tipo}</div>`
+  html += `<div style="color:var(--muted);font-size:10px;margin-bottom:16px">${new Date(d.fecha).toLocaleString('es-AR')}</div>`
+  if(d.contexto) html += `<div style="background:#060f0a;border-radius:8px;padding:10px;margin-bottom:14px;border-left:3px solid #1a5c32"><span style="color:var(--muted);font-size:10px">CONTEXTO</span><br>${d.contexto}</div>`
+  html += `<div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Diagnóstico</div>`
+  d.preguntas?.forEach((p,i)=>{
+    const ri = d.respuestas?.[i]??0
+    html += `<div style="padding:6px 0;border-bottom:0.5px solid #0a1a10"><span style="color:var(--muted)">${i+1}. ${p.pregunta}</span><br><strong style="color:var(--green)">→ ${p.opciones[ri]}</strong></div>`
+  })
+  d.planes?.forEach(plan=>{
+    html += `<div style="background:#060f0a;border-radius:10px;padding:14px;margin-top:12px">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px">${plan.titulo}</div>
+      <div style="color:var(--muted)">${plan.enfoque}</div>
+      <div style="margin-top:8px">👥 ${plan.personal_necesario||'—'} · ⏱ ${plan.duracion_total||'—'} · 💰 ${plan.costo_estimado_personal||'—'}</div>
+    </div>`
+  })
+  html += `<div style="text-align:right;margin-top:14px"><button onclick="this.closest('.cia-modal-full').remove()" style="width:auto;padding:7px 18px;background:#1a5c32;color:#fff;border:none;border-radius:8px;cursor:pointer">Cerrar</button></div></div>`
+
+  const overlay = document.createElement('div')
+  overlay.className = 'cia-modal-full'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:400;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center'
+  overlay.innerHTML = html
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove() })
+  document.body.appendChild(overlay)
+}
+
+function actualizarBadgesDiag(){
+  const n = getDiagnosticos().length
+  const tab = document.getElementById('tab-diagnosticos')
+  if(!tab) return
+  const existing = tab.querySelector('.tab-badge')
+  if(existing) existing.remove()
+  if(n>0) tab.insertAdjacentHTML('beforeend',`<span class="tab-badge">${n}</span>`)
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PORTAPAPELES
+// ══════════════════════════════════════════════════════════════════
+function getPortapapeles(){ return LS.get('portapapeles') }
+function savePortapapeles(d){ LS.set('portapapeles', d) }
+
+function clipAgregarItem(titulo, contenido, origen='manual'){
+  const all = getPortapapeles()
+  all.unshift({ id:genId(), fecha:new Date().toISOString(), titulo, contenido, origen })
+  savePortapapeles(all)
+  actualizarBadgesClip()
+}
+
+function clipAgregarManual(){
+  document.getElementById('clip-nueva-wrap').style.display = ''
+  document.getElementById('clip-nueva-titulo').value = ''
+  document.getElementById('clip-nueva-txt').value = ''
+  document.getElementById('clip-nueva-titulo').focus()
+}
+
+function clipGuardarManual(){
+  const titulo   = document.getElementById('clip-nueva-titulo').value.trim() || 'Nota'
+  const contenido = document.getElementById('clip-nueva-txt').value.trim()
+  if(!contenido){ alert('Escribí algo en la nota'); return }
+  clipAgregarItem(titulo, contenido, 'manual')
+  document.getElementById('clip-nueva-wrap').style.display = 'none'
+  renderPortapapeles()
+}
+
+function clipCopiar(id){
+  const item = getPortapapeles().find(x=>x.id===id)
+  if(!item) return
+  navigator.clipboard.writeText(item.contenido)
+    .then(()=>{
+      const btn = event?.target
+      if(btn){ const t=btn.textContent; btn.textContent='✅ Copiado'; setTimeout(()=>btn.textContent=t,1500) }
+    })
+    .catch(()=> alert('No se pudo copiar automáticamente'))
+}
+
+function clipEliminar(id){
+  savePortapapeles(getPortapapeles().filter(x=>x.id!==id))
+  actualizarBadgesClip()
+  renderPortapapeles()
+}
+
+function limpiarPortapapeles(){
+  if(!confirm('¿Limpiar todos los elementos del portapapeles?')) return
+  savePortapapeles([])
+  actualizarBadgesClip()
+  renderPortapapeles()
+}
+
+function actualizarBadgesClip(){
+  const n   = getPortapapeles().length
+  const tab = document.getElementById('tab-portapapeles')
+  if(!tab) return
+  const existing = tab.querySelector('.tab-badge')
+  if(existing) existing.remove()
+  if(n>0) tab.insertAdjacentHTML('beforeend',`<span class="tab-badge">${n}</span>`)
+}
+
+function renderPortapapeles(){
+  const data = getPortapapeles()
+  const cont = document.getElementById('lista-portapapeles')
+  if(!cont) return
+
+  if(!data.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin elementos.<br>Copiá un plan desde el <strong>Consultor IA</strong> o agregá una nota.</div>`
+    return
+  }
+  cont.innerHTML = data.map(item=>{
+    const fecha = new Date(item.fecha).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})
+    return `<div class="clip-card">
+      <div class="clip-card-head">
+        <div class="clip-card-titulo">${item.titulo}</div>
+        <span class="clip-card-origen ${item.origen}">${item.origen==='diag'?'IA':'manual'}</span>
+        <div class="clip-card-fecha">${fecha}</div>
+      </div>
+      <div class="clip-card-texto">${item.contenido}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn-sm verde" onclick="clipCopiar('${item.id}')">📋 Copiar</button>
+        <button class="btn-sm rojo"  onclick="clipEliminar('${item.id}')">🗑</button>
+      </div>
+    </div>`
+  }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FOTOS CONTEXTO IA
+// ══════════════════════════════════════════════════════════════════
+const MAX_FOTOS_CIA = 4
+
+function resizarImagen(file, maxPx=900){
+  return new Promise(resolve=>{
+    const reader = new FileReader()
+    reader.onload = e => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let w = img.width, h = img.height
+        if(w > h){ if(w>maxPx){h=Math.round(h*maxPx/w);w=maxPx} }
+        else       { if(h>maxPx){w=Math.round(w*maxPx/h);h=maxPx} }
+        canvas.width=w; canvas.height=h
+        canvas.getContext('2d').drawImage(img,0,0,w,h)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.78)
+        resolve({ data: dataUrl.split(',')[1], media_type:'image/jpeg', nombre: file.name })
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+async function ciaAgregarFotos(input){
+  const files = Array.from(input.files)
+  const espacio = MAX_FOTOS_CIA - ciaFotosContexto.length
+  if(espacio <= 0){ alert(`Máximo ${MAX_FOTOS_CIA} fotos por diagnóstico`); input.value=''; return }
+
+  const toAdd = files.slice(0, espacio)
+  for(const file of toAdd){
+    const foto = await resizarImagen(file)
+    ciaFotosContexto.push(foto)
+  }
+  if(files.length > espacio) alert(`Solo se agregaron ${espacio} foto(s). Límite: ${MAX_FOTOS_CIA}.`)
+  input.value = ''
+  renderCiaFotos()
+}
+
+function ciaRemoverFoto(idx){
+  ciaFotosContexto.splice(idx, 1)
+  renderCiaFotos()
+}
+
+function renderCiaFotos(){
+  const grid  = document.getElementById('cia-foto-grid')
+  const count = document.getElementById('cia-foto-count')
+  if(!grid) return
+  if(!ciaFotosContexto.length){
+    grid.innerHTML = ''
+    if(count) count.textContent = ''
+    return
+  }
+  if(count) count.textContent = `${ciaFotosContexto.length} / ${MAX_FOTOS_CIA} fotos`
+  grid.innerHTML = ciaFotosContexto.map((f,i)=>`
+    <div class="cia-foto-thumb">
+      <img src="data:${f.media_type};base64,${f.data}" alt="${f.nombre}">
+      <button class="cia-foto-remove" onclick="ciaRemoverFoto(${i})" title="Quitar foto">✕</button>
+    </div>`).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════
+// HISTORIAL DE OPERACIONES
+// ══════════════════════════════════════════════════════════════════
+function getTareaFotos(){
+  try{ return JSON.parse(localStorage.getItem('coq_tarea_fotos')||'{}') }catch(e){ return {} }
+}
+
+function saveTareaFotos(obj){
+  try{ localStorage.setItem('coq_tarea_fotos', JSON.stringify(obj)) }
+  catch(e){ alert('Sin espacio de almacenamiento para las fotos. Eliminá algunas fotos anteriores.') }
+}
+
+function getTareaFotosById(tareaId){
+  const all = getTareaFotos()
+  return all[tareaId] || []
+}
+
+async function subirFotoTarea(tareaId, input){
+  const files = Array.from(input.files)
+  const existentes = getTareaFotosById(tareaId)
+  if(existentes.length >= 5){ alert('Máximo 5 fotos por tarea'); input.value=''; return }
+  const espacio = 5 - existentes.length
+  const toAdd = files.slice(0, espacio)
+  for(const file of toAdd){
+    const foto = await resizarImagen(file, 700)
+    existentes.push({ id:genId(), ...foto, fecha:new Date().toISOString() })
+  }
+  const all = getTareaFotos()
+  all[tareaId] = existentes
+  saveTareaFotos(all)
+  input.value = ''
+  renderHistorial()
+}
+
+function eliminarFotoTarea(tareaId, fotoId){
+  const all = getTareaFotos()
+  if(all[tareaId]) all[tareaId] = all[tareaId].filter(f=>f.id!==fotoId)
+  saveTareaFotos(all)
+  renderHistorial()
+}
+
+function verFotoCompleta(data, mediaType){
+  const overlay = document.createElement('div')
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:500;display:flex;align-items:center;justify-content:center;cursor:zoom-out'
+  overlay.innerHTML = `<img src="data:${mediaType};base64,${data}" style="max-width:95vw;max-height:95vh;border-radius:10px;object-fit:contain">`
+  overlay.addEventListener('click', ()=>overlay.remove())
+  document.body.appendChild(overlay)
+}
+
+function renderHistorial(){
+  const tipo  = document.getElementById('fil-hist-tipo')?.value || ''
+  const fecha = document.getElementById('fil-hist-fecha')?.value || ''
+
+  let tareas = getTareas()
+  if(tipo)  tareas = tareas.filter(t=>t.tipo===tipo)
+  if(fecha) tareas = tareas.filter(t=>t.inicio?.slice(0,10)===fecha || t.creada?.slice(0,10)===fecha)
+
+  // Ordenar cronológico descendente
+  tareas = tareas.slice().sort((a,b)=>{
+    const fa = a.inicio || a.creada || ''
+    const fb = b.inicio || b.creada || ''
+    return fb.localeCompare(fa)
+  })
+
+  const cont = document.getElementById('lista-historial')
+  if(!cont) return
+
+  if(!tareas.length){
+    cont.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">Sin tareas registradas.<br>Creá tareas en el módulo <strong>Tareas</strong> para que aparezcan aquí.</div>`
+    return
+  }
+
+  const TIPO_ICON = {Riego:'💧',Poda:'✂️',Desfoliación:'🍃','Aplicación foliar':'🌿',Cosecha:'🌾',Trimming:'✂️',Secado:'🏭',Limpieza:'🧹',Medición:'📏','Revisión sanitaria':'🔬',Otro:'⚙️'}
+  const pers = getPersonal()
+  const todaFotos = getTareaFotos()
+
+  cont.innerHTML = tareas.map(t=>{
+    const [pb,pi]   = PRIORIDAD_BADGE[t.prioridad]||['badge-gris','']
+    const [eb,ei]   = ESTADO_BADGE[t.estado]||['badge-gris','']
+    const resp      = pers.find(p=>p.id===t.responsable_id)
+    const icono     = TIPO_ICON[t.tipo] || '⚙️'
+    const fechaEvt  = t.inicio ? fmtFecha(t.inicio)+' '+fmtHora(t.inicio) : fmtFecha(t.creada?.slice(0,10)||'')
+    const fotos     = todaFotos[t.id] || []
+
+    return `<div class="hist-event">
+      <div class="hist-event-head">
+        <div class="hist-event-icon">${icono}</div>
+        <div class="hist-event-meta">
+          <div class="hist-event-titulo">${t.titulo}</div>
+          <div class="hist-event-info">📅 ${fechaEvt} ${t.lote?'· 📍 '+t.lote:''} ${resp?'· 👷 '+resp.nombre:''}</div>
+          <div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap">
+            <span class="badge ${pb}" style="font-size:9px">${pi} ${t.prioridad}</span>
+            <span class="badge ${eb}" style="font-size:9px">${ei} ${t.estado.replace('_',' ')}</span>
+            ${t.tipo?`<span class="badge badge-gris" style="font-size:9px">${t.tipo}</span>`:''}
+          </div>
+        </div>
+      </div>
+      ${t.comentarios?`<div style="font-size:11px;color:var(--muted);background:#060f0a;border-radius:7px;padding:8px 10px;margin-bottom:8px">${t.comentarios}</div>`:''}
+      <div class="hist-fotos-grid" id="hist-fotos-${t.id}">
+        ${fotos.map(f=>`
+          <div class="hist-foto-item" onclick="verFotoCompleta('${f.data}','${f.media_type}')" title="${f.nombre||'foto'}">
+            <img src="data:${f.media_type};base64,${f.data}" alt="foto">
+          </div>`).join('')}
+        ${fotos.length < 5 ? `
+          <label class="hist-foto-upload-btn" title="Agregar foto del procedimiento">
+            <span style="font-size:18px">📷</span>
+            <span>Foto</span>
+            <input type="file" accept="image/*" style="display:none" onchange="subirFotoTarea('${t.id}',this)">
+          </label>` : ''}
+        ${fotos.length > 0 ? `<button class="btn-sm rojo" style="align-self:flex-end;margin-left:4px" onclick="eliminarTodasFotosTarea('${t.id}')">🗑</button>` : ''}
+      </div>
+      ${fotos.length > 0 ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">${fotos.length} foto${fotos.length>1?'s':''} · Tocá para ver en pantalla completa</div>` : ''}
+    </div>`
+  }).join('')
+}
+
+function eliminarTodasFotosTarea(tareaId){
+  if(!confirm('¿Eliminar todas las fotos de esta tarea?')) return
+  const all = getTareaFotos()
+  delete all[tareaId]
+  saveTareaFotos(all)
+  renderHistorial()
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const personal  = getPersonal()
+  const tareas    = getTareas()
+  const jornales  = getJornales()
+  const cuads     = getCuadrillas()
+  const rend      = getRendimiento()
+  const dia       = hoy()
+
+  // KPIs
+  const activos   = personal.filter(p=>p.estado==='activo').length
+  const presentes = jornales.filter(j=>j.fecha===dia).length
+  const pendientes= tareas.filter(t=>t.estado==='pendiente').length
+  const completadas=tareas.filter(t=>t.estado==='completada'&&t.inicio?.slice(0,10)===dia).length
+  const criticas  = tareas.filter(t=>t.estado!=='completada'&&t.prioridad==='critica')
+  const costoHoy  = jornales.filter(j=>j.fecha===dia).reduce((s,j)=>s+j.total,0)
+
+  document.getElementById('dash-personal-activo').textContent = activos
+  document.getElementById('dash-presentes').textContent       = presentes
+  document.getElementById('dash-tareas-pend').textContent     = pendientes
+  document.getElementById('dash-tareas-ok').textContent       = completadas
+  document.getElementById('dash-costo').textContent           = '$'+costoHoy.toLocaleString()
+
+  const kpiCrit = document.getElementById('dash-kpi-criticas')
+  if(criticas.length){ kpiCrit.style.display=''; document.getElementById('dash-criticas').textContent=criticas.length }
+  else kpiCrit.style.display='none'
+
+  // Cuadrilla hoy
+  const cuadHoy = cuads.filter(c=>c.fecha===dia)
+  const contCuad = document.getElementById('dash-cuadrilla-hoy')
+  if(cuadHoy.length){
+    contCuad.innerHTML = cuadHoy.map(cq=>{
+      const enc  = personal.find(p=>p.id===cq.encargado_id)
+      const miembros = (cq.trabajadores||[]).map(id=>personal.find(p=>p.id===id)).filter(Boolean)
+      return `<div style="padding:6px 0;border-bottom:0.5px solid #0a1a10">
+        <div style="font-weight:700;font-size:13px;color:var(--text)">${cq.nombre}</div>
+        <div style="font-size:11px;color:var(--muted);margin:3px 0">📍 ${cq.lote||'—'} · 👷 ${enc?.nombre||'Sin encargado'}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">
+          ${miembros.map(m=>`<span class="badge badge-verde" style="font-size:9px">${m.nombre}</span>`).join('')}
+        </div>
+      </div>`
+    }).join('')
+  } else {
+    contCuad.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">
+      Sin cuadrilla para hoy.<br>
+      <button class="btn-primary" style="margin-top:10px;font-size:11px;padding:6px 14px" onclick="cqTab('cuadrillas')">Crear cuadrilla</button>
+    </div>`
+  }
+
+  // Alertas críticas
+  const contAlert = document.getElementById('dash-alertas')
+  if(criticas.length){
+    contAlert.innerHTML = criticas.map(t=>`
+      <div class="cq-alerta">
+        <span class="cq-alerta-icon">🚨</span>
+        <div class="cq-alerta-text">
+          <strong>${t.titulo}</strong><br>
+          <span style="font-size:10px;opacity:.8">${t.tipo||''} ${t.lote?'· '+t.lote:''}</span>
+        </div>
+      </div>`).join('')
+  } else {
+    contAlert.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin alertas activas ✔️</div>`
+  }
+
+  // Tareas del día
+  const tareasHoy = tareas.filter(t=>t.estado!=='completada').slice(0,8)
+  const contTareas = document.getElementById('dash-tareas-lista')
+  if(tareasHoy.length){
+    contTareas.innerHTML = tareasHoy.map(t=>{
+      const [pb,pi] = PRIORIDAD_BADGE[t.prioridad]||['badge-gris','']
+      const [eb,ei] = ESTADO_BADGE[t.estado]||['badge-gris','']
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid #0a1a10;cursor:pointer" onclick="abrirDetalleTarea('${t.id}')">
+        <span style="font-size:14px">${pi}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.titulo}</div>
+          <div style="font-size:10px;color:var(--muted)">${t.tipo||''} ${t.lote?'· '+t.lote:''}</div>
+        </div>
+        <span class="badge ${eb}" style="font-size:9px;white-space:nowrap">${ei} ${t.estado.replace('_',' ')}</span>
+      </div>`
+    }).join('')
+  } else {
+    contTareas.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin tareas pendientes 🎉</div>`
+  }
+
+  // Ranking rendimiento (últimos 7 días)
+  const hace7 = new Date(); hace7.setDate(hace7.getDate()-7)
+  const rendReciente = rend.filter(r=>new Date(r.fecha)>=hace7)
+  const byPerson = {}
+  rendReciente.forEach(r=>{
+    if(!r.trabajador_id) return
+    if(!byPerson[r.trabajador_id]) byPerson[r.trabajador_id]={kgs:0,plantas:0}
+    byPerson[r.trabajador_id].kgs    += r.kgs
+    byPerson[r.trabajador_id].plantas += r.plantas
+  })
+  const ranking = Object.entries(byPerson)
+    .map(([id,d])=>({ id, ...d, p:personal.find(x=>x.id===id) }))
+    .filter(x=>x.p)
+    .sort((a,b)=>b.kgs-a.kgs || b.plantas-a.plantas)
+    .slice(0,5)
+
+  const contRank = document.getElementById('dash-ranking')
+  if(ranking.length){
+    const maxKgs = ranking[0].kgs || ranking[0].plantas || 1
+    const medalles = ['🥇','🥈','🥉']
+    contRank.innerHTML = ranking.map((r,i)=>`
+      <div class="cq-rank-row">
+        <div class="cq-rank-pos ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${medalles[i]||'#'+(i+1)}</div>
+        <div class="cq-rank-name">${r.p.nombre}<br><span style="font-size:10px;color:var(--muted)">${r.p.rol}</span></div>
+        <div class="cq-rank-bar-wrap"><div class="cq-rank-bar" style="width:${Math.round(((r.kgs||r.plantas||0)/maxKgs)*100)}%"></div></div>
+        <div class="cq-rank-val">${r.kgs>0?r.kgs.toFixed(1)+'kg':r.plantas+'pl'}</div>
+      </div>`).join('')
+  } else {
+    contRank.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">Sin datos de rendimiento (últimos 7 días)</div>`
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  // Setear fechas por defecto
+  const inputs = ['cq-fecha-cuadrilla','jor-fecha','rend-fecha']
+  inputs.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=hoy() })
+
+  renderDashboard()
+})
+</script>
+</body>
+</html>
