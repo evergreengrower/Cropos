@@ -1330,8 +1330,8 @@ async function leerSensorTH(dispId, deviceId, btn){
     const r=await fetch('/smartlife-sensor?device_id='+encodeURIComponent(deviceId))
     const d=await r.json()
     if(d.ok){
-      const t=d.temp!==undefined?d.temp+'°C':'—'
-      const h=d.hr!==undefined?d.hr+'%':'—'
+      const t=d.temperatura!==undefined?d.temperatura+'°C':'—'
+      const h=d.humedad!==undefined?d.humedad+'%':'—'
       const v=d.vpd!==undefined?d.vpd+' kPa':'—'
       resEl.innerHTML=`<span style="color:#7ecf6a">✓ Temp: <b>${t}</b> · HR: <b>${h}</b> · VPD: <b>${v}</b></span>`
     } else {
