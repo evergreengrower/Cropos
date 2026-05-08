@@ -710,6 +710,8 @@ function guardarCultivo(){
 /* ══════════════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════════════ */
+let _sensorInterval = null
+
 function irTab(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'))
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'))
@@ -717,12 +719,46 @@ function irTab(id){
   const tab   = document.getElementById('tab-'+id)
   if(panel) panel.classList.add('on')
   if(tab)   tab.classList.add('on')
-  if(id==='dashboard')   renderDashboard()
+  if(id==='dashboard'){
+    renderDashboard()
+    iniciarAutoLectura()
+  } else {
+    detenerAutoLectura()
+  }
   if(id==='partidas')    renderPartidas()
   if(id==='secadero')    renderSecadero()
   if(id==='embolsado')   renderEmbolsado()
   if(id==='movimientos') renderMovimientos()
   if(id==='nuevo')       { popularSelects(); setFechaHoy() }
+}
+
+function iniciarAutoLectura(){
+  detenerAutoLectura()
+  leerTodosSensoresResumen()
+  _sensorInterval = setInterval(leerTodosSensoresResumen, 10000)
+}
+
+function detenerAutoLectura(){
+  if(_sensorInterval){ clearInterval(_sensorInterval); _sensorInterval = null }
+}
+
+async function leerTodosSensoresResumen(){
+  const disps = getDisps().filter(d => d.tipo === 'sensor_th')
+  for(const d of disps){
+    if(!d.device_id) continue
+    try{
+      const r = await fetch('/smartlife-sensor?device_id='+encodeURIComponent(d.device_id))
+      const data = await r.json()
+      if(data.ok){
+        const tEl = document.getElementById('rbd-temp-'+d.id)
+        const hEl = document.getElementById('rbd-hr-'+d.id)
+        const vEl = document.getElementById('rbd-vpd-'+d.id)
+        if(tEl) tEl.textContent = data.temperatura+'°'
+        if(hEl) hEl.textContent = data.humedad+'%'
+        if(vEl) vEl.textContent = data.vpd
+      }
+    }catch(e){}
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -810,7 +846,7 @@ async function renderResumenDispositivos(){
       <div class="kpi" style="cursor:default">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600">${esc(d.nombre)}${d.ubicacion?' · '+d.ubicacion:''}</div>
-          <button class="btn-sec" style="padding:2px 7px;font-size:9px;line-height:1.4" id="rbd-btn-${d.id}" onclick="leerSensorResumen('${d.id}','${d.device_id}',this)">📡</button>
+          <div id="rbd-tick-${d.id}" style="font-size:9px;color:var(--dim)">↻ 10s</div>
         </div>
         <div style="display:flex;gap:12px;align-items:flex-end" id="rbd-res-${d.id}">
           <div>
